@@ -8,6 +8,8 @@
 
 <h2>Login</h2>
 
+<div id="message" style="margin-bottom: 15px;"></div>
+
 <?php
 if (isset($_GET['error'])) {
     echo '<p style="color: red;">' . htmlspecialchars($_GET['error']) . '</p>';
@@ -54,7 +56,7 @@ document.getElementById("loginForm").addEventListener("submit", function(e) {
     
     if (parsed.dwell.length === 0) {
         e.preventDefault();
-        alert("Pola ketikan tidak terdeteksi. Silakan ketik ulang password.");
+        document.getElementById("message").innerHTML = '<p style="color: red;">Pola ketikan tidak terdeteksi. Silakan ketik ulang password.</p>';
     }
 });
 

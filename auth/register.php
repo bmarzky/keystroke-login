@@ -8,6 +8,15 @@
 
 <h2>Register</h2>
 
+<?php
+if (isset($_GET['error'])) {
+    echo '<p style="color: red;">' . htmlspecialchars($_GET['error']) . '</p>';
+}
+if (isset($_GET['success'])) {
+    echo '<p style="color: green;">' . htmlspecialchars($_GET['success']) . '</p>';
+}
+?>
+
 <form id="registerForm" action="process/register.php" method="POST" autocomplete="off">
     <input type="text" id="username" name="username" placeholder="Username" required autofocus><br><br>
     
@@ -42,17 +51,6 @@ document.getElementById("username").addEventListener("keydown", function(e) {
     }
 });
 
-// popup error/success dari URL
-const params = new URLSearchParams(window.location.search);
-const error = params.get("error");
-const success = params.get("success");
-
-if (error) {
-    alert(error);
-}
-if (success) {
-    alert(success);
-}
 // -----------------------------------------------
 </script>
 
