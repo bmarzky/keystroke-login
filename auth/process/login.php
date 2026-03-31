@@ -49,28 +49,35 @@ if ($user && password_verify($password, $user['password'])) {
         }
     }
 
-    // Login otomatis jika data referensi masih sedikit (Tahap Training)
-    if (count($allData) < 3) {
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['username'] = $user['username'];
+    // Validasi input keystroke: cek dwell time realistis (50-500ms) dan flight time
+    $decodedKeystroke = json_decode($inputKeystroke, true);
+    if (isset($decodedKeystroke['dwell'])) {
+        foreach ($decodedKeystroke['dwell'] as $dwell) {
+            if ($dwell < 50 || $dwell > 500) { // Dwell time mustahil (terlalu cepat/lambat)
+                header("Location: ../login.php?error=" . urlencode("Pola ketikan tidak valid"));
+                exit();
+            }
+        }
+    }
 
-        $stmtInsert = $conn->prepare("INSERT INTO keystroke_data (user_id, features) VALUES (?, ?)");
-        $stmtInsert->bind_param("is", $user['id'], $inputKeystroke);
-        $stmtInsert->execute();
+    // Tentukan threshold berdasarkan jumlah data
+    $isTraining = count($allData) < 5; // Minimal 5 sampel untuk reliable
+    $threshold = $isTraining ? 300 : 150; // Lebih toleran saat training, lebih ketat setelahnya
 
-        header("Location: ../../dashboard/index.php");
+    // Jika data kurang dari 2, tolak (biometrics butuh minimal statistik)
+    if (count($allData) < 2) {
+        header("Location: ../login.php?error=" . urlencode("Data ketikan belum cukup. Lakukan login beberapa kali untuk training."));
         exit();
     }
 
-    // 4. Hitung Skor Biometrik
+    // Hitung Skor Biometrik
     $score = compareMultipleKeystroke($allData, $inputKeystroke);
-    $threshold = 180; // Ubah angka ini jika terlalu sulit login (misal ke 300 atau 500)
 
     if ($score < $threshold) {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
 
-        // Tambahkan data baru sebagai referensi tambahan
+        // Tambahkan data baru sebagai referensi (hanya jika skor bagus)
         $stmtInsert = $conn->prepare("INSERT INTO keystroke_data (user_id, features) VALUES (?, ?)");
         $stmtInsert->bind_param("is", $user['id'], $inputKeystroke);
         $stmtInsert->execute();
@@ -78,7 +85,7 @@ if ($user && password_verify($password, $user['password'])) {
         header("Location: ../../dashboard/index.php");
         exit();
     } else {
-        // Gagal karena pola tidak cocok, tampilkan skor di URL untuk bahan skripsi
+        // Gagal karena pola tidak cocok
         $errorMsg = "Pola ketikan tidak cocok (Skor: " . round($score, 2) . ")";
         header("Location: ../login.php?error=" . urlencode($errorMsg));
         exit();
