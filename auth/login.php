@@ -74,10 +74,8 @@ document.getElementById("password").addEventListener("keydown", function(e) {
     }
 });
 
-// Notifikasi Error/Success
-const params = new URLSearchParams(window.location.search);
-if (params.get("error")) alert(params.get("error"));
-if (params.get("success")) alert(params.get("success"));
+// Notifikasi Error/Success sudah ditampilkan inline di atas form
+
 </script>
 
 </body>
