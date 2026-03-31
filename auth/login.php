@@ -8,6 +8,15 @@
 
 <h2>Login</h2>
 
+<?php
+if (isset($_GET['error'])) {
+    echo '<p style="color: red;">' . htmlspecialchars($_GET['error']) . '</p>';
+}
+if (isset($_GET['success'])) {
+    echo '<p style="color: green;">' . htmlspecialchars($_GET['success']) . '</p>';
+}
+?>
+
 <form id="loginForm" action="process/login.php" method="POST" autocomplete="off">
     <input type="text" id="username" name="username" placeholder="Username" required autofocus autocomplete="off"><br><br>
     

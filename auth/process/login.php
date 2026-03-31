@@ -54,6 +54,8 @@ if ($user && password_verify($password, $user['password'])) {
     if (isset($decodedKeystroke['dwell'])) {
         foreach ($decodedKeystroke['dwell'] as $dwell) {
             if ($dwell < 80 || $dwell > 400) {
+                session_unset();
+                session_destroy();
                 header("Location: ../login.php?error=" . urlencode("Pola ketikan tidak valid (dwell time 80-400ms)"));
                 exit();
             }
@@ -62,6 +64,8 @@ if ($user && password_verify($password, $user['password'])) {
     if (isset($decodedKeystroke['flight'])) {
         foreach ($decodedKeystroke['flight'] as $flight) {
             if ($flight < 20 || $flight > 800) {
+                session_unset();
+                session_destroy();
                 header("Location: ../login.php?error=" . urlencode("Pola ketikan tidak valid (flight time 20-800ms)"));
                 exit();
             }
@@ -99,6 +103,9 @@ if ($user && password_verify($password, $user['password'])) {
         header("Location: ../../dashboard/index.php");
         exit();
     } else {
+        // Gagal: hapus session jika ada, lalu redirect
+        session_unset();
+        session_destroy();
         $errorMsg = "Pola ketikan tidak cocok (Skor: " . round($score, 2) . ")";
         header("Location: ../login.php?error=" . urlencode($errorMsg));
         exit();
