@@ -66,7 +66,27 @@ function mahalanobisDistance($inputVector, $meanVector, $variances) {
 }
 
 /**
- * Fungsi Utama dengan Validasi dan Potensi Caching
+ * Normalisasi Z-Score untuk fitur (opsional, tapi direkomendasikan untuk konsistensi)
+ */
+function normalizeZScore($samples) {
+    if (empty($samples)) return $samples;
+    $numFeatures = count($samples[0]);
+    $means = calculateMean($samples);
+    $variances = calculateVariances($samples, $means);
+    
+    $normalized = [];
+    foreach ($samples as $sample) {
+        $normSample = [];
+        foreach ($sample as $i => $value) {
+            $normSample[] = ($value - $means[$i]) / sqrt($variances[$i] + 0.0001);
+        }
+        $normalized[] = $normSample;
+    }
+    return $normalized;
+}
+
+/**
+ * Fungsi Utama dengan Validasi dan Normalisasi
  */
 function compareMultipleKeystroke($allStoredJson, $inputJson) {
     $input = json_decode($inputJson, true);
@@ -92,19 +112,17 @@ function compareMultipleKeystroke($allStoredJson, $inputJson) {
         }
     }
 
-    // Syarat minimal untuk statistik: butuh setidaknya 2 sampel valid
-    if (count($samples) < 2) return 9999;
+    // Syarat minimal untuk statistik: butuh setidaknya 1 sampel valid (untuk training awal)
+    if (count($samples) < 1) return 9999;
 
-    /**
-     * OPTIMASI CACHING (Saran Anda):
-     * Di lingkungan produksi, Anda sebaiknya menyimpan $meanVector dan $variances 
-     * di kolom tabel 'users' atau 'user_profiles' setelah pendaftaran/update data.
-     * Jadi, Anda tidak perlu menghitung ulang $samples setiap kali login.
-     */
-    
+    // 3. Normalisasi data untuk konsistensi
+    $samples = normalizeZScore($samples);
+    $inputVector = ($inputVector - calculateMean([$inputVector])) / sqrt(calculateVariances([$inputVector], calculateMean([$inputVector])) + 0.0001); // Normalize input too
+
+    // 4. Hitung parameter distribusi pengguna sah
     $meanVector = calculateMean($samples);
     $variances = calculateVariances($samples, $meanVector);
 
-    // 3. Hitung Jarak
+    // 5. Hitung Jarak
     return mahalanobisDistance($inputVector, $meanVector, $variances);
 }

@@ -60,15 +60,21 @@ if ($user && password_verify($password, $user['password'])) {
         }
     }
 
-    // Tentukan threshold berdasarkan jumlah data
-    $isTraining = count($allData) < 5; // Minimal 5 sampel untuk reliable
-    $threshold = $isTraining ? 300 : 150; // Lebih toleran saat training, lebih ketat setelahnya
+    // Jika data kurang dari 3, training phase: login otomatis tapi simpan data
+    if (count($allData) < 3) {
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['username'] = $user['username'];
 
-    // Jika data kurang dari 2, tolak (biometrics butuh minimal statistik)
-    if (count($allData) < 2) {
-        header("Location: ../login.php?error=" . urlencode("Data ketikan belum cukup. Lakukan login beberapa kali untuk training."));
+        $stmtInsert = $conn->prepare("INSERT INTO keystroke_data (user_id, features) VALUES (?, ?)");
+        $stmtInsert->bind_param("is", $user['id'], $inputKeystroke);
+        $stmtInsert->execute();
+
+        header("Location: ../../dashboard/index.php");
         exit();
     }
+
+    // Tentukan threshold berdasarkan jumlah data
+    $threshold = count($allData) < 5 ? 300 : 150;
 
     // Hitung Skor Biometrik
     $score = compareMultipleKeystroke($allData, $inputKeystroke);
@@ -77,7 +83,7 @@ if ($user && password_verify($password, $user['password'])) {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
 
-        // Tambahkan data baru sebagai referensi (hanya jika skor bagus)
+        // Tambahkan data baru sebagai referensi
         $stmtInsert = $conn->prepare("INSERT INTO keystroke_data (user_id, features) VALUES (?, ?)");
         $stmtInsert->bind_param("is", $user['id'], $inputKeystroke);
         $stmtInsert->execute();
@@ -85,7 +91,6 @@ if ($user && password_verify($password, $user['password'])) {
         header("Location: ../../dashboard/index.php");
         exit();
     } else {
-        // Gagal karena pola tidak cocok
         $errorMsg = "Pola ketikan tidak cocok (Skor: " . round($score, 2) . ")";
         header("Location: ../login.php?error=" . urlencode($errorMsg));
         exit();
