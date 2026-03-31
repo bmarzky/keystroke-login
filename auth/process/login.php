@@ -49,20 +49,20 @@ if ($user && password_verify($password, $user['password'])) {
         }
     }
 
-    // Validasi input keystroke: cek dwell time (50-500ms) dan flight time (10-1000ms)
+    // Validasi input keystroke: cek dwell time (80-400ms) dan flight time (20-800ms) - lebih ketat
     $decodedKeystroke = json_decode($inputKeystroke, true);
     if (isset($decodedKeystroke['dwell'])) {
         foreach ($decodedKeystroke['dwell'] as $dwell) {
-            if ($dwell < 50 || $dwell > 500) {
-                header("Location: ../login.php?error=" . urlencode("Pola ketikan tidak valid (dwell time)"));
+            if ($dwell < 80 || $dwell > 400) {
+                header("Location: ../login.php?error=" . urlencode("Pola ketikan tidak valid (dwell time 80-400ms)"));
                 exit();
             }
         }
     }
     if (isset($decodedKeystroke['flight'])) {
         foreach ($decodedKeystroke['flight'] as $flight) {
-            if ($flight < 10 || $flight > 1000) {
-                header("Location: ../login.php?error=" . urlencode("Pola ketikan tidak valid (flight time)"));
+            if ($flight < 20 || $flight > 800) {
+                header("Location: ../login.php?error=" . urlencode("Pola ketikan tidak valid (flight time 20-800ms)"));
                 exit();
             }
         }
@@ -82,7 +82,7 @@ if ($user && password_verify($password, $user['password'])) {
     }
 
     // Tentukan threshold berdasarkan jumlah data
-    $threshold = count($allData) < 5 ? 100 : 50; // Lebih ketat: 100 untuk training, 50 untuk normal
+    $threshold = count($allData) < 5 ? 20 : 10; // Sangat ketat: 20 untuk training, 10 untuk normal
 
     // Hitung Skor Biometrik
     $score = compareMultipleKeystroke($allData, $inputKeystroke);

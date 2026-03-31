@@ -115,23 +115,10 @@ function compareMultipleKeystroke($allStoredJson, $inputJson) {
     // Syarat minimal untuk statistik: butuh setidaknya 1 sampel valid (untuk training awal)
     if (count($samples) < 1) return 9999;
 
-    // 3. Hitung mean dan variance asli untuk normalisasi input
-    $originalMean = calculateMean($samples);
-    $originalVariances = calculateVariances($samples, $originalMean);
-
-    // Normalisasi samples
-    $samples = normalizeZScore($samples);
-
-    // Normalisasi input dengan mean dan variance asli
-    $normalizedInput = [];
-    foreach ($inputVector as $i => $value) {
-        $normalizedInput[] = ($value - $originalMean[$i]) / sqrt($originalVariances[$i] + 0.0001);
-    }
-
-    // 4. Hitung parameter distribusi dari samples normalized
+    // Hitung parameter distribusi pengguna sah (tanpa normalisasi untuk ketat)
     $meanVector = calculateMean($samples);
     $variances = calculateVariances($samples, $meanVector);
 
-    // 5. Hitung Jarak
-    return mahalanobisDistance($normalizedInput, $meanVector, $variances);
+    // Hitung Jarak
+    return mahalanobisDistance($inputVector, $meanVector, $variances);
 }
