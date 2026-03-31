@@ -19,7 +19,7 @@ if (isset($_GET['success'])) {
 }
 ?>
 
-<form id="loginForm" action="process/login.php" method="POST" autocomplete="off">
+<form id="loginForm" action="process/login.php" method="POST" autocomplete="off" novalidate>
     <input type="text" id="username" name="username" placeholder="Username" required autofocus autocomplete="off"><br><br>
     
     <input type="password" id="password" name="password" placeholder="Password" required autocomplete="new-password"><br><br>
@@ -41,9 +41,6 @@ function prepareKeystroke() {
     const hiddenInput = document.getElementById("keystrokeData");
     
     hiddenInput.value = data;
-    
-    // Debugging: Muncul di Console (F12)
-    console.log("Data Keystroke terisi: ", data);
 }
 
 // listener submit form

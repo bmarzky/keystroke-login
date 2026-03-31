@@ -17,7 +17,7 @@ if (isset($_GET['success'])) {
 }
 ?>
 
-<form id="registerForm" action="process/register.php" method="POST" autocomplete="off">
+<form id="registerForm" action="process/register.php" method="POST" autocomplete="off" novalidate>
     <input type="text" id="username" name="username" placeholder="Username" required autofocus><br><br>
     
     <input type="password" id="password" name="password" placeholder="Password" required><br><br>
