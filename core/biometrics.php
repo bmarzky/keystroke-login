@@ -2,8 +2,8 @@
 
 // config
 define('MIN_SAMPLES', 2);
-define('EPSILON', 0.0001);
-define('Z_THRESHOLD_MULTIPLIER', 3.0); // bisa di-tuning (2.0 - 3.0)
+define('EPSILON', 0.001);
+define('Z_THRESHOLD_MULTIPLIER', 1.0); // lebih longgar untuk adaptivitas
 
 // validasi vector (filter noise)
 function isValidVector($vector, $expectedLength) {
