@@ -1,14 +1,235 @@
 allData count: 1
 allData count: 2
 allData count: 3
-score: 45000.006460084, threshold: 1.8698937075219
+score: 2.0763772789467
+allData count: 4
+score: 0.77697729920395
+allData count: 5
+score: 4.7101308659613
+allData count: 6
+score: 28.574494180063
+allData count: 1
+allData count: 2
 allData count: 3
-score: 15000.001282928, threshold: 1.8698937075219
+score: 14.217572937319
 allData count: 3
-score: 20000.001714149, threshold: 1.8698937075219
+score: 19.824195047452
 allData count: 3
-score: 97000.000219611, threshold: 1.8698937075219
+score: 11.017785188611
 allData count: 3
-score: 38000.00639959, threshold: 1.8698937075219
-allData count: 3
-score: 54000.000473013, threshold: 1.8698937075219
+score: 4.0265055118217
+allData count: 4
+score: 50.487451632388
+allData count: 4
+score: 4.6512547525145
+allData count: 5
+score: 55.298695187498
+allData count: 5
+score: 18.194217740679
+allData count: 6
+score: 3.4767274735271
+allData count: 7
+score: 8.5830531859975
+allData count: 8
+score: 4.14532586324
+allData count: 9
+score: 4.0457452043296
+allData count: 10
+score: 5.3882785903551
+allData count: 11
+score: 5.9900855425746
+allData count: 12
+score: 2.7470120627516
+allData count: 13
+score: 3.2838936797084
+allData count: 14
+score: 2.0701625858212
+allData count: 15
+score: 14.403291994923
+allData count: 15
+score: 3.778879644456
+allData count: 16
+score: 1.8228827770405
+allData count: 17
+score: 4.3488641123372
+allData count: 17
+score: 1.9588164066768
+allData count: 18
+score: 1.7192746435191
+allData count: 19
+score: 7.6355180707464
+allData count: 19
+score: 2.0194162380666
+allData count: 19
+score: 3.7915356068538
+allData count: 19
+score: 3.0164856965993
+allData count: 19
+score: 3.3734159306327
+allData count: 19
+score: 4.0043014487332
+allData count: 19
+score: 1.9769796948417
+allData count: 20
+score: 3.0070643659096
+allData count: 20
+score: 2.4482564173922
+allData count: 20
+score: 3.3445634038738
+allData count: 21
+score: 1.543081527816
+allData count: 22
+score: 9.3697021898372
+allData count: 22
+samples count: 0, expectedLength: 10
+score: 9999
+allData count: 22
+score: 3.0790699287696
+allData count: 23
+score: 2.8153148697419
+allData count: 24
+score: 1.5333432089449
+allData count: 25
+score: 2.0607047584186
+allData count: 26
+score: 2.1262690911728
+allData count: 27
+score: 2.163157784071
+allData count: 28
+score: 1.1706303065124
+allData count: 29
+score: 1.7207048914984
+allData count: 29
+score: 2.1106428989068
+allData count: 29
+score: 2.7114890044341
+allData count: 29
+score: 2.6298578608814
+allData count: 30
+score: 1.7217397445877
+allData count: 31
+score: 2.0900209351111
+allData count: 32
+score: 2.8289707305502
+allData count: 32
+score: 2.7168784821387
+allData count: 32
+score: 3.5779348026139
+allData count: 32
+score: 2.163237496643
+allData count: 33
+score: 2.6731044756311
+allData count: 33
+samples count: 0, expectedLength: 11
+score: 9999
+allData count: 33
+score: 8.7681008867803
+allData count: 33
+score: 2.9887922330531
+allData count: 33
+score: 3.7249832797594
+allData count: 33
+score: 4.1811547778917
+allData count: 33
+score: 3.1265516231874
+allData count: 33
+score: 2.5386366918908
+allData count: 34
+score: 2.4138376682899
+allData count: 35
+score: 2.5651645871208
+allData count: 36
+score: 1.8519214179189
+allData count: 37
+score: 2.9402573308863
+allData count: 38
+score: 10.083865634179
+allData count: 38
+score: 2.2432604847151
+allData count: 39
+samples count: 0, expectedLength: 10
+score: 9999
+allData count: 39
+score: 14.56370909057
+allData count: 39
+samples count: 0, expectedLength: 14
+score: 9999
+allData count: 39
+score: 6.9266094570101
+allData count: 39
+samples count: 0, expectedLength: 7
+score: 9999
+allData count: 39
+score: 2.6780807010002
+allData count: 40
+score: 5.444244713049
+allData count: 40
+score: 3.5258676233501
+allData count: 40
+score: 8.3447737652681
+allData count: 40
+score: 2.162534546972
+allData count: 41
+score: 1.9807598099142
+allData count: 42
+score: 2.742471119704
+allData count: 43
+score: 3.7821016629563
+allData count: 43
+score: 1.7579885804049
+allData count: 44
+score: 3.5197062438083
+allData count: 44
+score: 2.7278318742914
+allData count: 45
+score: 3.2551845817253
+allData count: 45
+score: 1.6970232945597
+allData count: 46
+score: 3.6173091956173
+allData count: 46
+score: 2.2414383134264
+allData count: 47
+score: 2.8308242046651
+allData count: 48
+score: 2.5851842277224
+allData count: 49
+score: 4.3080702277122
+allData count: 49
+score: 2.5525505470688
+allData count: 50
+score: 1.8988626834066
+allData count: 51
+score: 3.663456503274
+allData count: 51
+score: 3.7568133849008
+allData count: 51
+score: 4.1146779136906
+allData count: 51
+score: 10.128134456585
+allData count: 51
+score: 3.4102477304646
+allData count: 52
+score: 19.316316767103
+allData count: 52
+score: 8.6924410139315
+allData count: 52
+score: 14.070597838484
+allData count: 52
+samples count: 0, expectedLength: 7
+score: 9999
+allData count: 52
+score: 4.850430126553
+allData count: 52
+score: 3.630864513606
+allData count: 52
+score: 5.0216717062652
+allData count: 52
+samples count: 1, expectedLength: 9
+score: 9999
+allData count: 52
+score: 14.000973833434
+allData count: 52
+score: 3.6060138517992
+allData count: 53
+score: 3.9068565046199
