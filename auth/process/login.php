@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-include "../../config/database9.php";
+include "../../config/database.php";
 include "../../core/biometrics.php";
 
 $conn = getConnection();
