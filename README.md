@@ -97,10 +97,6 @@ Kontribusi sangat diterima! Silakan fork repository ini, buat branch fitur baru,
 4. Push ke branch: `git push origin fitur-baru`.
 5. Buat Pull Request.
 
-## Lisensi
-
-Proyek ini menggunakan lisensi MIT. Lihat file `LICENSE` untuk detail lebih lanjut.
-
 ## Kontak
 
 Jika ada pertanyaan, hubungi [bmarzky](https://github.com/bmarzky).
