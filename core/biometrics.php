@@ -1,21 +1,23 @@
 <?php
 
-/**
- * Validasi Konsistensi Data
- * Memastikan semua sampel memiliki jumlah fitur yang sama agar operasi matriks valid.
- */
-function validateFeatureConsistency($samples, $expectedCount) {
-    foreach ($samples as $sample) {
-        if (count($sample) !== $expectedCount) {
-            return false;
+// config
+define('MIN_SAMPLES', 2);
+define('EPSILON', 0.0001);
+define('Z_THRESHOLD_MULTIPLIER', 3.0); // bisa di-tuning (2.0 - 3.0)
+
+// validasi vector (filter noise)
+function isValidVector($vector, $expectedLength) {
+    if (count($vector) !== $expectedLength) return false;
+
+    foreach ($vector as $v) {
+        if (!is_numeric($v) || $v < 10 || $v > 500) {
+            return false; // filter noise
         }
     }
     return true;
 }
 
-/**
- * Menghitung Mean (Rata-rata)
- */
+// mean
 function calculateMean($samples) {
     $count = count($samples);
     $numFeatures = count($samples[0]);
@@ -30,12 +32,11 @@ function calculateMean($samples) {
     foreach ($means as $i => $value) {
         $means[$i] /= $count;
     }
+
     return $means;
 }
 
-/**
- * Menghitung Varians (Diagonal Covariance)
- */
+// Variance dengan Bessel's correction
 function calculateVariances($samples, $means) {
     $count = count($samples);
     $numFeatures = count($means);
@@ -48,77 +49,118 @@ function calculateVariances($samples, $means) {
     }
 
     foreach ($variances as $i => $value) {
-        // Epsilon untuk mencegah pembagian nol jika data terlalu identik
-        $variances[$i] = ($variances[$i] / ($count - 1)) + 0.0001;
+        $variances[$i] = ($value / max(1, ($count - 1))) + EPSILON;
     }
+
     return $variances;
 }
 
-/**
- * Core Mahalanobis Distance
- */
-function mahalanobisDistance($inputVector, $meanVector, $variances) {
-    $sum = 0;
-    foreach ($inputVector as $i => $value) {
-        $sum += pow($value - $meanVector[$i], 2) / $variances[$i];
-    }
-    return sqrt(abs($sum));
-}
-
-/**
- * Normalisasi Z-Score untuk fitur (opsional, tapi direkomendasikan untuk konsistensi)
- */
+// z score normalization
 function normalizeZScore($samples) {
-    if (empty($samples)) return $samples;
-    $numFeatures = count($samples[0]);
     $means = calculateMean($samples);
     $variances = calculateVariances($samples, $means);
-    
+
     $normalized = [];
+
     foreach ($samples as $sample) {
-        $normSample = [];
+        $row = [];
         foreach ($sample as $i => $value) {
-            $normSample[] = ($value - $means[$i]) / sqrt($variances[$i] + 0.0001);
+            $row[] = ($value - $means[$i]) / sqrt($variances[$i]);
         }
-        $normalized[] = $normSample;
+        $normalized[] = $row;
     }
-    return $normalized;
+
+    return [$normalized, $means, $variances];
 }
 
-/**
- * Fungsi Utama dengan Validasi dan Normalisasi
- */
-function compareMultipleKeystroke($allStoredJson, $inputJson) {
-    $input = json_decode($inputJson, true);
-    
-    // 1. Validasi awal struktur input
-    if (!isset($input['dwell'], $input['flight']) || empty($input['dwell'])) {
-        return 9999; 
+// Mahalanobis distance
+function mahalanobisDistance($x, $mean, $var) {
+    $sum = 0;
+
+    foreach ($x as $i => $value) {
+        $sum += pow($value - $mean[$i], 2) / $var[$i];
     }
 
-    $inputVector = array_merge(array_values($input['dwell']), array_values($input['flight']));
-    $expectedFeatureCount = count($inputVector);
+    return sqrt($sum);
+}
 
-    // 2. Parsing dan Validasi Sampel Historis
+// threshold otomatis berdasarkan distribusi data training
+function calculateThreshold($samples, $mean, $var) {
+    $distances = [];
+
+    foreach ($samples as $s) {
+        $distances[] = mahalanobisDistance($s, $mean, $var);
+    }
+
+    $meanDist = array_sum($distances) / count($distances);
+
+    $variance = 0;
+    foreach ($distances as $d) {
+        $variance += pow($d - $meanDist, 2);
+    }
+
+    $std = sqrt($variance / max(1, count($distances) - 1));
+
+    return $meanDist + (Z_THRESHOLD_MULTIPLIER * $std);
+}
+
+// main function untuk verifikasi keystroke
+function verifyKeystroke($allStoredJson, $inputJson) {
+
+    $input = json_decode($inputJson, true);
+    if (!isset($input['dwell'], $input['flight'])) {
+        return ['status' => false, 'distance' => 9999];
+    }
+
+    $inputVector = array_merge($input['dwell'], $input['flight']);
+    $expectedLength = count($inputVector);
+
     $samples = [];
-    foreach ($allStoredJson as $storedJson) {
-        $stored = json_decode($storedJson, true);
-        if (isset($stored['dwell'], $stored['flight'])) {
-            $vector = array_merge(array_values($stored['dwell']), array_values($stored['flight']));
-            // Validasi: Panjang data harus sama dengan input
-            if (count($vector) === $expectedFeatureCount) {
-                $samples[] = $vector;
-            }
+
+    foreach ($allStoredJson as $json) {
+        $data = json_decode($json, true);
+
+        if (!isset($data['dwell'], $data['flight'])) continue;
+
+        $vector = array_merge($data['dwell'], $data['flight']);
+
+        if (isValidVector($vector, $expectedLength)) {
+            $samples[] = $vector;
         }
     }
 
-    // Syarat minimal untuk statistik: butuh setidaknya 1 sampel valid (untuk training awal)
-    if (count($samples) < 1) return 9999;
+    if (count($samples) < MIN_SAMPLES) {
+        file_put_contents('debug.log', "samples count: " . count($samples) . ", expectedLength: " . $expectedLength . "\n", FILE_APPEND);
+        return ['status' => false, 'distance' => 9999];
+    }
 
-    // Hitung parameter distribusi pengguna sah (tanpa normalisasi untuk ketat)
-    $meanVector = calculateMean($samples);
-    $variances = calculateVariances($samples, $meanVector);
+    // normalisasi data training
+    list($normalizedSamples, $means, $vars) = normalizeZScore($samples);
 
-    // Hitung Jarak
-    return mahalanobisDistance($inputVector, $meanVector, $variances);
+    // normalisasi input
+    $normInput = [];
+    foreach ($inputVector as $i => $value) {
+        $normInput[] = ($value - $means[$i]) / sqrt($vars[$i]);
+    }
+
+    // model
+    $meanVector = calculateMean($normalizedSamples);
+    $variances = calculateVariances($normalizedSamples, $meanVector);
+
+    $distance = mahalanobisDistance($normInput, $meanVector, $variances);
+
+    // threshold otomatis berdasarkan distribusi data training
+    $threshold = calculateThreshold($normalizedSamples, $meanVector, $variances);
+
+    return [
+        'status' => $distance <= $threshold,
+        'distance' => $distance,
+        'threshold' => $threshold
+    ];
+}
+
+// Fungsi untuk menghitung skor biometrik (distance) untuk multiple keystroke
+function compareMultipleKeystroke($allData, $inputKeystroke) {
+    $result = verifyKeystroke($allData, $inputKeystroke);
+    return $result['distance'];
 }

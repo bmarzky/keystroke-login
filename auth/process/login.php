@@ -49,6 +49,9 @@ if ($user && password_verify($password, $user['password'])) {
         }
     }
 
+    // Debug log
+    file_put_contents('debug.log', "allData count: " . count($allData) . "\n", FILE_APPEND);
+
     // Jika data kurang dari 3, training phase: login otomatis tapi simpan data
     if (count($allData) < 3) {
         $_SESSION['user_id'] = $user['id'];
@@ -63,10 +66,13 @@ if ($user && password_verify($password, $user['password'])) {
     }
 
     // Tentukan threshold berdasarkan jumlah data
-    $threshold = count($allData) < 5 ? 20 : 10; // Kurang ketat: 20 untuk training, 10 untuk normal
+    $threshold = count($allData) < 5 ? 50 : 20; // Lebih toleran: 50 untuk training, 20 untuk normal
 
     // Hitung Skor Biometrik
     $score = compareMultipleKeystroke($allData, $inputKeystroke);
+
+    // Debug log
+    file_put_contents('debug.log', "score: " . $score . "\n", FILE_APPEND);
 
     if ($score < $threshold) {
         $_SESSION['user_id'] = $user['id'];
