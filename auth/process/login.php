@@ -65,16 +65,13 @@ if ($user && password_verify($password, $user['password'])) {
         exit();
     }
 
-    // Tentukan threshold berdasarkan jumlah data
-    $threshold = count($allData) < 5 ? 100 : 50; // Sangat toleran: 100 untuk training, 50 untuk normal
-
-    // Hitung Skor Biometrik
-    $score = compareMultipleKeystroke($allData, $inputKeystroke);
+    // Verifikasi keystroke menggunakan algoritma otomatis
+    $verification = verifyKeystroke($allData, $inputKeystroke);
 
     // Debug log
-    file_put_contents('debug.log', "score: " . $score . "\n", FILE_APPEND);
+    file_put_contents('debug.log', "score: " . $verification['distance'] . ", threshold: " . $verification['threshold'] . "\n", FILE_APPEND);
 
-    if ($score < $threshold) {
+    if ($verification['status']) {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
 
@@ -89,7 +86,7 @@ if ($user && password_verify($password, $user['password'])) {
         // Gagal: hapus session jika ada, lalu redirect
         session_unset();
         session_destroy();
-        $errorMsg = "Pola ketikan tidak cocok (Skor: " . round($score, 2) . ")";
+        $errorMsg = "Pola ketikan tidak cocok (Skor: " . round($verification['distance'], 2) . ", Threshold: " . round($verification['threshold'], 2) . ")";
         header("Location: ../login.php?error=" . urlencode($errorMsg));
         exit();
     }
