@@ -66,7 +66,7 @@ if ($user && password_verify($password, $user['password'])) {
     }
 
     // Tentukan threshold berdasarkan jumlah data
-    $threshold = count($allData) < 5 ? 50 : 20; // Lebih toleran: 50 untuk training, 20 untuk normal
+    $threshold = count($allData) < 5 ? 100 : 50; // Sangat toleran: 100 untuk training, 50 untuk normal
 
     // Hitung Skor Biometrik
     $score = compareMultipleKeystroke($allData, $inputKeystroke);
