@@ -11,18 +11,34 @@ window.getKeystrokeData = function() {
     });
 };
 
-// Tunggu DOM selesai dimuat agar getElementById tidak null
 document.addEventListener("DOMContentLoaded", () => {
     const passwordInput = document.getElementById('password'); 
 
     if (passwordInput) {
+        // --- PERBAIKAN UTAMA: Reset saat fokus ---
+        passwordInput.addEventListener("focus", () => {
+            // Kosongkan data lama agar tidak tercampur jika user mengetik ulang
+            dwellTimes = [];
+            flightTimes = [];
+            keyDownTime = {};
+            // Paksa jadi null agar tidak menghitung jeda dari kolom username
+            lastKeyUpTime = null; 
+        });
+
         passwordInput.addEventListener("keydown", (e) => {
+            // Abaikan jika tombol ditahan (auto-repeat)
             if (e.repeat) return; 
 
-            keyDownTime[e.key] = Date.now();
+            let now = Date.now();
+            keyDownTime[e.key] = now;
 
-            if (lastKeyUpTime !== null) {
-                let flight = Date.now() - lastKeyUpTime;
+            /**
+             * Syarat: lastKeyUpTime tidak null DAN sudah ada karakter yang tersimpan.
+             * Ini menjamin karakter PERTAMA password tidak menghitung flight time 
+             * dari penekanan tombol terakhir di luar kolom password.
+             */
+            if (lastKeyUpTime !== null && dwellTimes.length > 0) {
+                let flight = now - lastKeyUpTime;
                 flightTimes.push(flight);
             }
         });
@@ -36,6 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 delete keyDownTime[e.key];
             }
 
+            // Simpan waktu terakhir tombol dilepas untuk perhitungan flight time berikutnya
             lastKeyUpTime = now;
         });
     }
