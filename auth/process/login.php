@@ -71,7 +71,7 @@ if ($user && password_verify($password, $user['password'])) {
     // Debug log
     file_put_contents('debug.log', "score: " . $verification['distance'] . "\n", FILE_APPEND);
 
-    if ($verification['distance'] < 7) { // threshold tetap yang lebih longgar
+    if ($verification['distance'] < 5) { // threshold tetap yang lebih longgar
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
 
