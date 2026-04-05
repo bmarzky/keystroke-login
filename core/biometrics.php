@@ -10,8 +10,9 @@ function isValidVector($vector, $expectedLength) {
     if (count($vector) !== $expectedLength) return false;
 
     foreach ($vector as $v) {
-        if (!is_numeric($v) || $v < 10 || $v > 500) {
-            return false; // filter noise
+        // UBAH DISINI: 0.01 detik (10ms) sampai 5.0 detik (5000ms)
+        if (!is_numeric($v) || $v < 0.01 || $v > 5.0) { 
+            return false; 
         }
     }
     return true;
@@ -106,7 +107,6 @@ function calculateThreshold($samples, $mean, $var) {
 
 // main function untuk verifikasi keystroke
 function verifyKeystroke($allStoredJson, $inputJson) {
-
     $input = json_decode($inputJson, true);
     if (!isset($input['dwell'], $input['flight'])) {
         return ['status' => false, 'distance' => 9999];
@@ -114,43 +114,36 @@ function verifyKeystroke($allStoredJson, $inputJson) {
 
     $inputVector = array_merge($input['dwell'], $input['flight']);
     $expectedLength = count($inputVector);
-
     $samples = [];
 
     foreach ($allStoredJson as $json) {
         $data = json_decode($json, true);
-
         if (!isset($data['dwell'], $data['flight'])) continue;
 
         $vector = array_merge($data['dwell'], $data['flight']);
 
+        // Pastikan isValidVector sudah diperbaiki filternya (0.01 - 5.0)
         if (isValidVector($vector, $expectedLength)) {
             $samples[] = $vector;
         }
     }
 
     if (count($samples) < MIN_SAMPLES) {
-        file_put_contents('debug.log', "samples count: " . count($samples) . ", expectedLength: " . $expectedLength . "\n", FILE_APPEND);
-        return ['status' => false, 'distance' => 9999];
+        return ['status' => false, 'distance' => 9999, 'threshold' => 0];
     }
 
-    // normalisasi data training
-    list($normalizedSamples, $means, $vars) = normalizeZScore($samples);
+    // --- PERBAIKAN: Gunakan data asli (Raw), Mahalanobis akan menormalisasi sendiri ---
+    $means = calculateMean($samples);
+    $vars = calculateVariances($samples, $means);
 
-    // normalisasi input
-    $normInput = [];
-    foreach ($inputVector as $i => $value) {
-        $normInput[] = ($value - $means[$i]) / sqrt($vars[$i]);
-    }
+    // Hitung jarak input terhadap profil user
+    $distance = mahalanobisDistance($inputVector, $means, $vars);
 
-    // model
-    $meanVector = calculateMean($normalizedSamples);
-    $variances = calculateVariances($normalizedSamples, $meanVector);
+    // Hitung threshold berdasarkan variasi data training asli
+    $threshold = calculateThreshold($samples, $means, $vars);
 
-    $distance = mahalanobisDistance($normInput, $meanVector, $variances);
-
-    // threshold otomatis berdasarkan distribusi data training
-    $threshold = calculateThreshold($normalizedSamples, $meanVector, $variances);
+    // Tambahkan pengaman: Jika threshold terlalu kecil, beri nilai minimal 2.0
+    if ($threshold < 2.0) $threshold = 2.0;
 
     return [
         'status' => $distance <= $threshold,
