@@ -13,9 +13,39 @@ window.getKeystrokeData = function() {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+    const statusMsg = document.getElementById('status-msg');
+        
+if (statusMsg) {
+        setTimeout(() => {
+            statusMsg.style.transition = "opacity 1s ease";
+            statusMsg.style.opacity = "0";
+            
+            setTimeout(() => {
+                statusMsg.remove();
+            }, 1000);
+        }, 1000); 
+    }
+        
     const passwordInput = document.getElementById('password'); 
 
     if (passwordInput) {
+        // 2. AMBIL ELEMEN JS ERROR MSG (Update ID di sini)
+        const errorMsg = document.getElementById('js-error-msg'); 
+
+        // HANDLE PASTE
+        passwordInput.addEventListener("paste", (e) => {
+            e.preventDefault(); 
+            
+            if (errorMsg) {
+                errorMsg.innerText = "Dilarang Copy-Paste! Silakan ketik manual untuk verifikasi biometrik.";
+                
+                setTimeout(() => {
+                    errorMsg.innerText = "";
+                }, 3000);
+            }
+
+            console.log("Copy-paste terdeteksi dan diblokir.");
+        });
 
         passwordInput.addEventListener("focus", () => {
             dwellTimes = [];
@@ -30,7 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
         passwordInput.addEventListener("keydown", (e) => {
             if (e.repeat) return;
 
-            // 🔴 HANDLE BACKSPACE (WAJIB)
+            // HANDLE BACKSPACE (WAJIB)
             if (e.key === "Backspace") {
                 dwellTimes = [];
                 flightTimes = [];

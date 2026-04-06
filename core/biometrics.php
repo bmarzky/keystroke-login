@@ -114,6 +114,34 @@ function verifyKeystroke($allStoredJson, $inputJson) {
     if (count($input['dwell']) < 5 || count($input['flight']) < 5) {
         return ['status' => false, 'distance' => 9997, 'threshold' => 0];
     }
+
+// ================= Cek Copy-Paste / Input Tidak Valid =================
+
+// 1. Cek apakah data kosong sama sekali
+if (empty($input['dwell']) || empty($input['flight'])) {
+    return [
+        'status' => false, 
+        'distance' => 9993, 
+        'threshold' => 0, 
+        'reason' => 'Data kosong (Terdeteksi Copy-Paste atau Error Input)'
+    ];
+}
+
+// 2. Hitung rata-rata
+$avgDwell = array_sum($input['dwell']) / count($input['dwell']);
+$avgFlight = array_sum($input['flight']) / count($input['flight']);
+
+// 3. Deteksi Robot/Paste: Manusia hampir mustahil mengetik rata-rata di bawah 0.02 detik (20ms)
+// Kita gunakan angka 0.02 karena 0.05 terkadang masih bisa dicapai pengetik sangat cepat
+if ($avgDwell <= 0.01 || $avgFlight <= 0.01) {
+    return [
+        'status' => false, 
+        'distance' => 9993, 
+        'threshold' => 0, 
+        'reason' => 'Copy-paste detected (Timing too perfect)'
+    ];
+}
+    
     // Gabungkan fitur
     $inputVector = array_merge($input['dwell'], $input['flight']);
     if (empty($allStoredJson)) {

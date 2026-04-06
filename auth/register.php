@@ -8,19 +8,25 @@
 
 <h2>Register</h2>
 
-<?php
-if (isset($_GET['error'])) {
-    echo '<p style="color: red;">' . htmlspecialchars($_GET['error']) . '</p>';
-}
-if (isset($_GET['success'])) {
-    echo '<p style="color: green;">' . htmlspecialchars($_GET['success']) . '</p>';
-}
-?>
+<div id="message-container" style="min-height: 25px; margin-bottom: 15px;">
+    <?php
+    date_default_timezone_set('Asia/Jakarta');
+    $time = date('H:i:s');
+
+    if (isset($_GET['error'])) {
+        echo '<div id="status-msg" style="color: red; font-weight: bold;">[' . $time . '] ' . htmlspecialchars($_GET['error']) . '</div>';
+    }
+    if (isset($_GET['success'])) {
+        echo '<div id="status-msg" style="color: green; font-weight: bold;">[' . $time . '] ' . htmlspecialchars($_GET['success']) . '</div>';
+    }
+    ?>
+    <div id="js-error-msg" style="color: red; font-size: 14px; font-weight: bold;"></div>
+</div>
 
 <form id="registerForm" action="process/register.php" method="POST" autocomplete="off" novalidate>
-    <input type="text" id="username" name="username" placeholder="Username" required autofocus><br><br>
+    <input type="text" id="username" name="username" placeholder="Username" required autofocus autocomplete="off"><br><br>
     
-    <input type="password" id="password" name="password" placeholder="Password" required><br><br>
+    <input type="password" id="password" name="password" placeholder="Password" required autocomplete="new-password"><br><br>
 
     <input type="hidden" name="keystroke" id="keystrokeData">
 
@@ -33,17 +39,25 @@ if (isset($_GET['success'])) {
 
 <script>
 // Kirim keystroke saat submit
-document.getElementById("registerForm").addEventListener("submit", function() {
-    // Pastikan memanggil fungsi dari keystroke.js yang sudah diperbaiki sebelumnya
+document.getElementById("registerForm").addEventListener("submit", function(e) {
+    const jsErrorDisplay = document.getElementById("js-error-msg");
+    
+    // Pastikan memanggil fungsi dari keystroke.js
     if (typeof window.getKeystrokeData === "function") {
-        document.getElementById("keystrokeData").value = window.getKeystrokeData();
-    } else {
-        // fallback jika tidak menggunakan window object
-        document.getElementById("keystrokeData").value = getKeystrokeData();
+        const data = window.getKeystrokeData();
+        document.getElementById("keystrokeData").value = data;
+        
+        // Validasi: Jangan biarkan submit jika data ketikan kosong
+        const parsed = JSON.parse(data);
+        if (parsed.dwell.length === 0) {
+            e.preventDefault();
+            jsErrorDisplay.innerText = "Pola ketikan tidak terdeteksi. Silakan ketik ulang password.";
+            setTimeout(() => { jsErrorDisplay.innerText = ""; }, 3000);
+        }
     }
 });
 
-// Enter pindah field
+// Shortcut Enter: Username -> Password
 document.getElementById("username").addEventListener("keydown", function(e) {
     if (e.key === "Enter") {
         e.preventDefault();
@@ -51,7 +65,13 @@ document.getElementById("username").addEventListener("keydown", function(e) {
     }
 });
 
-// -----------------------------------------------
+// Shortcut Enter: Password -> Submit
+document.getElementById("password").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        document.getElementById("registerForm").requestSubmit();
+    }
+});
 </script>
 
 </body>
