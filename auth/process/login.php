@@ -42,7 +42,6 @@ if ($user && password_verify($password, $user['password'])) {
     $allData = [];
     while ($row = $result->fetch_assoc()) {
         if (!empty($row['features'])) {
-            // Biarkan dalam bentuk string JSON karena verifyKeystroke() mengekspektasikan string
             $allData[] = $row['features']; 
         }
     }
@@ -50,32 +49,39 @@ if ($user && password_verify($password, $user['password'])) {
     $dataCount = count($allData);
     
     // --- TAHAP 1: TRAINING PHASE (Data < 3) ---
+    // Jika data kurang dari 3, kita hanya menyimpan data tanpa melakukan verifikasi biometrik
     if ($dataCount < 3) {
-        processSuccessfulLogin($user, $conn, $inputKeystroke, "Training Mode");
+        processSuccessfulLogin($user, $conn, $inputKeystroke, "Training Mode (" . ($dataCount + 1) . "/3)");
+        exit(); // PENTING: Hentikan script di sini agar tidak lanjut ke TAHAP 2
     }
 
     // --- TAHAP 2: VERIFIKASI DATA INPUT ---
-    // Fungsi verifyKeystroke di biometrics.php sudah otomatis menghitung threshold adaptif!
+    // Kode ini hanya akan dijalankan jika $dataCount >= 3
     $verification = verifyKeystroke($allData, $inputKeystroke); 
     $currentDistance = $verification['distance'];
     $adaptiveThreshold = $verification['threshold'] ?? 0;
 
     // Logging untuk analisa/keperluan skripsi
     $logMsg = sprintf(
-        "[%s] User: %s | Score: %.2f | Thresh: %.2f\n",
-        date('Y-m-d H:i:s'), $username, $currentDistance, $adaptiveThreshold
+        "[%s] User: %s | Score: %.2f | Thresh: %.2f | Status: %s\n",
+        date('Y-m-d H:i:s'), 
+        $username, 
+        $currentDistance, 
+        $adaptiveThreshold,
+        $verification['status'] ? 'MATCH' : 'REJECT'
     );
     file_put_contents('biometric_debug.log', $logMsg, FILE_APPEND);
 
-    // Bandingkan skor dengan status hasil verifikasi biometrics.php
+    // Bandingkan skor dengan status hasil verifikasi
     if ($verification['status'] === true) {
+        // Jika cocok, login berhasil dan simpan data ketikan baru untuk memperbarui profil (adaptive)
         processSuccessfulLogin($user, $conn, $inputKeystroke, "Verified");
     } else {
-        // Gagal Biometrik
+        // Gagal Biometrik: Hapus session yang mungkin sempat tercipta
         session_unset();
         session_destroy();
         
-        // Memunculkan info skor dan threshold agar mudah saat sidang/presentasi
+        // Memunculkan info skor dan threshold untuk keperluan debugging/sidang
         $errorMsg = "Pola ketikan tidak cocok (Skor: " . round($currentDistance, 2) . " > Limit: " . round($adaptiveThreshold, 2) . ")";
         redirectWithError($errorMsg);
     }
@@ -93,12 +99,17 @@ function redirectWithError($msg) {
 }
 
 function processSuccessfulLogin($user, $conn, $rawKeystroke, $status) {
+    // Gunakan session_status() untuk memastikan session belum hancur
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
     session_regenerate_id(true);
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['username'] = $user['username'];
     $_SESSION['login_status'] = $status;
 
-    // Simpan data baru untuk memperkaya dataset user
+    // Simpan data baru untuk memperkaya dataset user (Continuous Authentication)
     $stmt = $conn->prepare("INSERT INTO keystroke_data (user_id, features) VALUES (?, ?)");
     $stmt->bind_param("is", $user['id'], $rawKeystroke);
     $stmt->execute();
