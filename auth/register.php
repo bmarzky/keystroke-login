@@ -41,19 +41,26 @@
 // Kirim keystroke saat submit
 document.getElementById("registerForm").addEventListener("submit", function(e) {
     const jsErrorDisplay = document.getElementById("js-error-msg");
+    const keystrokeInput = document.getElementById("keystrokeData");
     
-    // Pastikan memanggil fungsi dari keystroke.js
     if (typeof window.getKeystrokeData === "function") {
-        const data = window.getKeystrokeData();
-        document.getElementById("keystrokeData").value = data;
+        const dataStr = window.getKeystrokeData();
+        const parsed = JSON.parse(dataStr);
         
-        // Validasi: Jangan biarkan submit jika data ketikan kosong
-        const parsed = JSON.parse(data);
-        if (parsed.dwell.length === 0) {
+        // VALIDASI KRITIS: Pastikan semua array fitur terisi
+        // Minimal password biasanya 6-8 karakter, jadi dwell minimal harus ada isinya
+        if (!parsed.dwell || parsed.dwell.length < 5) {
             e.preventDefault();
-            jsErrorDisplay.innerText = "Pola ketikan tidak terdeteksi. Silakan ketik ulang password.";
-            setTimeout(() => { jsErrorDisplay.innerText = ""; }, 3000);
+            jsErrorDisplay.innerText = "Pola ketikan terlalu pendek atau tidak terdeteksi. Silakan ketik ulang.";
+            return;
         }
+
+        // Masukkan data ke input hidden
+        keystrokeInput.value = dataStr;
+        console.log("Submitting Keystroke Data...", parsed);
+    } else {
+        e.preventDefault();
+        jsErrorDisplay.innerText = "Sistem Biometrik belum siap. Segarkan halaman.";
     }
 });
 

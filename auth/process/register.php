@@ -12,8 +12,17 @@ $username = trim($_POST['username']);
 $password = trim($_POST['password']);
 $keystroke = trim($_POST['keystroke']);
 
-if (empty($username) || empty($password) || empty($keystroke) || json_decode($keystroke) === null) {
-    header("Location: ../register.php?error=" . urlencode("Input data tidak lengkap atau rusak"));
+// Decode untuk validasi konten
+$decodedKeystroke = json_decode($keystroke, true);
+
+if (empty($username) || empty($password) || empty($keystroke) || $decodedKeystroke === null) {
+    header("Location: ../register.php?error=" . urlencode("Data registrasi tidak valid"));
+    exit();
+}
+
+// VALIDASI TAMBAHAN: Pastikan semua fitur biometrik ada
+if (!isset($decodedKeystroke['dwell'], $decodedKeystroke['speed'])) {
+    header("Location: ../register.php?error=" . urlencode("Gagal mengambil data biometrik. Pastikan JS aktif."));
     exit();
 }
 
@@ -21,30 +30,36 @@ if (empty($username) || empty($password) || empty($keystroke) || json_decode($ke
 $stmtCheck = $conn->prepare("SELECT id FROM users WHERE username = ?");
 $stmtCheck->bind_param("s", $username);
 $stmtCheck->execute();
-$result = $stmtCheck->get_result();
-
-if ($result->num_rows > 0) {
+if ($stmtCheck->get_result()->num_rows > 0) {
     header("Location: ../register.php?error=" . urlencode("Username sudah terdaftar"));
     exit();
 }
 
 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-// Simpan User Baru
-$stmtInsert = $conn->prepare("INSERT INTO users (username, password) VALUES (?, ?)");
-$stmtInsert->bind_param("ss", $username, $hashedPassword);
+// Mulai Transaksi Database (Agar data user & keystroke tersimpan secara atomik)
+$conn->begin_transaction();
 
-if ($stmtInsert->execute()) {
+try {
+    // 1. Simpan User Baru
+    $stmtInsert = $conn->prepare("INSERT INTO users (username, password) VALUES (?, ?)");
+    $stmtInsert->bind_param("ss", $username, $hashedPassword);
+    $stmtInsert->execute();
     $user_id = $conn->insert_id;
 
-    // Simpan data keystroke pertama sebagai sampel awal
+    // 2. Simpan data keystroke pertama sebagai sampel awal (Initial Profile)
     $stmtKey = $conn->prepare("INSERT INTO keystroke_data (user_id, features) VALUES (?, ?)");
     $stmtKey->bind_param("is", $user_id, $keystroke);
     $stmtKey->execute();
 
-    header("Location: ../login.php?success=" . urlencode("Registrasi berhasil! Silakan login"));
+    // Commit jika keduanya berhasil
+    $conn->commit();
+    header("Location: ../login.php?success=" . urlencode("Registrasi berhasil! Pola biometrik awal telah disimpan."));
     exit();
-} else {
-    header("Location: ../register.php?error=" . urlencode("Gagal menyimpan data ke database"));
+
+} catch (Exception $e) {
+    // Rollback jika ada salah satu yang gagal
+    $conn->rollback();
+    header("Location: ../register.php?error=" . urlencode("Sistem error: " . $e->getMessage()));
     exit();
 }

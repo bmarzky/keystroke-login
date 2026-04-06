@@ -1,104 +1,83 @@
 let dwellTimes = [];
 let flightTimes = [];
-let keyDownTime = [];
+let d2dTimes = [];
+let u2uTimes = [];
+let pendingKeyDowns = {}; // Menggunakan objek untuk mapping key -> time
+let lastKeyDownTime = null;
 let lastKeyUpTime = null;
-let keyIndex = 0;
+let startTime = null;
 
 window.getKeystrokeData = function() {
-    console.log("DATA FINAL DIKIRIM (DETIK):", { dwell: dwellTimes, flight: flightTimes });
+    const passwordInput = document.getElementById('password');
+    const totalChar = passwordInput ? passwordInput.value.length : 0;
+    
+    let speedCPM = 0;
+    if (startTime && lastKeyUpTime) {
+        let totalTimeSec = (lastKeyUpTime - startTime) / 1000;
+        speedCPM = totalTimeSec > 0 ? (totalChar / totalTimeSec) * 60 : 0;
+    }
+
     return JSON.stringify({
         dwell: dwellTimes,
-        flight: flightTimes
+        flight: flightTimes,
+        d2d: d2dTimes,
+        u2u: u2uTimes,
+        speed: parseFloat(speedCPM.toFixed(2))
     });
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-    const statusMsg = document.getElementById('status-msg');
-        
-if (statusMsg) {
-        setTimeout(() => {
-            statusMsg.style.transition = "opacity 1s ease";
-            statusMsg.style.opacity = "0";
-            
-            setTimeout(() => {
-                statusMsg.remove();
-            }, 1000);
-        }, 1000); 
-    }
-        
-    const passwordInput = document.getElementById('password'); 
+    const passwordInput = document.getElementById('password');
+
+    const resetData = () => {
+        dwellTimes = []; flightTimes = []; d2dTimes = []; u2uTimes = [];
+        pendingKeyDowns = {}; lastKeyDownTime = null; lastKeyUpTime = null;
+        startTime = null;
+        console.log("Data Keystroke Reset.");
+    };
 
     if (passwordInput) {
-        // 2. AMBIL ELEMEN JS ERROR MSG (Update ID di sini)
-        const errorMsg = document.getElementById('js-error-msg'); 
-
-        // HANDLE PASTE
-        passwordInput.addEventListener("paste", (e) => {
-            e.preventDefault(); 
-            
-            if (errorMsg) {
-                errorMsg.innerText = "Dilarang Copy-Paste! Silakan ketik manual untuk verifikasi biometrik.";
-                
-                setTimeout(() => {
-                    errorMsg.innerText = "";
-                }, 3000);
-            }
-
-            console.log("Copy-paste terdeteksi dan diblokir.");
-        });
-
-        passwordInput.addEventListener("focus", () => {
-            dwellTimes = [];
-            flightTimes = [];
-            keyDownTime = [];
-            lastKeyUpTime = null;
-            keyIndex = 0;
-
-            console.log("Data Reset (Fokus Password)");
-        });
-
+        passwordInput.addEventListener("focus", resetData);
+        
         passwordInput.addEventListener("keydown", (e) => {
-            if (e.repeat) return;
-
-            // HANDLE BACKSPACE (WAJIB)
-            if (e.key === "Backspace") {
-                dwellTimes = [];
-                flightTimes = [];
-                keyDownTime = [];
-                lastKeyUpTime = null;
-                keyIndex = 0;
-
-                console.log("RESET karena Backspace");
-                return;
-            }
+            if (e.repeat || e.key === "Process") return;
+            if (e.key === "Backspace") { resetData(); return; }
 
             let now = Date.now();
+            if (startTime === null) startTime = now;
 
-            // Simpan berdasarkan urutan ketikan
-            keyDownTime[keyIndex] = now;
+            // Simpan waktu tekan dengan ID unik (key + timestamp) 
+            // agar tidak bentrok jika ada huruf ganda
+            let keyId = e.key + "_" + now;
+            pendingKeyDowns[e.key] = now; 
 
-            if (lastKeyUpTime !== null && dwellTimes.length > 0) {
-                let flight = (now - lastKeyUpTime) / 1000;
-                flightTimes.push(flight);
-
-                console.log(`Flight index-${keyIndex}: ${flight}`);
+            // Hitung D2D (Down-to-Down)
+            if (lastKeyDownTime !== null) {
+                d2dTimes.push((now - lastKeyDownTime) / 1000);
             }
 
-            keyIndex++;
+            // Hitung Flight (Up-to-Down)
+            if (lastKeyUpTime !== null) {
+                flightTimes.push((now - lastKeyUpTime) / 1000);
+            }
+
+            lastKeyDownTime = now;
         });
 
         passwordInput.addEventListener("keyup", (e) => {
+            if (e.key === "Backspace") return;
             let now = Date.now();
 
-            let index = keyIndex - 1;
+            // Ambil waktu pasangannya dari pendingKeyDowns
+            if (pendingKeyDowns[e.key]) {
+                let dTime = pendingKeyDowns[e.key];
+                dwellTimes.push((now - dTime) / 1000);
+                delete pendingKeyDowns[e.key]; // Hapus setelah dihitung
+            }
 
-            if (keyDownTime[index]) {
-                let dwell = (now - keyDownTime[index]) / 1000;
-                dwellTimes.push(dwell);
-
-                console.log(`Dwell index-${index}: ${dwell}`);
-
-                delete keyDownTime[index];
+            // Hitung U2U (Up-to-Up)
+            if (lastKeyUpTime !== null) {
+                u2uTimes.push((now - lastKeyUpTime) / 1000);
             }
 
             lastKeyUpTime = now;

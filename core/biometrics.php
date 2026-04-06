@@ -1,31 +1,16 @@
 <?php
 
 // ================= CONFIG =================
-define('MIN_SAMPLES', 3); // Minimal data training
-define('EPSILON', 0.001); // Stabilkan variance
-define('Z_THRESHOLD_MULTIPLIER', 2.0);
-
-// ================= NORMALISASI VECTOR =================
-function normalizeVector($vector, $targetLength) {
-    $current = count($vector);
-
-    // Potong jika terlalu panjang
-    if ($current > $targetLength) {
-        return array_slice($vector, 0, $targetLength);
-    }
-
-    // Tambah 0 jika kurang
-    while (count($vector) < $targetLength) {
-        $vector[] = 0;
-    }
-
-    return $vector;
-}
+define('MIN_SAMPLES', 3); // Minimal data training untuk mulai verifikasi
+define('EPSILON', 0.0001); // Menghindari division by zero dan menstabilkan data detik
+define('Z_THRESHOLD_MULTIPLIER', 2.0); // 95% confidence interval
 
 // ================= VALIDASI DATA =================
 function isValidVector($vector) {
     foreach ($vector as $v) {
-        if (!is_numeric($v) || $v < 0 || $v > 2.0) {
+        // Validasi: Harus angka, tidak boleh negatif, dan tidak boleh terlalu lama (> 5 detik)
+        // Kecuali elemen terakhir (Speed) yang bisa bernilai besar (CPM)
+        if (!is_numeric($v) || $v < 0) {
             return false;
         }
     }
@@ -65,7 +50,7 @@ function calculateVariances($samples, $means) {
 
     foreach ($variances as $i => $value) {
         $denominator = ($count > 1) ? ($count - 1) : 1;
-        $variances[$i] = ($value / $denominator) + EPSILON;
+        $variances[$i] = ($variances[$i] / $denominator) + EPSILON;
     }
 
     return $variances;
@@ -74,24 +59,20 @@ function calculateVariances($samples, $means) {
 // ================= MAHALANOBIS =================
 function mahalanobisDistance($x, $mean, $var) {
     $sum = 0;
-
     foreach ($x as $i => $value) {
         $sum += pow($value - $mean[$i], 2) / $var[$i];
     }
-
     return sqrt($sum);
 }
 
 // ================= THRESHOLD =================
 function calculateThreshold($samples, $mean, $var) {
     $distances = [];
-
     foreach ($samples as $s) {
         $distances[] = mahalanobisDistance($s, $mean, $var);
     }
 
     $meanDist = array_sum($distances) / count($distances);
-
     $variance = 0;
     foreach ($distances as $d) {
         $variance += pow($d - $meanDist, 2);
@@ -107,101 +88,76 @@ function calculateThreshold($samples, $mean, $var) {
 function verifyKeystroke($allStoredJson, $inputJson) {
     $input = json_decode($inputJson, true);
 
-    if (!isset($input['dwell'], $input['flight'])) {
-        return ['status' => false, 'distance' => 9999, 'threshold' => 0];
+    // 1. Cek kelengkapan fitur baru
+    if (!isset($input['dwell'], $input['flight'], $input['d2d'], $input['u2u'], $input['speed'])) {
+        return ['status' => false, 'distance' => 9999, 'threshold' => 0, 'reason' => 'Fitur tidak lengkap'];
     }
 
-    if (count($input['dwell']) < 5 || count($input['flight']) < 5) {
-        return ['status' => false, 'distance' => 9997, 'threshold' => 0];
+    // 2. Deteksi Robot / Copy-Paste via Typing Speed
+    // Jika CPM > 1000, hampir pasti itu robot/paste (Manusia pro sekitar 100-200 CPM untuk password)
+    if ($input['speed'] > 1000 || $input['speed'] <= 0) {
+        return ['status' => false, 'distance' => 9993, 'threshold' => 0, 'reason' => 'Abnormal typing speed'];
     }
 
-// ================= Cek Copy-Paste / Input Tidak Valid =================
+    // 3. Gabungkan semua fitur menjadi satu vektor input
+    $inputVector = array_merge(
+        $input['dwell'], 
+        $input['flight'], 
+        $input['d2d'], 
+        $input['u2u'], 
+        [(float)$input['speed']]
+    );
 
-// 1. Cek apakah data kosong sama sekali
-if (empty($input['dwell']) || empty($input['flight'])) {
-    return [
-        'status' => false, 
-        'distance' => 9993, 
-        'threshold' => 0, 
-        'reason' => 'Data kosong (Terdeteksi Copy-Paste atau Error Input)'
-    ];
-}
-
-// 2. Hitung rata-rata
-$avgDwell = array_sum($input['dwell']) / count($input['dwell']);
-$avgFlight = array_sum($input['flight']) / count($input['flight']);
-
-// 3. Deteksi Robot/Paste: Manusia hampir mustahil mengetik rata-rata di bawah 0.02 detik (20ms)
-// Kita gunakan angka 0.02 karena 0.05 terkadang masih bisa dicapai pengetik sangat cepat
-if ($avgDwell <= 0.01 || $avgFlight <= 0.01) {
-    return [
-        'status' => false, 
-        'distance' => 9993, 
-        'threshold' => 0, 
-        'reason' => 'Copy-paste detected (Timing too perfect)'
-    ];
-}
-    
-    // Gabungkan fitur
-    $inputVector = array_merge($input['dwell'], $input['flight']);
-    if (empty($allStoredJson)) {
-    return ['status' => false, 'distance' => 9996, 'threshold' => 0];
-    }
-    $firstData = json_decode($allStoredJson[0], true);
-
-if (!isset($firstData['dwell'], $firstData['flight'])) {
-    return ['status' => false, 'distance' => 9995, 'threshold' => 0];
-}
-
-if (!is_array($firstData['dwell']) || !is_array($firstData['flight'])) {
-    return ['status' => false, 'distance' => 9994, 'threshold' => 0];
-}
-
-$expectedLength = count($firstData['dwell']) + count($firstData['flight']);
-
-    // Normalisasi input
-    $inputVector = normalizeVector($inputVector, $expectedLength);
-
+    $expectedLength = count($inputVector);
     $samples = [];
+
+    // 4. Proses data training
+    if (empty($allStoredJson)) {
+        return ['status' => false, 'distance' => 9996, 'threshold' => 0, 'reason' => 'No training data'];
+    }
 
     foreach ($allStoredJson as $json) {
         $data = json_decode($json, true);
-
         if (json_last_error() !== JSON_ERROR_NONE) continue;
-        if (!isset($data['dwell'], $data['flight'])) continue;
+        if (!isset($data['dwell'], $data['flight'], $data['d2d'], $data['u2u'], $data['speed'])) continue;
 
-        $vector = array_merge($data['dwell'], $data['flight']);
+        $vector = array_merge(
+            $data['dwell'], 
+            $data['flight'], 
+            $data['d2d'], 
+            $data['u2u'], 
+            [(float)$data['speed']]
+        );
 
-        // Normalisasi training data
-        $vector = normalizeVector($vector, $expectedLength);
-
-        if (isValidVector($vector)) {
+        // Pastikan panjang vektor sama (user tidak boleh typo/backspace saat input)
+        $currentLength = count($vector);
+        if ($currentLength === $expectedLength && isValidVector($vector)) {
             $samples[] = $vector;
+        } else {
+            // Tambahkan log ini untuk debug di PHP
+            error_log("Sample diabaikan: Ukuran $currentLength, Harusnya $expectedLength");
         }
     }
 
-    // Jika data training kurang
+    // 5. Cek kecukupan sampel yang valid
     if (count($samples) < MIN_SAMPLES) {
         return [
             'status' => false,
             'distance' => 9998,
             'threshold' => 0,
-            'debug_samples' => count($samples)
+            'reason' => 'Insufficient valid samples',
+            'debug' => 'Found ' . count($samples) . ' valid samples'
         ];
     }
 
-    // Hitung statistik
+    // 6. Kalkulasi Statistik Mahalanobis
     $means = calculateMean($samples);
     $vars = calculateVariances($samples, $means);
-
-    // Hitung distance
     $distance = mahalanobisDistance($inputVector, $means, $vars);
 
-    // Threshold adaptif
+    // 7. Penentuan Threshold (Adaptif + Dynamic Baseline)
     $calculatedThreshold = calculateThreshold($samples, $means, $vars);
-
-    // Dynamic threshold (berdasarkan panjang fitur)
-    $dynamicMinThreshold = sqrt($expectedLength);
+    $dynamicMinThreshold = sqrt($expectedLength); // Baseline berdasarkan jumlah dimensi fitur
 
     $finalThreshold = max($calculatedThreshold, $dynamicMinThreshold);
 

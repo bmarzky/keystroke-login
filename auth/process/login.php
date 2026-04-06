@@ -15,14 +15,10 @@ $username = trim($_POST['username']);
 $password = trim($_POST['password']);
 $inputKeystroke = trim($_POST['keystroke']);
 
-// 2. Validasi Format JSON
-if (empty($inputKeystroke)) {
-    redirectWithError("Data ketikan kosong (Cek JS)");
-}
-
+// 2. Validasi Format JSON (Wajib ada d2d, u2u, dan speed sekarang)
 $decodedInput = json_decode($inputKeystroke, true);
-if (json_last_error() !== JSON_ERROR_NONE) {
-    redirectWithError("Format data ketikan rusak");
+if (json_last_error() !== JSON_ERROR_NONE || !isset($decodedInput['speed'])) {
+    redirectWithError("Data biometrik tidak valid atau rusak");
 }
 
 // 3. Ambil data user dari DB
@@ -31,58 +27,52 @@ $stmt->bind_param("s", $username);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
 
+// Cek Password Statis Terlebih Dahulu
 if ($user && password_verify($password, $user['password'])) {
 
-    // Ambil maksimal 20 data referensi terbaru (Moving Window)
-    $stmt = $conn->prepare("SELECT features FROM keystroke_data WHERE user_id = ? ORDER BY id DESC LIMIT 15");
+    // Ambil data referensi (Gunakan LIMIT 20 agar perhitungan Mahalanobis tetap cepat)
+    $stmt = $conn->prepare("SELECT features FROM keystroke_data WHERE user_id = ? ORDER BY id DESC LIMIT 20");
     $stmt->bind_param("i", $user['id']);
     $stmt->execute();
     $result = $stmt->get_result();
 
     $allData = [];
     while ($row = $result->fetch_assoc()) {
-        if (!empty($row['features'])) {
-            $allData[] = $row['features']; 
-        }
+        $allData[] = $row['features']; 
     }
 
     $dataCount = count($allData);
     
-    // --- TAHAP 1: TRAINING PHASE (Data < 3) ---
-    // Jika data kurang dari 3, kita hanya menyimpan data tanpa melakukan verifikasi biometrik
-    if ($dataCount < 3) {
-        processSuccessfulLogin($user, $conn, $inputKeystroke, "Training Mode (" . ($dataCount + 1) . "/3)");
-        exit(); // PENTING: Hentikan script di sini agar tidak lanjut ke TAHAP 2
+    // --- TAHAP 1: TRAINING PHASE ---
+    // Gunakan konstanta MIN_SAMPLES dari biometrics.php agar sinkron
+    if ($dataCount < MIN_SAMPLES) {
+        $step = $dataCount + 1;
+        processSuccessfulLogin($user, $conn, $inputKeystroke, "Training Mode ($step/".MIN_SAMPLES.")");
     }
 
-    // --- TAHAP 2: VERIFIKASI DATA INPUT ---
-    // Kode ini hanya akan dijalankan jika $dataCount >= 3
+    // --- TAHAP 2: VERIFIKASI BIOMETRIK ---
     $verification = verifyKeystroke($allData, $inputKeystroke); 
-    $currentDistance = $verification['distance'];
-    $adaptiveThreshold = $verification['threshold'] ?? 0;
-
-    // Logging untuk analisa/keperluan skripsi
+    
+    // Logging Lengkap untuk Bahan Skripsi
     $logMsg = sprintf(
-        "[%s] User: %s | Score: %.2f | Thresh: %.2f | Status: %s\n",
+        "[%s] User: %s | Score: %.2f | Thresh: %.2f | Speed: %.2f CPM | Status: %s | Reason: %s\n",
         date('Y-m-d H:i:s'), 
         $username, 
-        $currentDistance, 
-        $adaptiveThreshold,
-        $verification['status'] ? 'MATCH' : 'REJECT'
+        $verification['distance'], 
+        $verification['threshold'],
+        $decodedInput['speed'],
+        $verification['status'] ? 'MATCH' : 'REJECT',
+        $verification['reason'] ?? 'N/A'
     );
     file_put_contents('biometric_debug.log', $logMsg, FILE_APPEND);
 
-    // Bandingkan skor dengan status hasil verifikasi
     if ($verification['status'] === true) {
-        // Jika cocok, login berhasil dan simpan data ketikan baru untuk memperbarui profil (adaptive)
+        // MATCH: Update profil biometrik dengan data terbaru
         processSuccessfulLogin($user, $conn, $inputKeystroke, "Verified");
     } else {
-        // Gagal Biometrik: Hapus session yang mungkin sempat tercipta
-        session_unset();
-        session_destroy();
-        
-        // Memunculkan info skor dan threshold untuk keperluan debugging/sidang
-        $errorMsg = "Pola ketikan tidak cocok (Skor: " . round($currentDistance, 2) . " > Limit: " . round($adaptiveThreshold, 2) . ")";
+        // REJECT: Gagal Biometrik
+        $reason = $verification['reason'] ?? "Pola tidak cocok";
+        $errorMsg = "Akses Ditolak: $reason (Skor: " . round($verification['distance'], 2) . ")";
         redirectWithError($errorMsg);
     }
 
@@ -90,9 +80,7 @@ if ($user && password_verify($password, $user['password'])) {
     redirectWithError("Username atau password salah");
 }
 
-/**
- * HELPER FUNCTIONS
- */
+// helper fuction
 function redirectWithError($msg) {
     header("Location: ../login.php?error=" . urlencode($msg));
     exit();
