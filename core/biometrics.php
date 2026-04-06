@@ -1,28 +1,38 @@
 <?php
 
-// config
-define('MIN_SAMPLES', 2);
-define('EPSILON', 0.00001); // Presisi tinggi untuk data dalam satuan detik
-define('Z_THRESHOLD_MULTIPLIER', 2.0); // Standar deviasi multiplier untuk toleransi
+// ================= CONFIG =================
+define('MIN_SAMPLES', 3); // Minimal data training
+define('EPSILON', 0.001); // Stabilkan variance
+define('Z_THRESHOLD_MULTIPLIER', 2.0);
 
-/**
- * 1. Validasi Vector (Filter Noise)
- */
-function isValidVector($vector, $expectedLength) {
-    if (count($vector) !== $expectedLength) return false;
+// ================= NORMALISASI VECTOR =================
+function normalizeVector($vector, $targetLength) {
+    $current = count($vector);
 
+    // Potong jika terlalu panjang
+    if ($current > $targetLength) {
+        return array_slice($vector, 0, $targetLength);
+    }
+
+    // Tambah 0 jika kurang
+    while (count($vector) < $targetLength) {
+        $vector[] = 0;
+    }
+
+    return $vector;
+}
+
+// ================= VALIDASI DATA =================
+function isValidVector($vector) {
     foreach ($vector as $v) {
-        // Toleransi: 1ms (0.001) sampai 5 detik (5.0)
-        if (!is_numeric($v) || $v < 0.001 || $v > 5.0) { 
-            return false; 
+        if (!is_numeric($v) || $v < 0 || $v > 2.0) {
+            return false;
         }
     }
     return true;
 }
 
-/**
- * Kalkulasi Mean (Rata-rata)
- */
+// ================= MEAN =================
 function calculateMean($samples) {
     $count = count($samples);
     $numFeatures = count($samples[0]);
@@ -41,9 +51,7 @@ function calculateMean($samples) {
     return $means;
 }
 
-/**
- * 2. Kalkulasi Variance dengan Bessel's Correction
- */
+// ================= VARIANCE =================
 function calculateVariances($samples, $means) {
     $count = count($samples);
     $numFeatures = count($means);
@@ -57,34 +65,33 @@ function calculateVariances($samples, $means) {
 
     foreach ($variances as $i => $value) {
         $denominator = ($count > 1) ? ($count - 1) : 1;
-        $variances[$i] = ($variances[$i] / $denominator) + EPSILON;
+        $variances[$i] = ($value / $denominator) + EPSILON;
     }
 
     return $variances;
 }
 
-/**
- * Kalkulasi Mahalanobis Distance
- */
+// ================= MAHALANOBIS =================
 function mahalanobisDistance($x, $mean, $var) {
     $sum = 0;
+
     foreach ($x as $i => $value) {
-        // Rumus: (x - mu)^2 / sigma^2
         $sum += pow($value - $mean[$i], 2) / $var[$i];
     }
+
     return sqrt($sum);
 }
 
-/**
- * 3. Kalkulasi Threshold Adaptif (Z-Score Based)
- */
+// ================= THRESHOLD =================
 function calculateThreshold($samples, $mean, $var) {
     $distances = [];
+
     foreach ($samples as $s) {
         $distances[] = mahalanobisDistance($s, $mean, $var);
     }
 
     $meanDist = array_sum($distances) / count($distances);
+
     $variance = 0;
     foreach ($distances as $d) {
         $variance += pow($d - $meanDist, 2);
@@ -96,53 +103,78 @@ function calculateThreshold($samples, $mean, $var) {
     return $meanDist + (Z_THRESHOLD_MULTIPLIER * $std);
 }
 
-/**
- * 4. FUNGSI UTAMA: Verifikasi Keystroke Dynamics
- */
+// ================= VERIFY FUNCTION =================
 function verifyKeystroke($allStoredJson, $inputJson) {
     $input = json_decode($inputJson, true);
+
     if (!isset($input['dwell'], $input['flight'])) {
         return ['status' => false, 'distance' => 9999, 'threshold' => 0];
     }
 
+    if (count($input['dwell']) < 5 || count($input['flight']) < 5) {
+        return ['status' => false, 'distance' => 9997, 'threshold' => 0];
+    }
+    // Gabungkan fitur
     $inputVector = array_merge($input['dwell'], $input['flight']);
-    $expectedLength = count($inputVector);
+    if (empty($allStoredJson)) {
+    return ['status' => false, 'distance' => 9996, 'threshold' => 0];
+    }
+    $firstData = json_decode($allStoredJson[0], true);
+
+if (!isset($firstData['dwell'], $firstData['flight'])) {
+    return ['status' => false, 'distance' => 9995, 'threshold' => 0];
+}
+
+if (!is_array($firstData['dwell']) || !is_array($firstData['flight'])) {
+    return ['status' => false, 'distance' => 9994, 'threshold' => 0];
+}
+
+$expectedLength = count($firstData['dwell']) + count($firstData['flight']);
+
+    // Normalisasi input
+    $inputVector = normalizeVector($inputVector, $expectedLength);
+
     $samples = [];
 
     foreach ($allStoredJson as $json) {
         $data = json_decode($json, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) continue;
         if (!isset($data['dwell'], $data['flight'])) continue;
 
         $vector = array_merge($data['dwell'], $data['flight']);
 
-        if (isValidVector($vector, $expectedLength)) {
+        // Normalisasi training data
+        $vector = normalizeVector($vector, $expectedLength);
+
+        if (isValidVector($vector)) {
             $samples[] = $vector;
         }
     }
 
-    // Jika data training tidak cukup
+    // Jika data training kurang
     if (count($samples) < MIN_SAMPLES) {
         return [
-            'status' => false, 
-            'distance' => 9998, 
-            'threshold' => 0
+            'status' => false,
+            'distance' => 9998,
+            'threshold' => 0,
+            'debug_samples' => count($samples)
         ];
     }
 
+    // Hitung statistik
     $means = calculateMean($samples);
     $vars = calculateVariances($samples, $means);
 
+    // Hitung distance
     $distance = mahalanobisDistance($inputVector, $means, $vars);
+
+    // Threshold adaptif
     $calculatedThreshold = calculateThreshold($samples, $means, $vars);
 
-    /**
-     * PERSONALIZED DYNAMIC THRESHOLD
-     * Menggunakan akar kuadrat dari jumlah fitur (N) sebagai batas bawah minimal.
-     * Semakin panjang password (N besar), toleransi dasar akan semakin besar.
-     */
-    $dynamicMinThreshold = sqrt($expectedLength); 
+    // Dynamic threshold (berdasarkan panjang fitur)
+    $dynamicMinThreshold = sqrt($expectedLength);
 
-    // Final Threshold: Pilih yang paling longgar antara statistik atau batas dinamis
     $finalThreshold = max($calculatedThreshold, $dynamicMinThreshold);
 
     return [
@@ -152,9 +184,7 @@ function verifyKeystroke($allStoredJson, $inputJson) {
     ];
 }
 
-/**
- * Fungsi pembantu untuk membandingkan data multiple
- */
+// ================= HELPER =================
 function compareMultipleKeystroke($allData, $inputKeystroke) {
     $result = verifyKeystroke($allData, $inputKeystroke);
     return $result['distance'];

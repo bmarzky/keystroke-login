@@ -34,7 +34,7 @@ $user = $stmt->get_result()->fetch_assoc();
 if ($user && password_verify($password, $user['password'])) {
 
     // Ambil maksimal 20 data referensi terbaru (Moving Window)
-    $stmt = $conn->prepare("SELECT features FROM keystroke_data WHERE user_id = ? ORDER BY id DESC LIMIT 20");
+    $stmt = $conn->prepare("SELECT features FROM keystroke_data WHERE user_id = ? ORDER BY id DESC LIMIT 15");
     $stmt->bind_param("i", $user['id']);
     $stmt->execute();
     $result = $stmt->get_result();

@@ -1,7 +1,8 @@
 let dwellTimes = [];
 let flightTimes = [];
-let keyDownTime = {};
+let keyDownTime = [];
 let lastKeyUpTime = null;
+let keyIndex = 0;
 
 window.getKeystrokeData = function() {
     console.log("DATA FINAL DIKIRIM (DETIK):", { dwell: dwellTimes, flight: flightTimes });
@@ -15,41 +16,61 @@ document.addEventListener("DOMContentLoaded", () => {
     const passwordInput = document.getElementById('password'); 
 
     if (passwordInput) {
+
         passwordInput.addEventListener("focus", () => {
             dwellTimes = [];
             flightTimes = [];
-            keyDownTime = {};
-            lastKeyUpTime = null; 
-            console.log("Data Reset (Fokus pada Password)");
+            keyDownTime = [];
+            lastKeyUpTime = null;
+            keyIndex = 0;
+
+            console.log("Data Reset (Fokus Password)");
         });
 
         passwordInput.addEventListener("keydown", (e) => {
-            if (e.repeat) return; 
+            if (e.repeat) return;
+
+            // 🔴 HANDLE BACKSPACE (WAJIB)
+            if (e.key === "Backspace") {
+                dwellTimes = [];
+                flightTimes = [];
+                keyDownTime = [];
+                lastKeyUpTime = null;
+                keyIndex = 0;
+
+                console.log("RESET karena Backspace");
+                return;
+            }
 
             let now = Date.now();
-            keyDownTime[e.key] = now;
+
+            // Simpan berdasarkan urutan ketikan
+            keyDownTime[keyIndex] = now;
 
             if (lastKeyUpTime !== null && dwellTimes.length > 0) {
-                // --- UBAH DI SINI: Bagi 1000 agar jadi detik ---
-                let flight = (now - lastKeyUpTime) / 1000; 
+                let flight = (now - lastKeyUpTime) / 1000;
                 flightTimes.push(flight);
-                
-                console.log(`Flight [${e.key}]: ${flight} detik`);
+
+                console.log(`Flight index-${keyIndex}: ${flight}`);
             }
+
+            keyIndex++;
         });
 
         passwordInput.addEventListener("keyup", (e) => {
             let now = Date.now();
 
-            if (keyDownTime[e.key]) {
-                // --- UBAH DI SINI: Bagi 1000 agar jadi detik ---
-                let dwell = (now - keyDownTime[e.key]) / 1000;
+            let index = keyIndex - 1;
+
+            if (keyDownTime[index]) {
+                let dwell = (now - keyDownTime[index]) / 1000;
                 dwellTimes.push(dwell);
-                
-                console.log(`Dwell [${e.key}]: ${dwell} detik`);
-                
-                delete keyDownTime[e.key];
+
+                console.log(`Dwell index-${index}: ${dwell}`);
+
+                delete keyDownTime[index];
             }
+
             lastKeyUpTime = now;
         });
     }

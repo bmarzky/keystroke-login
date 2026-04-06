@@ -77,35 +77,5 @@ document.getElementById("password").addEventListener("keydown", function(e) {
 // Notifikasi Error/Success sudah ditampilkan inline di atas form
 
 </script>
-
-<script>
-    console.log("Sistem Tracking Dimulai...");
-
-    const passInput = document.getElementById('password');
-
-    if (passInput) {
-        console.log("Target ditemukan: Input Password siap dilacak!");
-
-        let dwellTimes = [];
-        let keyDownTime = {};
-
-        passInput.addEventListener("keydown", (e) => {
-            let now = Date.now();
-            keyDownTime[e.key] = now;
-            console.log("Menekan: " + e.key + " pada " + now);
-        });
-
-        passInput.addEventListener("keyup", (e) => {
-            let now = Date.now();
-            if (keyDownTime[e.key]) {
-                let dwell = now - keyDownTime[e.key];
-                console.log("Lepas: " + e.key + " | Durasi (Dwell): " + dwell + "ms");
-                delete keyDownTime[e.key];
-            }
-        });
-    } else {
-        console.error("ERROR: Elemen dengan id='password' tidak ditemukan di halaman ini!");
-    }
-</script>
 </body>
 </html>
