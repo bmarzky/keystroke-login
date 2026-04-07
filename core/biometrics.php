@@ -141,12 +141,12 @@ function verifyKeystroke($allStoredJson, $inputJson) {
 
     // 5. Cek kecukupan sampel yang valid
     if (count($samples) < MIN_SAMPLES) {
+        $found = count($samples);
         return [
             'status' => false,
             'distance' => 9998,
             'threshold' => 0,
-            'reason' => 'Insufficient valid samples',
-            'debug' => 'Found ' . count($samples) . ' valid samples'
+            'reason' => "Sampel tidak cukup (Hanya ditemukan $found dari minimal " . MIN_SAMPLES . ")"
         ];
     }
 
@@ -157,14 +157,17 @@ function verifyKeystroke($allStoredJson, $inputJson) {
 
     // 7. Penentuan Threshold (Adaptif + Dynamic Baseline)
     $calculatedThreshold = calculateThreshold($samples, $means, $vars);
-    $dynamicMinThreshold = sqrt($expectedLength); // Baseline berdasarkan jumlah dimensi fitur
+    $dynamicMinThreshold = sqrt($expectedLength); 
 
     $finalThreshold = max($calculatedThreshold, $dynamicMinThreshold);
+    $isMatch = ($distance <= $finalThreshold);
 
+    // BALIKAN HARUS KONSISTEN
     return [
-        'status' => $distance <= $finalThreshold,
-        'distance' => $distance,
-        'threshold' => $finalThreshold
+        'status' => $isMatch,
+        'distance' => (float)$distance,
+        'threshold' => (float)$finalThreshold,
+        'reason' => $isMatch ? 'Pola Cocok' : 'Pola Tidak Cocok'
     ];
 }
 

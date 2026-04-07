@@ -2,7 +2,7 @@ let dwellTimes = [];
 let flightTimes = [];
 let d2dTimes = [];
 let u2uTimes = [];
-let pendingKeyDowns = {}; // Menggunakan objek untuk mapping key -> time
+let pendingKeyDowns = {}; 
 let lastKeyDownTime = null;
 let lastKeyUpTime = null;
 let startTime = null;
@@ -28,6 +28,7 @@ window.getKeystrokeData = function() {
 
 document.addEventListener("DOMContentLoaded", () => {
     const passwordInput = document.getElementById('password');
+    const jsErrorDisplay = document.getElementById("js-error-msg");
 
     const resetData = () => {
         dwellTimes = []; flightTimes = []; d2dTimes = []; u2uTimes = [];
@@ -36,50 +37,69 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("Data Keystroke Reset.");
     };
 
+    // Fungsi untuk menampilkan pesan error di halaman (pengganti alert)
+    const showNotice = (msg) => {
+        if (jsErrorDisplay) {
+            jsErrorDisplay.innerText = "" + msg;
+            // Hilangkan pesan otomatis setelah 3 detik
+            setTimeout(() => { jsErrorDisplay.innerText = ""; }, 3000);
+        }
+    };
+
     if (passwordInput) {
+        // --- PROTEKSI COPY-PASTE & DROP ---
+        const blockAction = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            passwordInput.value = ""; // Kosongkan input
+            resetData(); 
+            showNotice("Copy-paste dilarang demi keamanan biometrik!");
+        };
+
+        passwordInput.addEventListener("paste", blockAction);
+        passwordInput.addEventListener("drop", blockAction);
+        
+        // Blokir klik kanan dengan pesan
+        passwordInput.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            showNotice("Klik kanan dimatikan pada kolom password.");
+        });
+
+        // Monitor input ilegal (autofill/bypass)
+        passwordInput.addEventListener("input", (e) => {
+            if (e.inputType === "insertFromPaste" || e.inputType === "insertFromDrop") {
+                passwordInput.value = "";
+                resetData();
+                showNotice("Input otomatis ditolak!");
+            }
+        });
+
         passwordInput.addEventListener("focus", resetData);
         
+        // --- EVENT KEYDOWN ---
         passwordInput.addEventListener("keydown", (e) => {
             if (e.repeat || e.key === "Process") return;
             if (e.key === "Backspace") { resetData(); return; }
 
             let now = Date.now();
             if (startTime === null) startTime = now;
-
-            // Simpan waktu tekan dengan ID unik (key + timestamp) 
-            // agar tidak bentrok jika ada huruf ganda
-            let keyId = e.key + "_" + now;
             pendingKeyDowns[e.key] = now; 
 
-            // Hitung D2D (Down-to-Down)
-            if (lastKeyDownTime !== null) {
-                d2dTimes.push((now - lastKeyDownTime) / 1000);
-            }
-
-            // Hitung Flight (Up-to-Down)
-            if (lastKeyUpTime !== null) {
-                flightTimes.push((now - lastKeyUpTime) / 1000);
-            }
-
+            if (lastKeyDownTime !== null) d2dTimes.push((now - lastKeyDownTime) / 1000);
+            if (lastKeyUpTime !== null) flightTimes.push((now - lastKeyUpTime) / 1000);
             lastKeyDownTime = now;
         });
 
+        // --- EVENT KEYUP ---
         passwordInput.addEventListener("keyup", (e) => {
             if (e.key === "Backspace") return;
             let now = Date.now();
-
-            // Ambil waktu pasangannya dari pendingKeyDowns
             if (pendingKeyDowns[e.key]) {
                 let dTime = pendingKeyDowns[e.key];
                 dwellTimes.push((now - dTime) / 1000);
-                delete pendingKeyDowns[e.key]; // Hapus setelah dihitung
+                delete pendingKeyDowns[e.key]; 
             }
-
-            // Hitung U2U (Up-to-Up)
-            if (lastKeyUpTime !== null) {
-                u2uTimes.push((now - lastKeyUpTime) / 1000);
-            }
-
+            if (lastKeyUpTime !== null) u2uTimes.push((now - lastKeyUpTime) / 1000);
             lastKeyUpTime = now;
         });
     }
