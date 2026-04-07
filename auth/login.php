@@ -59,7 +59,7 @@
 
 <script>
 /**
- * FUNGSI AUTO-HIDE UNIVERSAL
+ * Fungsi untuk menangani auto-hide pesan baik dari PHP maupun JS
  * Menangani pesan dari PHP (class .php-msg) dan JS (#js-error-msg)
  */
 function initAutoHide() {
@@ -138,4 +138,4 @@ document.getElementById("password").addEventListener("keydown", function(e) {
 });
 </script>
 </body>
-</html>
+</html> 
