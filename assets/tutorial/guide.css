@@ -1,0 +1,11 @@
+/* Merapikan teks di dalam kotak tutorial Driver.js */
+.driver-popover-description {
+    text-align: justify;
+    line-height: 1.5; /* Tambahan agar jarak antar baris lebih enak dibaca */
+}
+
+/* Opsional: Membuat judul tutorial jadi lebih tegas */
+.driver-popover-title {
+    font-weight: bold;
+    color: #333;
+}

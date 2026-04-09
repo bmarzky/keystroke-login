@@ -3,6 +3,7 @@
 <head>
     <title>Register</title>
     <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/tutorial/guide.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
     <style>
         /* Container pesan agar tidak melompat */

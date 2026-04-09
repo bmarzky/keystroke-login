@@ -24,7 +24,7 @@ const runTutorial = () => {
             { 
                 popover: { 
                     title: 'Selamat Datang!', 
-                    description: 'Sistem ini menggunakan <b>Keystroke Dynamics</b> untuk mengenali Kamu melalui cara Kamu mengetik.' 
+                    description: 'Sistem Login ini menggunakan <b>Keystroke Dynamics</b> untuk mengenali Kamu melalui cara Kamu mengetik.' 
                 } 
             },
             { 
@@ -40,7 +40,7 @@ const runTutorial = () => {
                 element: '#password', 
                 popover: { 
                     title: 'Kolom Password', 
-                    description: 'Ketik password Kamu dengan ritme normal. Sistem merekam <i>dwell time</i> dan <i>flight time</i>.',
+                    description: 'Ketik kata sandi Kamu seperti biasa. <br><br>Sistem akan mengenali <b>gaya unik mengetikmu</b>, yaitu seberapa lama Kamu menekan tombol dan seberapa cepat jemarimu berpindah antar tombol.',
                     side: "bottom", 
                     align: 'start' 
                 } 
