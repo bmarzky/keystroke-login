@@ -3,6 +3,7 @@
 <head>
     <title>Login - Biometric System</title>
     <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
     <style>
         /* Container pesan agar layout tidak melompat */
         #message-container { min-height: 45px; margin-bottom: 15px; }
@@ -56,7 +57,8 @@
 <p style="margin-top: 20px; font-size: 14px;">Belum punya akun? <a href="register.php">Daftar di sini</a></p>
 
 <script src="../assets/js/keystroke.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
+<script src="../assets/tutorial/guide.js"></script>
 <script>
 /**
  * Fungsi untuk menangani auto-hide pesan baik dari PHP maupun JS

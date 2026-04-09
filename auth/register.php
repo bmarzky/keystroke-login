@@ -3,6 +3,7 @@
 <head>
     <title>Register</title>
     <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
     <style>
         /* Container pesan agar tidak melompat */
         #message-container { min-height: 25px; margin-bottom: 15px; font-size: 14px; }
@@ -46,7 +47,8 @@
 <p style="margin-top: 15px; font-size: 14px;"> Sudah punya akun? <a href="login.php">Login</a></p>
 
 <script src="../assets/js/keystroke.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
+<script src="../assets/tutorial/guide.js"></script>
 <script>
 /**
  * FUNGSI AUTO-HIDE: Langsung bekerja untuk ID spesifik

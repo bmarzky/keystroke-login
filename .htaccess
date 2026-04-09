@@ -1,0 +1,11 @@
+Options -Indexes
+
+# Lindungi file .env
+<Files .env>
+Order allow,deny
+Deny from all
+</Files>
+
+# Lindungi folder ml
+RewriteEngine On
+RewriteRule ^ml/.*$ - [F,L]
