@@ -16,6 +16,11 @@ const runTutorial = () => {
         showProgress: true,
         allowClose: false,
         overlayColor: 'rgba(0,0,0,0.75)',
+
+        nextBtnText: 'Next',
+        prevBtnText: 'Previous',
+        doneBtnText: 'Done',
+
         onDestroyed: () => {
             localStorage.setItem('keystroke_tutorial_done', 'true');
             console.log("Tutorial selesai, storage diupdate.");
@@ -40,7 +45,7 @@ const runTutorial = () => {
                 element: '#password', 
                 popover: { 
                     title: 'Kolom Password', 
-                    description: 'Ketik kata sandi Kamu seperti biasa. <br><br>Sistem akan mengenali <b>gaya unik mengetikmu</b>, yaitu seberapa lama Kamu menekan tombol dan seberapa cepat jemarimu berpindah antar tombol.',
+                    description: 'Ketik kata sandi Kamu seperti biasa. <br><br>Sistem akan mengenali <b>"Gaya Unik Mengetikmu"</b>, yaitu seberapa lama Kamu menekan tombol dan seberapa cepat jemarimu berpindah antar tombol. <br><br><b>Tips:</b> Ketik password Kamu dalam satu aliran. Sebisa mungkin hindari menghapus (<b>Backspace</b>) agar pola ketikanmu terekam sempurna.',
                     side: "bottom", 
                     align: 'start' 
                 } 
