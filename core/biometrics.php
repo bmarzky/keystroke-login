@@ -1,11 +1,11 @@
 <?php
 
-// ================= CONFIG =================
+// Config
 define('MIN_SAMPLES', 3); // Minimal data training untuk mulai verifikasi
 define('EPSILON', 0.0001); // Menghindari division by zero dan menstabilkan data detik
 define('Z_THRESHOLD_MULTIPLIER', 2.0); // 95% confidence interval
 
-// ================= VALIDASI DATA =================
+// validasi data
 function isValidVector($vector) {
     foreach ($vector as $v) {
         // Validasi: Harus angka, tidak boleh negatif, dan tidak boleh terlalu lama (> 5 detik)
@@ -17,7 +17,7 @@ function isValidVector($vector) {
     return true;
 }
 
-// ================= MEAN =================
+// Mean
 function calculateMean($samples) {
     $count = count($samples);
     $numFeatures = count($samples[0]);
@@ -36,7 +36,7 @@ function calculateMean($samples) {
     return $means;
 }
 
-// ================= VARIANCE =================
+// variance
 function calculateVariances($samples, $means) {
     $count = count($samples);
     $numFeatures = count($means);
@@ -56,7 +56,7 @@ function calculateVariances($samples, $means) {
     return $variances;
 }
 
-// ================= MAHALANOBIS =================
+// mahalanobis distance
 function mahalanobisDistance($x, $mean, $var) {
     $sum = 0;
     foreach ($x as $i => $value) {
@@ -65,7 +65,7 @@ function mahalanobisDistance($x, $mean, $var) {
     return sqrt($sum);
 }
 
-// ================= THRESHOLD =================
+// threshold
 function calculateThreshold($samples, $mean, $var) {
     $distances = [];
     foreach ($samples as $s) {
@@ -84,7 +84,7 @@ function calculateThreshold($samples, $mean, $var) {
     return $meanDist + (Z_THRESHOLD_MULTIPLIER * $std);
 }
 
-// ================= VERIFY FUNCTION =================
+// verify keystroke
 function verifyKeystroke($allStoredJson, $inputJson) {
     $input = json_decode($inputJson, true);
 
@@ -162,7 +162,7 @@ function verifyKeystroke($allStoredJson, $inputJson) {
     $finalThreshold = max($calculatedThreshold, $dynamicMinThreshold);
     $isMatch = ($distance <= $finalThreshold);
 
-    // BALIKAN HARUS KONSISTEN
+    // return
     return [
         'status' => $isMatch,
         'distance' => (float)$distance,
@@ -171,7 +171,7 @@ function verifyKeystroke($allStoredJson, $inputJson) {
     ];
 }
 
-// ================= HELPER =================
+// compare multiple keystroke
 function compareMultipleKeystroke($allData, $inputKeystroke) {
     $result = verifyKeystroke($allData, $inputKeystroke);
     return $result['distance'];

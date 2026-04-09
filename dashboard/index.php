@@ -10,13 +10,13 @@ if (!isset($_SESSION['user_id'])) {
 $conn = getConnection();
 $user_id = $_SESSION['user_id'];
 
-// 1. Ambil Total Data
+// 1. Ambil total data
 $stmtCount = $conn->prepare("SELECT COUNT(*) as total FROM keystroke_data WHERE user_id = ?");
 $stmtCount->bind_param("i", $user_id);
 $stmtCount->execute();
 $totalData = $stmtCount->get_result()->fetch_assoc()['total'];
 
-// 2. Ambil 2 DATA TERAKHIR (Data Login Terbaru vs Data Sebelumnya)
+// 2. Ambil 2 data terakhir (Data Login Terbaru vs Data Sebelumnya)
 $stmtData = $conn->prepare("SELECT features FROM keystroke_data WHERE user_id = ? ORDER BY id DESC LIMIT 2");
 $stmtData->bind_param("i", $user_id);
 $stmtData->execute();

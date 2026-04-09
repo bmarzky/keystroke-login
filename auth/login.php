@@ -29,11 +29,9 @@
     $time = date('H:i:s');
 
     if (isset($_GET['error'])) {
-        // TAMBAHKAN class="php-msg" dan id="status-msg"
         echo '<div id="status-msg" class="php-msg" style="color: red;">[' . $time . '] ' . htmlspecialchars($_GET['error']) . '</div>';
     }
     if (isset($_GET['success'])) {
-        // TAMBAHKAN class="php-msg" dan id="status-msg"
         echo '<div id="status-msg" class="php-msg" style="color: green;"> [' . $time . '] ' . htmlspecialchars($_GET['success']) . '</div>';
     }
     ?>
@@ -61,10 +59,7 @@
 <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
 <script src="../assets/tutorial/guide.js"></script>
 <script>
-/**
- * Fungsi untuk menangani auto-hide pesan baik dari PHP maupun JS
- * Menangani pesan dari PHP (class .php-msg) dan JS (#js-error-msg)
- */
+// Fungsi auto hide pesan
 function initAutoHide() {
     // 1. Ambil semua elemen yang mungkin berisi pesan
     const msgIds = ['status-msg', 'js-error-msg'];
@@ -102,7 +97,7 @@ function initAutoHide() {
 
 document.addEventListener("DOMContentLoaded", initAutoHide);
 
-// --- LOGIKA DATA KEYSTROKE ---
+// Logika data keystroke
 
 function prepareKeystroke() {
     if (typeof window.getKeystrokeData === "function") {

@@ -11,17 +11,13 @@ include "../../core/biometrics.php";
 
 $conn = getConnection();
 
-/**
- * HELPER: Redirect dengan pesan error dan berhenti seketika
- */
+// Helper: Redirect dengan pesan error dan berhenti seketika
 function redirectWithError($msg) {
     header("Location: ../login.php?error=" . urlencode($msg));
     exit(); 
 }
 
-/**
- * HELPER: Proses Login Sukses
- */
+// Helper: Proses Login Sukses
 function processSuccessfulLogin($user, $conn, $rawKeystroke, $status) {
     // Bersihkan session sisa sebelum diisi yang baru
     session_unset();
@@ -61,7 +57,7 @@ $stmt->bind_param("s", $username);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
 
-// --- PROSES OTENTIKASI UTAMA ---
+// Proses otentikasi utama
 
 if ($user && password_verify($password, $user['password'])) {
 
@@ -78,7 +74,6 @@ if ($user && password_verify($password, $user['password'])) {
 
     $dataCount = count($allData);
 
-    // --- LANGKAH KRUSIAL: VERIFIKASI DULU APAPUN MODENYA ---
     // Ini memastikan kita punya variabel $isMatch dan $score sebelum masuk ke IF dataCount
     $verification = verifyKeystroke($allData, $inputKeystroke); 
     
@@ -102,10 +97,10 @@ if ($user && password_verify($password, $user['password'])) {
     );
     file_put_contents('biometric_debug.log', $logMsg, FILE_APPEND);
 
-    // --- LOGIKA PENGAMBILAN KEPUTUSAN ---
+    // Logika pengambilan keputusan
 
     if ($dataCount < MIN_SAMPLES) {
-            // MODE TRAINING:
+            // Mode training
             // Skor 9998 = Insufficient samples (Data awal memang pasti begini)
             // Skor 9996 = No training data (Data pertama kali daftar)
             if ($score < 9000 || $score == 9998 || $score == 9996) {
@@ -116,7 +111,7 @@ if ($user && password_verify($password, $user['password'])) {
                 redirectWithError("Data biometrik ditolak: " . $reason);
             }
         } else {
-            // MODE VERIFIKASI KETAT (DataCount >= MIN_SAMPLES):
+            // Mode verifikasi ketat (DataCount >= MIN_SAMPLES)
             if ($isMatch) {
                 processSuccessfulLogin($user, $conn, $inputKeystroke, "Verified");
             } else {

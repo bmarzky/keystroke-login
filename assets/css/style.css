@@ -3,9 +3,9 @@ body, html {
     height: 100%;
     margin: 0;
     display: flex;
-    flex-direction: column; /* Menyusun elemen dari atas ke bawah */
-    justify-content: center; /* Tengah secara vertikal */
-    align-items: center;     /* Tengah secara horizontal */
+    flex-direction: column; 
+    justify-content: center; 
+    align-items: center;     
     font-family: sans-serif;
 }
 

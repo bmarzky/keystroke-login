@@ -20,7 +20,7 @@ if (empty($username) || empty($password) || empty($keystroke) || $decodedKeystro
     exit();
 }
 
-// VALIDASI TAMBAHAN: Pastikan semua fitur biometrik ada
+// Validasi tambahan: Pastikan semua fitur biometrik ada
 if (!isset($decodedKeystroke['dwell'], $decodedKeystroke['speed'])) {
     header("Location: ../register.php?error=" . urlencode("Gagal mengambil data biometrik. Pastikan JS aktif."));
     exit();

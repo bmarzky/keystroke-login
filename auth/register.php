@@ -51,9 +51,8 @@
 <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
 <script src="../assets/tutorial/guide.js"></script>
 <script>
-/**
- * FUNGSI AUTO-HIDE: Langsung bekerja untuk ID spesifik
- */
+
+// Fungsi auto hide pesan
 function setupAutoHide() {
     const statusMsg = document.getElementById("status-msg");
     const jsErrorMsg = document.getElementById("js-error-msg");
@@ -88,8 +87,7 @@ function setupAutoHide() {
 
 document.addEventListener("DOMContentLoaded", setupAutoHide);
 
-// --- LOGIKA FORM REGISTER ---
-
+// Logika form register
 document.getElementById("registerForm").addEventListener("submit", function(e) {
     const jsErrorDisplay = document.getElementById("js-error-msg");
     const keystrokeInput = document.getElementById("keystrokeData");
