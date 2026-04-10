@@ -3,3 +3,5 @@ config/database.php
 .DS_Store
 node_modules/
 auth/process/biometric_debug.log
+.vscode/
+.idea/
