@@ -100,25 +100,25 @@ if ($user && password_verify($password, $user['password'])) {
     // Logika pengambilan keputusan
 
     if ($dataCount < MIN_SAMPLES) {
-            // Mode training
-            // Skor 9998 = Insufficient samples (Data awal memang pasti begini)
-            // Skor 9996 = No training data (Data pertama kali daftar)
-            if ($score < 9000 || $score == 9998 || $score == 9996) {
-                $step = $dataCount + 1;
-                processSuccessfulLogin($user, $conn, $inputKeystroke, "Training Mode ($step/".MIN_SAMPLES.")");
-            } else {
-                // Ini jika kena skor 9993 (Speed abnormal / robot)
-                redirectWithError("Data biometrik ditolak: " . $reason);
-            }
+        // Mode training
+        // Skor 9998 = Insufficient samples (Data awal memang pasti begini)
+        // Skor 9996 = No training data (Data pertama kali daftar)
+        if ($score < 9000 || $score == 9998 || $score == 9996) {
+            $step = $dataCount + 1;
+            processSuccessfulLogin($user, $conn, $inputKeystroke, "Training Mode ($step/".MIN_SAMPLES.")");
         } else {
-            // Mode verifikasi ketat (DataCount >= MIN_SAMPLES)
-            if ($isMatch) {
-                processSuccessfulLogin($user, $conn, $inputKeystroke, "Verified");
-            } else {
-                $errorDetail = ($reason !== 'N/A') ? $reason : "Pola ketikan tidak cocok";
-                redirectWithError("Akses Ditolak: $errorDetail (Skor: " . round($score, 2) . ")");
-            }
+            // Ini jika kena skor 9993 (Speed abnormal / robot)
+            redirectWithError("Data biometrik ditolak: " . $reason);
         }
+    } else {
+        // Mode verifikasi ketat (DataCount >= MIN_SAMPLES)
+        if ($isMatch) {
+            processSuccessfulLogin($user, $conn, $inputKeystroke, "Verified");
+        } else {
+            $errorDetail = ($reason !== 'N/A') ? $reason : "Pola ketikan tidak cocok";
+            redirectWithError("Akses Ditolak: $errorDetail (Skor: " . round($score, 2) . ")");
+        }
+    }
 
 } else {
     redirectWithError("Username atau password salah");
