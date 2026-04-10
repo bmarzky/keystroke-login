@@ -17,7 +17,12 @@ function isValidVector($vector) {
     return true;
 }
 
-// Mean
+/**
+ * Menghitung nilai rata-rata (mean) untuk setiap fitur (vektor) dari sekumpulan sampel.
+ * 
+ * @param array $samples Kumpulan array fitur
+ * @return array Array berisi nilai rata-rata tiap fitur
+ */
 function calculateMean($samples) {
     $count = count($samples);
     $numFeatures = count($samples[0]);
