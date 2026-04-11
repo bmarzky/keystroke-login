@@ -1,5 +1,6 @@
 const runTutorial = () => {
     // 1. Cek storage
+// Check if user has already seen the tutorial
     const hasSeenTutorial = localStorage.getItem('keystroke_tutorial_done');
 
     // Log untuk memastikan fungsi terpanggil
@@ -9,7 +10,8 @@ const runTutorial = () => {
         return;
     }
 
-    // 2. Inisialisasi Driver dengan cara yang lebih aman untuk versi IIFE
+    // 2. Inisialisasi Driver.js (Library untuk Panduan Interaktif)
+    // Menggunakan cara yang lebih aman untuk versi IIFE
     const driver = window.driver.js.driver;
 
     const driverObj = driver({
