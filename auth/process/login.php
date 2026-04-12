@@ -126,3 +126,4 @@ if ($user && password_verify($password, $user['password'])) {
 } else {
     redirectWithError("Username atau password salah");
 }
+// End of Auth Logic
