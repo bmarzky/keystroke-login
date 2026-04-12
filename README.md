@@ -116,4 +116,4 @@ Jika ada kendala, ide fitur maupun pertanyaan lebih lanjut, silakan bebas melaya
 
 ## Lisensi
 
-Proyek ini didistribusikan di bawah Lisensi MIT. Bebas untuk dimodifikasi dan digunakan sesuai keperluan proyek Anda.
+Proyek ini didistribusikan di bawah Lisensi MIT (Massachusetts Institute of Technology). Bebas untuk dimodifikasi dan digunakan sesuai keperluan proyek Anda.
