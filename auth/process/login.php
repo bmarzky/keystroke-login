@@ -6,6 +6,9 @@ header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 
+// Lapisan keamanan tambahan
+header("X-XSS-Protection: 1; mode=block");
+
 include "../../config/database.php";
 include "../../core/biometrics.php";
 

@@ -5,7 +5,12 @@ define('MIN_SAMPLES', 3); // Minimal data training untuk mulai verifikasi
 define('EPSILON', 0.0001); // Menghindari division by zero dan menstabilkan data detik
 define('Z_THRESHOLD_MULTIPLIER', 2.0); // 95% confidence interval
 
-// validasi data
+/**
+ * Memvalidasi vektor fitur. Semua elemen harus angka non-negatif.
+ * 
+ * @param array $vector Vektor fitur yang akan divalidasi
+ * @return bool True jika valid, False sebaliknya
+ */
 function isValidVector($vector) {
     foreach ($vector as $v) {
         // Validasi: Harus angka, tidak boleh negatif, dan tidak boleh terlalu lama (> 5 detik)

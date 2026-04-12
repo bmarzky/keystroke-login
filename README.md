@@ -113,3 +113,7 @@ Kontribusi sangat diterima! Silakan fork repository ini, buat branch fitur baru,
 ## Kontak
 
 Jika ada kendala, ide fitur maupun pertanyaan lebih lanjut, silakan bebas melayangkan pesan ke [bmarzky](https://github.com/bmarzky).
+
+## Lisensi
+
+Proyek ini didistribusikan di bawah Lisensi MIT. Bebas untuk dimodifikasi dan digunakan sesuai keperluan proyek Anda.
