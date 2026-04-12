@@ -39,7 +39,7 @@
 </div>
 
 <form id="registerForm" action="process/register.php" method="POST" autocomplete="off" novalidate>
-    <input type="text" id="username" name="username" placeholder="Username" required autofocus autocomplete="off"><br><br>
+    <input type="text" id="username" name="username" placeholder="Username Anda..." required autofocus autocomplete="off"><br><br>
     
     <input type="password" id="password" name="password" placeholder="Password" required autocomplete="new-password" onpaste="return false;" ondrop="return false;"><br><br>
 
