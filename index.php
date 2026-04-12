@@ -1,4 +1,5 @@
 <?php
+// File rute utama
 session_start();
 
 if (isset($_SESSION['user_id'])) {
