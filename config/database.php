@@ -27,3 +27,4 @@ function getConnection() {
 
     return $conn;
 }
+// End of DB configuration
