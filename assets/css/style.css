@@ -24,4 +24,5 @@ input {
 button {
     padding: 8px 15px;
     cursor: pointer;
+    transition: background-color 0.2s, opacity 0.2s;
 }
