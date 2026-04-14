@@ -64,13 +64,16 @@ def main():
         # Lakukan prediksi
         result = predict(features, model)
         
-        # Buat konklusi otentikasi (1 = Valid, -1 = Invalid)
+        # decision_function: nilai jarak ke batas keputusan SVM
+        # Positif = inlier (makin besar makin yakin cocok)
+        # Negatif = outlier (makin kecil makin yakin asing)
+        decision_score = float(model.decision_function(features)[0])
         is_match = bool(result == 1)
         
-        # Keluarkan hasil spesifik format JSON untuk dikonsumsi pemanggil (misal auth.php)
         output = {
             "status": "success",
-            "is_match": is_match
+            "is_match": is_match,
+            "decision_score": round(decision_score, 4)
         }
         print(json.dumps(output))
 
