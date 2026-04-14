@@ -6,3 +6,5 @@ auth/process/biometric_debug.log
 .vscode/
 .idea/
 vendor/
+ml/model/*.pkl
+ml/data/
