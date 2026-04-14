@@ -2,8 +2,8 @@
 
 // Config
 define('MIN_SAMPLES', 1); // Upgraded: Mulai verifikasi sejak data ke-1
-define('EPSILON', 0.0001); // Menghindari division by zero
-define('HEURISTIC_TOLERANCE_PERCENT', 0.25); // Toleransi 25% dari ritme asli (Heuristic)
+define('EPSILON', 0.001); // Ditingkatkan sedikit untuk menjaga stabilitas (Security Floor)
+define('HEURISTIC_TOLERANCE_PERCENT', 0.10); // Sangat ketat (10% dari ritme asli)
 define('Z_THRESHOLD_MULTIPLIER', 1.5); // Lebih ketat untuk mencegah penyusup
 
 /**
@@ -66,20 +66,23 @@ function calculateVariances($samples, $means) {
         }
     }
 
-    // 2. Terapkan Heuristic vs Empirical Blend
+    // 2. Smooth Transition (Linear Decay over 5 samples)
     $finalVariances = [];
+    $maxHeuristicSamples = 5;
+    
+    // Weight berkurang secara linear: n=1 (1.0) ke n=5 (0.0)
+    $heuristicWeight = ($count < $maxHeuristicSamples) 
+        ? ($maxHeuristicSamples - $count) / ($maxHeuristicSamples - 1)
+        : 0;
+
     foreach ($means as $i => $meanValue) {
-        // Heuristic: (25% dari nilai rata-rata)^2 -> Penyesuaian varians berdasarkan kecepatan user
+        // Heuristic: (25% dari nilai rata-rata)^2
         $heuristicVar = pow($meanValue * HEURISTIC_TOLERANCE_PERCENT, 2);
         
-        if ($count < 3) {
-            // Campuran: n=1 (100% heuristic), n=2 (50% heuristic)
-            $weight = (3 - $count) / 2;
-            $finalVariances[$i] = ($weight * $heuristicVar) + ((1 - $weight) * $empiricalVariances[$i]) + EPSILON;
-        } else {
-            // n >= 3: Gunakan varians asli sepenuhnya (Normal Mahalanobis)
-            $finalVariances[$i] = $empiricalVariances[$i] + EPSILON;
-        }
+        // Gabungkan: Heuristic + Empirical
+        $blendedVar = ($heuristicWeight * $heuristicVar) + ((1 - $heuristicWeight) * $empiricalVariances[$i]);
+        
+        $finalVariances[$i] = $blendedVar + EPSILON;
     }
 
     return $finalVariances;
@@ -185,9 +188,9 @@ function verifyKeystroke($allStoredJson, $inputJson) {
     $distance = mahalanobisDistance($inputVector, $means, $vars);
 
     // 7. Penentuan Threshold (Adaptif + Dynamic Baseline)
-    $calculatedThreshold = calculateThreshold($samples, $means, $vars);
-    $dynamicMinThreshold = sqrt($expectedLength); 
-
+    // High Security: Gunakan 80% dari akar jumlah fitur sebagai batas aman minimal
+    $dynamicMinThreshold = sqrt($expectedLength) * 0.8; 
+    
     $finalThreshold = max($calculatedThreshold, $dynamicMinThreshold);
     $isMatch = ($distance <= $finalThreshold);
 
