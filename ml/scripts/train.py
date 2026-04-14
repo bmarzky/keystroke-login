@@ -11,6 +11,15 @@ import numpy as np
 import mysql.connector
 from sklearn.svm import OneClassSVM
 import joblib
+from datetime import datetime
+
+# Logging Setup
+LOG_FILE = os.path.join(os.path.dirname(__file__), 'train.log')
+
+def log_message(msg):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(LOG_FILE, 'a') as f:
+        f.write(f"[{timestamp}] {msg}\n")
 
 # Konfigurasi Direktori & Parameter
 MODEL_DIR = os.path.join(os.path.dirname(__file__), '../model')
@@ -108,7 +117,9 @@ def save_model(model, user_id):
     filename = f"keystroke_model_{user_id}.pkl"
     filepath = os.path.join(MODEL_DIR, filename)
     joblib.dump(model, filepath)
-    print(f"Model berhasil disimpan di: {filepath}")
+    msg = f"Model berhasil disimpan di: {filepath}"
+    print(msg)
+    log_message(msg)
 
 def main():
     if len(sys.argv) < 2:
@@ -116,6 +127,7 @@ def main():
         sys.exit(1)
         
     user_id = sys.argv[1]
+    log_message(f"START training untuk user_id: {user_id}")
     print(f"Memproses training... (Output akan langsung berupa JSON saat selesai/error)", file=sys.stderr)
     try:
         # 1. Load Data
@@ -128,10 +140,14 @@ def main():
         save_model(model, user_id)
         
         # Response ke PHP
-        print(json.dumps({"status": "success", "message": f"Model OneClassSVM siap untuk user {user_id}"}))
+        res = {"status": "success", "message": f"Model OneClassSVM siap untuk user {user_id}"}
+        log_message(f"SUCCESS: {res['message']}")
+        print(json.dumps(res))
 
     except Exception as e:
-        print(f"Terjadi kesalahan saat training: {e}", file=sys.stderr)
+        err_msg = f"ERROR: {str(e)}"
+        log_message(err_msg)
+        print(err_msg, file=sys.stderr)
         sys.exit(1)
 
 if __name__ == "__main__":
