@@ -141,10 +141,10 @@ if ($user && password_verify($password, $user['password'])) {
             // Label eksplisit sesuai jumlah data dan tahap yang dilalui
             if ($dataCount >= 15) {
                 $tierLabel = "[Tier-1:Mahalanobis (Fallback)]";
-            } elseif ($dataCount >= 3) {
-                $tierLabel = "[Tier-1:Mahalanobis (Normal)]";
+            } elseif ($dataCount >= 5) {
+                $tierLabel = "[Tier-1:Mahalanobis (Strict)]";
             } else {
-                $tierLabel = "[Tier-1:Mahalanobis (Personalized Heuristic)]";
+                $tierLabel = "[Tier-1:Mahalanobis (Adaptive Blending)]";
             }
             
             $reason = ($reason !== 'N/A') ? "$tierLabel $reason -> $phpReason" : "$tierLabel $phpReason";
@@ -169,7 +169,7 @@ if ($user && password_verify($password, $user['password'])) {
 
     if ($isMatch) {
         // Berhasil Verifikasi (Atau Mode Belajar di Tahap Sangat Awal jika ingin dibedakan labelnya)
-        $statusLabel = ($dataCount < 3) ? "Verified (Regularized Mode)" : "Verified";
+        $statusLabel = ($dataCount < 5) ? "Verified (Learning Mode)" : "Verified";
         processSuccessfulLogin($user, $conn, $inputKeystroke, $statusLabel);
     } else {
         // Jika tidak cocok, cek apakah skornya menunjukkan error kritis (robot) atau sekadar pola beda
