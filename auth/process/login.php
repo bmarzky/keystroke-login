@@ -20,10 +20,12 @@ function redirectWithError($msg) {
     exit(); 
 }
 
-// Auto-detect Python executable (XAMPP PATH bisa berbeda dari terminal)
-$pyExec = trim(shell_exec('where python 2>NUL') ?? '');
-$pyExec = strtok($pyExec, "\n"); // Ambil baris pertama saja
-if (empty($pyExec)) $pyExec = 'python';
+// Helper: Deteksi Python Executable
+function getPythonExec() {
+    $pyExec = trim(shell_exec('where python 2>NUL') ?? '');
+    $pyExec = strtok($pyExec, "\n"); // Ambil baris pertama saja
+    return empty($pyExec) ? 'python' : $pyExec;
+}
 
 // Helper: Proses Login Sukses
 function processSuccessfulLogin($user, $conn, $rawKeystroke, $status) {
@@ -43,10 +45,11 @@ function processSuccessfulLogin($user, $conn, $rawKeystroke, $status) {
     // Mengaktifkan AI di Latar Belakang (Retrain Model) ketika data baru berhasil masuk
     $pyPathTrain = realpath(__DIR__ . '/../../ml/scripts/train.py');
     if ($pyPathTrain) {
-        global $pyExec;
+        $pyExec = getPythonExec();
         $argTrainUser = escapeshellarg($user['id']);
-        // start /B membuat script python berjalan secara siluman tanpa delay pada loading PHP di Windows
-        $cmd = "start /B " . escapeshellarg($pyExec) . " " . escapeshellarg($pyPathTrain) . " $argTrainUser > NUL 2>&1";
+        // Format Windows yang lebih robust untuk background: cmd /c start /B "" "python" "script" ...
+        // Dan seluruh perintah dibungkus tanda kutip ganda ekstra karena perilaku unik cmd /c
+        $cmd = 'cmd /c "start /B "" ' . escapeshellarg($pyExec) . ' ' . escapeshellarg($pyPathTrain) . ' ' . $argTrainUser . ' > NUL 2>&1"';
         pclose(popen($cmd, "r"));
     }
 
@@ -107,6 +110,7 @@ if ($user && password_verify($password, $user['password'])) {
             $argUser    = escapeshellarg($user['id']);
             $argTmpFile = escapeshellarg($tmpFile);
 
+            $pyExec = getPythonExec();
             $cmd = escapeshellarg($pyExec) . ' ' . escapeshellarg($pyPathPredict) . " $argUser $argTmpFile 2>NUL";
             $pythonOut = shell_exec($cmd);
             $mlResult  = json_decode($pythonOut, true);
