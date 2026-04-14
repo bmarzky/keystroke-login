@@ -115,8 +115,8 @@ if ($user && password_verify($password, $user['password'])) {
             if ($mlResult !== null && isset($mlResult['status']) && $mlResult['status'] === 'success') {
                 $svmUsed = true;
                 $isMatch = $mlResult['is_match'];
-                $score   = $isMatch ? 9999 : 0;
-                $thresh  = 100;
+                $score   = $mlResult['decision_score'] ?? ($isMatch ? 1 : -1);
+                $thresh  = 0; // Boundary One-Class SVM adalah 0
                 $reason  = "Metode AI OneClassSVM (Python)";
             } elseif ($mlResult !== null && isset($mlResult['status']) && $mlResult['status'] === 'fallback') {
                 $reason = "AI Meminta Fallback ke Mahalanobis";
