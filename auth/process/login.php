@@ -35,6 +35,14 @@ function processSuccessfulLogin($user, $conn, $rawKeystroke, $status) {
     $stmt->bind_param("is", $user['id'], $rawKeystroke);
     $stmt->execute();
 
+    // Mengaktifkan AI di Latar Belakang (Retrain Model) ketika data baru berhasil masuk
+    $pyPathTrain = realpath(__DIR__ . '/../../ml/scripts/train.py');
+    if ($pyPathTrain) {
+        $argTrainUser = escapeshellarg($user['id']);
+        // start /B membuat script python berjalan secara siluman tanpa delay pada loading PHP di Windows
+        pclose(popen("start /B python " . escapeshellarg($pyPathTrain) . " $argTrainUser > NUL 2>&1", "r"));
+    }
+
     header("Location: ../../dashboard/index.php");
     exit(); 
 }
@@ -77,13 +85,58 @@ if ($user && password_verify($password, $user['password'])) {
 
     $dataCount = count($allData);
 
-    // Ini memastikan kita punya variabel $isMatch dan $score sebelum masuk ke IF dataCount
-    $verification = verifyKeystroke($allData, $inputKeystroke); 
+    // TIER 2: Otentikasi Lanjut dengan AI OneClassSVM Python
+    $svmUsed = false;
+    $reason = 'N/A';
     
-    $isMatch = (isset($verification['status']) && $verification['status'] === true);
-    $score   = $verification['distance'] ?? 0;
-    $thresh  = $verification['threshold'] ?? 0;
-    $reason  = $verification['reason'] ?? 'N/A';
+    if ($dataCount >= 15) {
+        $pyPathPredict = realpath(__DIR__ . '/../../ml/scripts/predict.py');
+
+        // Auto-detect Python executable
+        $pyExec = trim(shell_exec('where python 2>NUL') ?? '');
+        $pyExec = strtok($pyExec, "\n");
+        if (empty($pyExec)) $pyExec = 'python';
+
+        if ($pyPathPredict) {
+            // Tulis JSON ke temp file agar tidak rusak saat di-escape oleh Windows CLI
+            $tmpFile = tempnam(sys_get_temp_dir(), 'ks_') . '.json';
+            file_put_contents($tmpFile, $inputKeystroke);
+
+            $argUser    = escapeshellarg($user['id']);
+            $argTmpFile = escapeshellarg($tmpFile);
+
+            $cmd = escapeshellarg($pyExec) . ' ' . escapeshellarg($pyPathPredict) . " $argUser $argTmpFile 2>NUL";
+            $pythonOut = shell_exec($cmd);
+            $mlResult  = json_decode($pythonOut, true);
+
+            // Bersihkan file sementara
+            @unlink($tmpFile);
+
+            if ($mlResult !== null && isset($mlResult['status']) && $mlResult['status'] === 'success') {
+                $svmUsed = true;
+                $isMatch = $mlResult['is_match'];
+                $score   = $isMatch ? 9999 : 0;
+                $thresh  = 100;
+                $reason  = "Metode AI OneClassSVM (Python)";
+            } elseif ($mlResult !== null && isset($mlResult['status']) && $mlResult['status'] === 'fallback') {
+                $reason = "AI Meminta Fallback ke Mahalanobis";
+            }
+        }
+    }
+    
+    // TIER 1: Kalkulasi Mahalanobis Murni di PHP (Otomatis jika SVM absen/gagal dieksekusi)
+    if (!$svmUsed) {
+        $verification = verifyKeystroke($allData, $inputKeystroke); 
+        $isMatch = (isset($verification['status']) && $verification['status'] === true);
+        $score   = $verification['distance'] ?? 0;
+        $thresh  = $verification['threshold'] ?? 0;
+        $phpReason = $verification['reason'] ?? 'N/A';
+        // Label eksplisit supaya log selalu jelas metode mana yang aktif
+        $tierLabel = ($dataCount >= 15) ? "[Tier-1:Mahalanobis|SVM-Gagal]" : "[Tier-1:Mahalanobis]";
+        $reason = ($reason !== 'N/A') ? "$tierLabel $reason -> $phpReason" : "$tierLabel $phpReason";
+    } else {
+        $reason = "[Tier-2:SVM] $reason";
+    }
 
     // Logging (Sekarang mencatat semua usaha, baik training maupun verifikasi)
     $logStatus = $isMatch ? 'MATCH' : 'REJECT';
