@@ -6,8 +6,8 @@ Sistem autentikasi login berbasis biometrik keystroke menggunakan PHP, MySQL, Ja
 
 - **Registrasi Pengguna**: Pengguna dapat mendaftar dengan username, password, dan pola keystroke unik.
 - **Hybrid Authentication Tier**: Sistem keamanan bertingkat yang otomatis beradaptasi dengan jumlah data pengguna:
-    - **Tier 1 (Sparse Data)**: Verifikasi instan sejak login pertama menggunakan **Regularized Mahalanobis**. Sangat membantu untuk pengguna yang baru saja mendaftar.
-    - **Tier 1 (Normal Data)**: Beralih ke **Standard Mahalanobis** saat data mencapai ≥ 3 sampel untuk akurasi yang lebih tajam.
+    - **Tier 1 (Sparse Data)**: Verifikasi instan sejak login pertama menggunakan **Personalized Heuristic (10%)**. Sangat ketat dan langsung beradaptasi dengan kecepatan unik tiap pengguna.
+    - **Tier 1 (Normal Data)**: Beralih ke **Strict Mahalanobis** saat data mencapai ≥ 5 sampel untuk keamanan maksimal.
     - **Tier 2 (Advanced AI)**: Aktif otomatis saat data mencapai ≥ 15 sampel menggunakan **One-Class SVM** (Python).
 - **Interactive Tutorial**: Dilengkapi dengan pemandu interaktif menggunakan **Driver.js** untuk membantu pengguna memahami cara kerja sistem saat pertama kali berkunjung.
 - **Adaptive Learning**: Model Machine Learning otomatis dilatih ulang (retrain) di background setiap kali pengguna berhasil login, memastikan sistem selalu relevan dengan perubahan gaya ketik pengguna.
@@ -63,9 +63,9 @@ Sistem autentikasi login berbasis biometrik keystroke menggunakan PHP, MySQL, Ja
    - **Proses Verifikasi**:
      - Sistem mengecek kecocokan password konvensional terlebih dahulu.
      - Jika benar, sistem memicu mesin biometrik dengan 3 level adaptif:
-       - **Level 1 (Data 1-2)**: Menggunakan **Regularized Mahalanobis** agar verifikasi bisa langsung dilakukan sejak login pertama.
-       - **Level 2 (Data 3-14)**: Menggunakan **Standard Mahalanobis** untuk akurasi yang lebih ketat sesuai pola asli user.
-       - **Level 3 (Data 15+)**: Menggunakan **One-Class SVM** melalui Python untuk perlindungan tingkat tinggi berbasis AI.
+        - **Level 1 (Data 1-4)**: Menggunakan **Adaptive Blending (10%)** agar verifikasi instan tetap cerdas mengikuti ritme asli Anda.
+        - **Level 2 (Data 5-14)**: Menggunakan **Strict Mahalanobis** dengan ambang batas agresif untuk mencegah segala jenis peniruan ritme.
+        - **Level 3 (Data 15+)**: Menggunakan **One-Class SVM** melalui Python untuk perlindungan tingkat tinggi berbasis AI.
      - Login berhasil jika ritme ketikan dianggap cocok oleh sistem.
 
 3. **Dashboard**:
