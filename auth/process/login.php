@@ -130,19 +130,27 @@ if ($user && password_verify($password, $user['password'])) {
         }
     }
     
-    // TIER 1: Kalkulasi Mahalanobis Murni di PHP (Otomatis jika SVM absen/gagal dieksekusi)
-    if (!$svmUsed) {
-        $verification = verifyKeystroke($allData, $inputKeystroke); 
-        $isMatch = (isset($verification['status']) && $verification['status'] === true);
-        $score   = $verification['distance'] ?? 0;
-        $thresh  = $verification['threshold'] ?? 0;
-        $phpReason = $verification['reason'] ?? 'N/A';
-        // Label eksplisit supaya log selalu jelas metode mana yang aktif
-        $tierLabel = ($dataCount >= 15) ? "[Tier-1:Mahalanobis|SVM-Gagal]" : "[Tier-1:Mahalanobis]";
-        $reason = ($reason !== 'N/A') ? "$tierLabel $reason -> $phpReason" : "$tierLabel $phpReason";
-    } else {
-        $reason = "[Tier-2:SVM] $reason";
-    }
+        // TIER 1: Kalkulasi Mahalanobis Murni di PHP (Otomatis jika SVM absen/gagal dieksekusi)
+        if (!$svmUsed) {
+            $verification = verifyKeystroke($allData, $inputKeystroke); 
+            $isMatch = (isset($verification['status']) && $verification['status'] === true);
+            $score   = $verification['distance'] ?? 0;
+            $thresh  = $verification['threshold'] ?? 0;
+            $phpReason = $verification['reason'] ?? 'N/A';
+            
+            // Label eksplisit sesuai jumlah data dan tahap yang dilalui
+            if ($dataCount >= 15) {
+                $tierLabel = "[Tier-1:Mahalanobis (Fallback)]";
+            } elseif ($dataCount >= 3) {
+                $tierLabel = "[Tier-1:Mahalanobis (Normal)]";
+            } else {
+                $tierLabel = "[Tier-1:Mahalanobis (Regularized)]";
+            }
+            
+            $reason = ($reason !== 'N/A') ? "$tierLabel $reason -> $phpReason" : "$tierLabel $phpReason";
+        } else {
+            $reason = "[Tier-2:SVM] $reason";
+        }
 
     // Logging (Sekarang mencatat semua usaha, baik training maupun verifikasi)
     $logStatus = $isMatch ? 'MATCH' : 'REJECT';
@@ -159,27 +167,14 @@ if ($user && password_verify($password, $user['password'])) {
     );
     file_put_contents('biometric_debug.log', $logMsg, FILE_APPEND);
 
-    // Logika pengambilan keputusan
-
-    if ($dataCount < MIN_SAMPLES) {
-        // Mode training
-        // Skor 9998 = Insufficient samples (Data awal memang pasti begini)
-        // Skor 9996 = No training data (Data pertama kali daftar)
-        if ($score < 9000 || $score == 9998 || $score == 9996) {
-            $step = $dataCount + 1;
-            processSuccessfulLogin($user, $conn, $inputKeystroke, "Training Mode ($step/".MIN_SAMPLES.")");
-        } else {
-            // Ini jika kena skor 9993 (Speed abnormal / robot)
-            redirectWithError("Data biometrik ditolak: " . $reason);
-        }
+    if ($isMatch) {
+        // Berhasil Verifikasi (Atau Mode Belajar di Tahap Sangat Awal jika ingin dibedakan labelnya)
+        $statusLabel = ($dataCount < 3) ? "Verified (Regularized Mode)" : "Verified";
+        processSuccessfulLogin($user, $conn, $inputKeystroke, $statusLabel);
     } else {
-        // Mode verifikasi ketat (DataCount >= MIN_SAMPLES)
-        if ($isMatch) {
-            processSuccessfulLogin($user, $conn, $inputKeystroke, "Verified");
-        } else {
-            $errorDetail = ($reason !== 'N/A') ? $reason : "Pola ketikan tidak cocok";
-            redirectWithError("Akses Ditolak: $errorDetail (Skor: " . round($score, 2) . ")");
-        }
+        // Jika tidak cocok, cek apakah skornya menunjukkan error kritis (robot) atau sekadar pola beda
+        $errorDetail = ($reason !== 'N/A') ? $reason : "Pola ketikan tidak cocok";
+        redirectWithError("Akses Ditolak: $errorDetail (Skor: " . round($score, 2) . ")");
     }
 
 } else {
