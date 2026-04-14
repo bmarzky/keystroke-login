@@ -20,6 +20,11 @@ function redirectWithError($msg) {
     exit(); 
 }
 
+// Auto-detect Python executable (XAMPP PATH bisa berbeda dari terminal)
+$pyExec = trim(shell_exec('where python 2>NUL') ?? '');
+$pyExec = strtok($pyExec, "\n"); // Ambil baris pertama saja
+if (empty($pyExec)) $pyExec = 'python';
+
 // Helper: Proses Login Sukses
 function processSuccessfulLogin($user, $conn, $rawKeystroke, $status) {
     // Bersihkan session sisa sebelum diisi yang baru
@@ -38,9 +43,11 @@ function processSuccessfulLogin($user, $conn, $rawKeystroke, $status) {
     // Mengaktifkan AI di Latar Belakang (Retrain Model) ketika data baru berhasil masuk
     $pyPathTrain = realpath(__DIR__ . '/../../ml/scripts/train.py');
     if ($pyPathTrain) {
+        global $pyExec;
         $argTrainUser = escapeshellarg($user['id']);
         // start /B membuat script python berjalan secara siluman tanpa delay pada loading PHP di Windows
-        pclose(popen("start /B python " . escapeshellarg($pyPathTrain) . " $argTrainUser > NUL 2>&1", "r"));
+        $cmd = "start /B " . escapeshellarg($pyExec) . " " . escapeshellarg($pyPathTrain) . " $argTrainUser > NUL 2>&1";
+        pclose(popen($cmd, "r"));
     }
 
     header("Location: ../../dashboard/index.php");
@@ -91,11 +98,6 @@ if ($user && password_verify($password, $user['password'])) {
     
     if ($dataCount >= 15) {
         $pyPathPredict = realpath(__DIR__ . '/../../ml/scripts/predict.py');
-
-        // Auto-detect Python executable
-        $pyExec = trim(shell_exec('where python 2>NUL') ?? '');
-        $pyExec = strtok($pyExec, "\n");
-        if (empty($pyExec)) $pyExec = 'python';
 
         if ($pyPathPredict) {
             // Tulis JSON ke temp file agar tidak rusak saat di-escape oleh Windows CLI
