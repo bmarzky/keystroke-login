@@ -8,3 +8,5 @@ auth/process/biometric_debug.log
 vendor/
 ml/model/*.pkl
 ml/data/
+ml/scripts/train.log
+*.log
