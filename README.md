@@ -5,11 +5,13 @@ Sistem autentikasi login berbasis biometrik keystroke menggunakan PHP, MySQL, Ja
 ## Fitur
 
 - **Registrasi Pengguna**: Pengguna dapat mendaftar dengan username, password, dan pola keystroke unik.
-- **Login dengan Keystroke**: Verifikasi identitas melalui analisis waktu penekanan dan jeda antar tombol menggunakan logika Mahalanobis Distance dalam PHP.
-- **Machine Learning (Opsional)**: Terdapat fungsionalitas Machine Learning menggunakan Python di direktori `ml/` untuk melatih dan memprediksi pola keystroke.
-- **Dashboard**: Halaman aman setelah login berhasil.
-- **Biometrik Keystroke**: Menggunakan JavaScript untuk capture data keystroke secara real-time.
-- **Database MySQL**: Penyimpanan data pengguna dan pola keystroke.
+- **Hybrid Authentication Tier**: Sistem keamanan bertingkat yang otomatis beradaptasi dengan jumlah data pengguna:
+    - **Tier 1 (PHP Mahalanobis)**: Digunakan untuk pengguna baru (Data < 15 sampel). Ringan dan cepat.
+    - **Tier 2 (Python One-Class SVM)**: Aktif otomatis saat data mencapai ≥ 15 sampel. Menggunakan AI canggih untuk akurasi tinggi.
+- **Adaptive Learning**: Model Machine Learning otomatis dilatih ulang (retrain) di background setiap kali pengguna berhasil login, memastikan sistem selalu relevan dengan perubahan gaya ketik pengguna.
+- **Biometrik Keystroke**: Capture data dwell time, flight time, n-graph, dan speed secara real-time menggunakan JavaScript.
+- **Dashboard & Debugging**: Halaman dashboard yang aman dan log biometrik mendetail (Decision Score) untuk pemantauan akurasi.
+- **Database MySQL**: Penyimpanan terenkripsi untuk data user dan metadata keystroke dalam format JSON.
 
 ## Prasyarat
 
@@ -55,8 +57,13 @@ Sistem autentikasi login berbasis biometrik keystroke menggunakan PHP, MySQL, Ja
 
 2. **Login**:
    - Akses menu `auth/login.php`.
-   - Masukkan username dan ketik password dengan tempo irama ketikan yang secara konsisten sama persis layaknya saat registrasi.
-   - PHP (`core/biometrics.php`) atau Python ML akan menganalisa dan melakukan validasi verifikasi jarak deviasi keystroke pattern.
+   - Masukkan username dan ketik password dengan ritme natural Anda.
+   - **Proses Verifikasi**:
+     - Sistem mengecek kecocokan password konvensional terlebih dahulu.
+     - Jika benar, sistem memicu mesin biometrik.
+     - Jika data Anda masih sedikit, sistem menggunakan **Mahalanobis Distance**.
+     - Jika data sudah cukup (>= 15), sistem menggunakan **One-Class SVM** melalui Python.
+     - Login berhasil jika ritme ketikan dianggap cocok (Inlier) oleh sistem.
 
 3. **Dashboard**:
    - Setelah login berhasil, Anda akan dialihkan ke layar status `dashboard/index.php`.
