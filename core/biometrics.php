@@ -3,8 +3,8 @@
 // Config
 define('MIN_SAMPLES', 1); // Upgraded: Mulai verifikasi sejak data ke-1
 define('EPSILON', 0.0001); // Menghindari division by zero
-define('REGULARIZATION_LAMBDA', 0.9); // Nilai awal untuk user baru (Longgar)
-define('Z_THRESHOLD_MULTIPLIER', 1.5); // Lebih ketat untuk mencegah penyusup (sebelumnya 2.0)
+define('HEURISTIC_TOLERANCE_PERCENT', 0.25); // Toleransi 25% dari ritme asli (Heuristic)
+define('Z_THRESHOLD_MULTIPLIER', 1.5); // Lebih ketat untuk mencegah penyusup
 
 /**
  * Memvalidasi vektor fitur. Semua elemen harus angka non-negatif.
@@ -51,24 +51,38 @@ function calculateMean($samples) {
 function calculateVariances($samples, $means) {
     $count = count($samples);
     $numFeatures = count($means);
-    $variances = array_fill(0, $numFeatures, 0);
+    $empiricalVariances = array_fill(0, $numFeatures, 0);
 
-    foreach ($samples as $sample) {
-        foreach ($sample as $i => $value) {
-            $variances[$i] += pow($value - $means[$i], 2);
+    // 1. Hitung varians empiris dari sampel yang ada
+    if ($count > 1) {
+        foreach ($samples as $sample) {
+            foreach ($sample as $i => $value) {
+                $empiricalVariances[$i] += pow($value - $means[$i], 2);
+            }
+        }
+        $denominator = $count - 1;
+        foreach ($empiricalVariances as $i => $value) {
+            $empiricalVariances[$i] /= $denominator;
         }
     }
 
-    foreach ($variances as $i => $value) {
-        $denominator = ($count > 1) ? ($count - 1) : 1;
-        // Adaptive Regularization:
-        // Gunakan lambda tinggi (0.9) saat data < 3 agar mudah di awal.
-        // Setelah data >= 3, gunakan EPSILON agar verifikasi kembali tajam.
-        $currentLambda = ($count < 3) ? REGULARIZATION_LAMBDA : EPSILON;
-        $variances[$i] = ($variances[$i] / $denominator) + $currentLambda;
+    // 2. Terapkan Heuristic vs Empirical Blend
+    $finalVariances = [];
+    foreach ($means as $i => $meanValue) {
+        // Heuristic: (25% dari nilai rata-rata)^2 -> Penyesuaian varians berdasarkan kecepatan user
+        $heuristicVar = pow($meanValue * HEURISTIC_TOLERANCE_PERCENT, 2);
+        
+        if ($count < 3) {
+            // Campuran: n=1 (100% heuristic), n=2 (50% heuristic)
+            $weight = (3 - $count) / 2;
+            $finalVariances[$i] = ($weight * $heuristicVar) + ((1 - $weight) * $empiricalVariances[$i]) + EPSILON;
+        } else {
+            // n >= 3: Gunakan varians asli sepenuhnya (Normal Mahalanobis)
+            $finalVariances[$i] = $empiricalVariances[$i] + EPSILON;
+        }
     }
 
-    return $variances;
+    return $finalVariances;
 }
 
 // mahalanobis distance

@@ -144,7 +144,7 @@ if ($user && password_verify($password, $user['password'])) {
             } elseif ($dataCount >= 3) {
                 $tierLabel = "[Tier-1:Mahalanobis (Normal)]";
             } else {
-                $tierLabel = "[Tier-1:Mahalanobis (Regularized)]";
+                $tierLabel = "[Tier-1:Mahalanobis (Personalized Heuristic)]";
             }
             
             $reason = ($reason !== 'N/A') ? "$tierLabel $reason -> $phpReason" : "$tierLabel $phpReason";
