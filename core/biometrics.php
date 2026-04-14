@@ -1,9 +1,10 @@
 <?php
 
 // Config
-define('MIN_SAMPLES', 3); // Minimal data training untuk mulai verifikasi
-define('EPSILON', 0.0001); // Menghindari division by zero dan menstabilkan data detik
-define('Z_THRESHOLD_MULTIPLIER', 2.0); // 95% confidence interval
+define('MIN_SAMPLES', 1); // Upgraded: Mulai verifikasi sejak data ke-1
+define('EPSILON', 0.0001); // Menghindari division by zero
+define('REGULARIZATION_LAMBDA', 0.9); // Nilai awal untuk user baru (Longgar)
+define('Z_THRESHOLD_MULTIPLIER', 1.5); // Lebih ketat untuk mencegah penyusup (sebelumnya 2.0)
 
 /**
  * Memvalidasi vektor fitur. Semua elemen harus angka non-negatif.
@@ -60,7 +61,11 @@ function calculateVariances($samples, $means) {
 
     foreach ($variances as $i => $value) {
         $denominator = ($count > 1) ? ($count - 1) : 1;
-        $variances[$i] = ($variances[$i] / $denominator) + EPSILON;
+        // Adaptive Regularization:
+        // Gunakan lambda tinggi (0.9) saat data < 3 agar mudah di awal.
+        // Setelah data >= 3, gunakan EPSILON agar verifikasi kembali tajam.
+        $currentLambda = ($count < 3) ? REGULARIZATION_LAMBDA : EPSILON;
+        $variances[$i] = ($variances[$i] / $denominator) + $currentLambda;
     }
 
     return $variances;
