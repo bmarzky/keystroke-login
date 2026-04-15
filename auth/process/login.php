@@ -141,7 +141,7 @@ if ($user && password_verify($password, $user['password'])) {
             // Label eksplisit sesuai jumlah data dan tahap yang dilalui
             if ($dataCount >= 15) {
                 $tierLabel = "[Tier-1:Mahalanobis (Fallback)]";
-            } elseif ($dataCount >= 5) {
+            } elseif ($dataCount >= 6) {
                 $tierLabel = "[Tier-1:Mahalanobis (Strict)]";
             } else {
                 $tierLabel = "[Tier-1:Mahalanobis (Adaptive Blending)]";
