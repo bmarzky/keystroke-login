@@ -105,7 +105,7 @@ def train_model(X):
     One-Class SVM cocok untuk mempelajari perilaku "normal" dari seorang pengguna.
     """
     print("Training model OneClassSVM...")
-    model = OneClassSVM(gamma='auto', nu=0.1)
+    model = OneClassSVM(gamma='scale', nu=0.2)
     model.fit(X)
     return model
 
