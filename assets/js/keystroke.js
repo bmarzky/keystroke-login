@@ -79,7 +79,8 @@ document.addEventListener("DOMContentLoaded", () => {
         // --- EVENT KEYDOWN ---
         passwordInput.addEventListener("keydown", (e) => {
             if (e.repeat || e.key === "Process") return;
-            if (e.key === "Backspace") { resetData(); return; }
+            // if (e.key === "Backspace") { resetData(); return; } 
+            if (e.key === "Backspace") return; // Abaikan backspace tapi jangan hapus data yang sudah ada
 
             let now = Date.now();
             if (startTime === null) startTime = now;
