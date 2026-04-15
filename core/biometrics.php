@@ -3,8 +3,8 @@
 // Config
 define('MIN_SAMPLES', 1); // Upgraded: Mulai verifikasi sejak data ke-1
 define('EPSILON', 0.001); // Ditingkatkan sedikit untuk menjaga stabilitas (Security Floor)
-define('HEURISTIC_TOLERANCE_PERCENT', 0.10); // Sangat ketat (10% dari ritme asli)
-define('Z_THRESHOLD_MULTIPLIER', 1.5); // Lebih ketat untuk mencegah penyusup
+define('HEURISTIC_TOLERANCE_PERCENT', 0.30); // Longgar (30% dari ritme asli) untuk mempermudah pemula
+define('Z_THRESHOLD_MULTIPLIER', 2.5); // Lebih pemaaf terhadap variasi natural manusia
 
 /**
  * Memvalidasi vektor fitur. Semua elemen harus angka non-negatif.
@@ -68,9 +68,9 @@ function calculateVariances($samples, $means) {
 
     // 2. Smooth Transition (Linear Decay over 5 samples)
     $finalVariances = [];
-    $maxHeuristicSamples = 5;
+    $maxHeuristicSamples = 10;
     
-    // Weight berkurang secara linear: n=1 (1.0) ke n=5 (0.0)
+    // Weight berkurang secara linear: n=1 (1.0) ke n=10 (0.0)
     $heuristicWeight = ($count < $maxHeuristicSamples) 
         ? ($maxHeuristicSamples - $count) / ($maxHeuristicSamples - 1)
         : 0;
@@ -188,8 +188,20 @@ function verifyKeystroke($allStoredJson, $inputJson) {
     $distance = mahalanobisDistance($inputVector, $means, $vars);
 
     // 7. Penentuan Threshold (Adaptif + Dynamic Baseline)
-    // High Security: Gunakan 80% dari akar jumlah fitur sebagai batas aman minimal
-    $dynamicMinThreshold = sqrt($expectedLength) * 0.8; 
+    $calculatedThreshold = calculateThreshold($samples, $means, $vars);
+    
+    $numSamples = count($samples);
+    if ($numSamples < 3) {
+        $floorMultiplier = 1.0; // Sangat pemaaf (Hanya untuk 2 login pertama)
+    } elseif ($numSamples < 6) {
+        $floorMultiplier = 0.8; // Menengah
+    } elseif ($numSamples < 10) {
+        $floorMultiplier = 0.7; // Transisi menuju standar
+    } else {
+        $floorMultiplier = 0.6; // Standar keamanan produksi (Mulai login ke-10)
+    }
+    
+    $dynamicMinThreshold = sqrt($expectedLength) * $floorMultiplier; 
     
     $finalThreshold = max($calculatedThreshold, $dynamicMinThreshold);
     $isMatch = ($distance <= $finalThreshold);
