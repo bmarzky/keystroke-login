@@ -27,6 +27,18 @@ function getPythonExec() {
     return empty($pyExec) ? 'python' : $pyExec;
 }
 
+// Helper: Picu Training AI di Latar Belakang (Self-Healing & Adaptive)
+function triggerBackgroundTraining($user_id) {
+    $pyPathTrain = realpath(__DIR__ . '/../../ml/scripts/train.py');
+    if ($pyPathTrain) {
+        $pyExec = getPythonExec();
+        $argTrainUser = escapeshellarg($user_id);
+        // Format Windows background: cmd /c start /B "" "python" "script" ...
+        $cmd = 'cmd /c "start /B "" ' . escapeshellarg($pyExec) . ' ' . escapeshellarg($pyPathTrain) . ' ' . $argTrainUser . ' > NUL 2>&1"';
+        pclose(popen($cmd, "r"));
+    }
+}
+
 // Helper: Proses Login Sukses
 function processSuccessfulLogin($user, $conn, $rawKeystroke, $status) {
     // Bersihkan session sisa sebelum diisi yang baru
@@ -43,15 +55,7 @@ function processSuccessfulLogin($user, $conn, $rawKeystroke, $status) {
     $stmt->execute();
 
     // Mengaktifkan AI di Latar Belakang (Retrain Model) ketika data baru berhasil masuk
-    $pyPathTrain = realpath(__DIR__ . '/../../ml/scripts/train.py');
-    if ($pyPathTrain) {
-        $pyExec = getPythonExec();
-        $argTrainUser = escapeshellarg($user['id']);
-        // Format Windows yang lebih robust untuk background: cmd /c start /B "" "python" "script" ...
-        // Dan seluruh perintah dibungkus tanda kutip ganda ekstra karena perilaku unik cmd /c
-        $cmd = 'cmd /c "start /B "" ' . escapeshellarg($pyExec) . ' ' . escapeshellarg($pyPathTrain) . ' ' . $argTrainUser . ' > NUL 2>&1"';
-        pclose(popen($cmd, "r"));
-    }
+    triggerBackgroundTraining($user['id']);
 
     header("Location: ../../dashboard/index.php");
     exit(); 
@@ -126,6 +130,8 @@ if ($user && password_verify($password, $user['password'])) {
                 $reason  = "Metode AI OneClassSVM (Python)";
             } elseif ($mlResult !== null && isset($mlResult['status']) && $mlResult['status'] === 'fallback') {
                 $reason = "AI Meminta Fallback ke Mahalanobis";
+                // Auto-Retrain: Jika model hilang tapi data cukup, picu training ulang secara otomatis
+                triggerBackgroundTraining($user['id']);
             }
         }
     }
