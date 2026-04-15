@@ -2,15 +2,15 @@ let dwellTimes = [];
 let flightTimes = [];
 let d2dTimes = [];
 let u2uTimes = [];
-let pendingKeyDowns = {}; 
+let pendingKeyDowns = {};
 let lastKeyDownTime = null;
 let lastKeyUpTime = null;
 let startTime = null;
 
-window.getKeystrokeData = function() {
+window.getKeystrokeData = function () {
     const passwordInput = document.getElementById('password');
     const totalChar = passwordInput ? passwordInput.value.length : 0;
-    
+
     let speedCPM = 0;
     if (startTime && lastKeyUpTime) {
         let totalTimeSec = (lastKeyUpTime - startTime) / 1000;
@@ -52,13 +52,13 @@ document.addEventListener("DOMContentLoaded", () => {
             e.preventDefault();
             e.stopPropagation();
             passwordInput.value = ""; // Kosongkan input
-            resetData(); 
-            showNotice("Copy-paste dilarang demi keamanan biometrik!");
+            resetData();
+            showNotice("Copy-paste dilarang!");
         };
 
         passwordInput.addEventListener("paste", blockAction);
         passwordInput.addEventListener("drop", blockAction);
-        
+
         // Blokir klik kanan dengan pesan
         passwordInput.addEventListener("contextmenu", (e) => {
             e.preventDefault();
@@ -75,7 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         passwordInput.addEventListener("focus", resetData);
-        
+
         // --- EVENT KEYDOWN ---
         passwordInput.addEventListener("keydown", (e) => {
             if (e.repeat || e.key === "Process") return;
@@ -84,7 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             let now = Date.now();
             if (startTime === null) startTime = now;
-            pendingKeyDowns[e.key] = now; 
+            pendingKeyDowns[e.key] = now;
 
             if (lastKeyDownTime !== null) d2dTimes.push((now - lastKeyDownTime) / 1000);
             if (lastKeyUpTime !== null) flightTimes.push((now - lastKeyUpTime) / 1000);
@@ -98,7 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (pendingKeyDowns[e.key]) {
                 let dTime = pendingKeyDowns[e.key];
                 dwellTimes.push((now - dTime) / 1000);
-                delete pendingKeyDowns[e.key]; 
+                delete pendingKeyDowns[e.key];
             }
             if (lastKeyUpTime !== null) u2uTimes.push((now - lastKeyUpTime) / 1000);
             lastKeyUpTime = now;
