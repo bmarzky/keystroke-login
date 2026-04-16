@@ -22,6 +22,7 @@ Sistem autentikasi login berbasis biometrik keystroke menggunakan PHP, MySQL, Ja
 - **MySQL 5.7+**
 - Browser web modern dengan JavaScript aktif
 - **Python 3.x** (Hanya jika ingin menggunakan fitur Machine Learning)
+- File `.env` yang dibuat dari `.env.example`
 
 ## Instalasi
 
@@ -39,13 +40,14 @@ Sistem autentikasi login berbasis biometrik keystroke menggunakan PHP, MySQL, Ja
    - Buka phpMyAdmin (http://localhost/phpmyadmin).
    - Buat database baru (misalnya, `keystroke_db`).
    - Import file `database/keystroke.sql` ke database tersebut.
-   - Edit `config/database.php` untuk menyesuaikan kredensial database Anda (bisa sesuaikan `.env` jika digunakan):
-     ```php
-     $host = 'localhost';
-     $db = 'keystroke_db'; // Ganti sesuai nama database Anda
-     $user = 'root';
-     $pass = ''; // Ganti password jika ada
+   - Salin `.env.example` ke `.env` dan sesuaikan kredensial database Anda:
+     ```ini
+     DB_HOST=localhost
+     DB_USER=root
+     DB_PASS=
+     DB_NAME=keystroke_db
      ```
+   - Jika Anda menyesuaikan `config/database.php` langsung, pastikan struktur variabel sudah benar.
 
 4. **Jalankan Aplikasi**:
    - Buka browser dan akses `http://localhost/keystroke-login`.

@@ -116,19 +116,26 @@ if ($user && password_verify($password, $user['password'])) {
 
             $pyExec = getPythonExec();
             $cmd = escapeshellarg($pyExec) . ' ' . escapeshellarg($pyPathPredict) . " $argUser $argTmpFile 2>NUL";
-            $pythonOut = shell_exec($cmd);
-            $mlResult  = json_decode($pythonOut, true);
+            $pythonOut = trim(shell_exec($cmd));
+            $mlResult  = null;
+
+            if (!empty($pythonOut)) {
+                $mlResult = json_decode($pythonOut, true);
+            }
 
             // Bersihkan file sementara
             @unlink($tmpFile);
 
-            if ($mlResult !== null && isset($mlResult['status']) && $mlResult['status'] === 'success') {
+            if ($mlResult === null || json_last_error() !== JSON_ERROR_NONE) {
+                error_log("[SVM] Output Python invalid atau kosong. RAW: " . substr($pythonOut, 0, 400));
+                $reason = "AI tidak tersedia, fallback ke Mahalanobis";
+            } elseif ($mlResult['status'] === 'success') {
                 $svmUsed = true;
                 $isMatch = $mlResult['is_match'];
                 $score   = $mlResult['decision_score'] ?? ($isMatch ? 1 : -1);
                 $thresh  = 0; // Boundary One-Class SVM adalah 0
                 $reason  = "Metode AI OneClassSVM (Python)";
-            } elseif ($mlResult !== null && isset($mlResult['status']) && $mlResult['status'] === 'fallback') {
+            } elseif ($mlResult['status'] === 'fallback') {
                 $reason = "AI Meminta Fallback ke Mahalanobis";
                 // Auto-Retrain: Jika model hilang tapi data cukup, picu training ulang secara otomatis
                 triggerBackgroundTraining($user['id']);

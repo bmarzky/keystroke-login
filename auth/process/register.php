@@ -15,14 +15,23 @@ $keystroke = trim($_POST['keystroke']);
 // Decode untuk validasi konten
 $decodedKeystroke = json_decode($keystroke, true);
 
-if (empty($username) || empty($password) || empty($keystroke) || $decodedKeystroke === null) {
-    header("Location: ../register.php?error=" . urlencode("Data registrasi tidak valid"));
+if (empty($username) || empty($password) || empty($keystroke) || $decodedKeystroke === null || json_last_error() !== JSON_ERROR_NONE) {
+    header("Location: ../register.php?error=" . urlencode("Data registrasi tidak valid atau format biometrik rusak."));
     exit();
 }
 
-// Validasi tambahan: Pastikan semua fitur biometrik ada
-if (!isset($decodedKeystroke['dwell'], $decodedKeystroke['speed'])) {
-    header("Location: ../register.php?error=" . urlencode("Gagal mengambil data biometrik. Pastikan JS aktif."));
+if (strlen($username) < 3 || strlen($username) > 50 || !preg_match('/^[A-Za-z0-9_.-]+$/', $username)) {
+    header("Location: ../register.php?error=" . urlencode("Username harus 3-50 karakter dan hanya boleh berisi huruf, angka, titik, garis bawah, atau strip."));
+    exit();
+}
+
+if (strlen($password) < 8) {
+    header("Location: ../register.php?error=" . urlencode("Password minimal 8 karakter.") );
+    exit();
+}
+
+if (!isset($decodedKeystroke['dwell'], $decodedKeystroke['speed']) || !is_array($decodedKeystroke['dwell']) || count($decodedKeystroke['dwell']) < 5) {
+    header("Location: ../register.php?error=" . urlencode("Gagal mengambil data biometrik. Pastikan JS aktif dan ketik password minimal 5 karakter.") );
     exit();
 }
 
