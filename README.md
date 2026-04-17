@@ -59,6 +59,10 @@ Sistem autentikasi login berbasis biometrik keystroke menggunakan PHP, MySQL, Ja
    - Isi form username, password, dan ketik ulang password beberapa kali pada field yang disediakan untuk melakukan capture terhadap biometrik (pola kecepatan Anda).
    - Klik "Register".
 
+## Troubleshooting
+
+Jika Anda mengalami masalah koneksi database, pastikan file `.env` sudah dikonfigurasi dengan benar dan XAMPP MySQL sedang berjalan.
+
 2. **Login**:
    - Akses menu `auth/login.php`.
    - Masukkan username dan ketik password dengan ritme natural Anda.
