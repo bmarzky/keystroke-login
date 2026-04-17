@@ -26,3 +26,7 @@ button {
     cursor: pointer;
     transition: background-color 0.2s, opacity 0.2s;
 }
+
+button:hover {
+    background-color: #f0f0f0;
+}
