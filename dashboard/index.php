@@ -108,6 +108,7 @@ if (!empty($currentFeatures['dwell'])) {
 <div class="main-wrapper">
     <header>
         <h2>Analisis Keystroke: <?php echo htmlspecialchars($_SESSION['username']); ?></h2>
+        <p>Last Login: <?php echo date('Y-m-d H:i:s'); ?></p>
         <form id="logoutForm" action="../auth/process/logout.php" method="POST">
             <button type="submit" class="btn-logout">Logout</button>
         </form>
