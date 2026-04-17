@@ -20,6 +20,7 @@ def log_message(msg):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(LOG_FILE, 'a') as f:
         f.write(f"[{timestamp}] {msg}\n")
+    print(f"[{timestamp}] {msg}")  # Also print to console
 
 # Konfigurasi Direktori & Parameter
 MODEL_DIR = os.path.join(os.path.dirname(__file__), '../model')
