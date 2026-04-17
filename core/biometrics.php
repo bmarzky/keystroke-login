@@ -47,6 +47,26 @@ function calculateMean($samples) {
     return $means;
 }
 
+/**
+ * Menghitung median dari array fitur
+ * @param array $samples Array 2D dari sampel
+ * @return array Array berisi nilai median tiap fitur
+ */
+function calculateMedian($samples) {
+    $numFeatures = count($samples[0]);
+    $medians = [];
+
+    for ($i = 0; $i < $numFeatures; $i++) {
+        $values = array_column($samples, $i);
+        sort($values);
+        $count = count($values);
+        $middle = floor($count / 2);
+        $medians[] = ($count % 2) ? $values[$middle] : ($values[$middle - 1] + $values[$middle]) / 2;
+    }
+
+    return $medians;
+}
+
 // variance
 function calculateVariances($samples, $means) {
     $count = count($samples);
