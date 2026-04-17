@@ -40,7 +40,7 @@
 
 <form id="loginForm" action="process/login.php" method="POST" autocomplete="off" novalidate>
     <div class="input-group">
-        <input type="text" id="username" name="username" placeholder="Username" required autofocus autocomplete="off">
+        <input type="text" id="username" name="username" placeholder="Username" required autofocus autocomplete="off" minlength="3" maxlength="50">
     </div>
     <br>
     <div class="input-group">
