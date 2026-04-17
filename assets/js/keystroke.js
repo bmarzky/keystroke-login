@@ -30,6 +30,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const passwordInput = document.getElementById('password');
     const jsErrorDisplay = document.getElementById("js-error-msg");
 
+    // Validasi panjang password minimal
+    passwordInput.addEventListener('input', () => {
+        if (passwordInput.value.length < 6) {
+            showNotice('Password must be at least 6 characters');
+        }
+    });
+
     const resetData = () => {
         dwellTimes = []; flightTimes = []; d2dTimes = []; u2uTimes = [];
         pendingKeyDowns = {}; lastKeyDownTime = null; lastKeyUpTime = null;
