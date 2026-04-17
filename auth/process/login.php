@@ -70,6 +70,11 @@ $username = trim($_POST['username']);
 $password = trim($_POST['password']);
 $inputKeystroke = trim($_POST['keystroke']);
 
+// 1.5. Validasi Panjang Password
+if (strlen($password) < 6) {
+    redirectWithError("Password harus minimal 6 karakter");
+}
+
 // 2. Validasi Format JSON
 $decodedInput = json_decode($inputKeystroke, true);
 if (json_last_error() !== JSON_ERROR_NONE || !isset($decodedInput['speed'])) {
