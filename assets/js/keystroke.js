@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Fungsi untuk menampilkan pesan error di halaman (pengganti alert)
     const showNotice = (msg) => {
         if (jsErrorDisplay) {
-            jsErrorDisplay.innerText = "" + msg;
+            jsErrorDisplay.innerText = msg;
             // Hilangkan pesan otomatis setelah 3 detik
             setTimeout(() => { jsErrorDisplay.innerText = ""; }, 3000);
         }
@@ -95,7 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
         passwordInput.addEventListener("keyup", (e) => {
             if (e.key === "Backspace") return;
             let now = Date.now();
-            if (pendingKeyDowns[e.key]) {
+            if (pendingKeyDowns[e.key] !== undefined) {
                 let dTime = pendingKeyDowns[e.key];
                 dwellTimes.push((now - dTime) / 1000);
                 delete pendingKeyDowns[e.key];

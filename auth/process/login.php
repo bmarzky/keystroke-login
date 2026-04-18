@@ -70,15 +70,18 @@ $username = trim($_POST['username']);
 $password = trim($_POST['password']);
 $inputKeystroke = trim($_POST['keystroke']);
 
-// 1.5. Validasi Panjang Password
+// 1.5. Validasi Panjang Username & Password
+if (strlen($username) < 3) {
+    redirectWithError("Username harus minimal 3 karakter");
+}
 if (strlen($password) < 6) {
     redirectWithError("Password harus minimal 6 karakter");
 }
 
 // 2. Validasi Format JSON
-$decodedInput = json_decode($inputKeystroke, true);
-if (json_last_error() !== JSON_ERROR_NONE || !isset($decodedInput['speed'])) {
-    redirectWithError("Data biometrik rusak");
+$decodedInput = @json_decode($inputKeystroke, true);
+if (json_last_error() !== JSON_ERROR_NONE || !is_array($decodedInput) || !isset($decodedInput['speed'])) {
+    redirectWithError("Data biometrik rusak atau tidak valid");
 }
 
 // 3. Cari User
