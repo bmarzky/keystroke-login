@@ -80,7 +80,7 @@ if (!empty($currentFeatures['dwell'])) {
         }
         h2 { margin: 0; font-size: 1.4rem; text-transform: uppercase; }
         .stats-grid { 
-            display: grid; grid-template-columns: repeat(5, 1fr); 
+            display: grid; grid-template-columns: repeat(6, 1fr); 
             border: 1px solid #000; margin-bottom: 15px;
         }
         .stat-item { padding: 10px; text-align: center; border-right: 1px solid #000; }
@@ -108,7 +108,6 @@ if (!empty($currentFeatures['dwell'])) {
 <div class="main-wrapper">
     <header>
         <h2>Analisis Keystroke: <?php echo htmlspecialchars($_SESSION['username']); ?></h2>
-        <p>Last Login: <?php echo date('Y-m-d H:i:s'); ?></p>
         <form id="logoutForm" action="../auth/process/logout.php" method="POST">
             <button type="submit" class="btn-logout">Logout</button>
         </form>
@@ -120,6 +119,7 @@ if (!empty($currentFeatures['dwell'])) {
         <div class="stat-item"><small>AVG FLIGHT</small><b><?php echo round($avgFlight * 1000, 0); ?> ms</b></div>
         <div class="stat-item"><small>KECEPATAN</small><b><?php echo round($wpm, 1); ?> WPM</b></div>
         <div class="stat-item"><small>STABILITAS</small><b>±<?php echo round($stability * 1000, 1); ?></b></div>
+        <div class="stat-item"><small>LAST LOGIN</small><b><?php echo htmlspecialchars($_SESSION['last_login'] ?? 'N/A'); ?></b></div>
     </div>
 
     <div class="chart-box">

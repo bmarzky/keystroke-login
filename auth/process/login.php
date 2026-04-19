@@ -48,6 +48,7 @@ function processSuccessfulLogin($user, $conn, $rawKeystroke, $status) {
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['username'] = $user['username'];
     $_SESSION['login_status'] = $status;
+    $_SESSION['last_login'] = date('Y-m-d H:i:s');
 
     // Simpan data baru untuk memperkaya dataset (Adaptive Learning)
     $stmt = $conn->prepare("INSERT INTO keystroke_data (user_id, features) VALUES (?, ?)");
