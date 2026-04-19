@@ -1,5 +1,6 @@
 <?php
 session_start();
+date_default_timezone_set('Asia/Jakarta');
 
 // Header untuk mencegah caching agar session lama tidak nyangkut
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
