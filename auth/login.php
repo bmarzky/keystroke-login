@@ -1,139 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Biometric System</title>
     <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/tutorial/guide.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
-    <style>
-        /* Container pesan agar layout tidak melompat */
-        #message-container { min-height: 45px; margin-bottom: 15px; }
-        
-        /* Gaya box pesan PHP */
-        .error-box { color: red; font-weight: bold; border: 1px solid red; padding: 8px; border-radius: 4px; background: #fff5f5; }
-        .success-box { color: green; font-weight: bold; border: 1px solid green; padding: 8px; border-radius: 4px; background: #f5fff5; }
-        
-        /* Efek transisi halus untuk semua pesan */
-        .error-box, .success-box, #js-error-msg {
-            transition: opacity 0.5s ease;
-        }
-    </style>
 </head>
 <body>
+    <div class="auth-wrapper">
+        <h2 class="auth-title">Login</h2>
 
-<h2>Login</h2>
+        <div class="message-container">
+            <?php
+            date_default_timezone_set('Asia/Jakarta');
+            $time = date('H:i:s');
 
-<div id="message-container">
-    <?php
-    date_default_timezone_set('Asia/Jakarta');
-    $time = date('H:i:s');
+            if (isset($_GET['error'])) {
+                echo '<div id="status-msg" class="php-message error-box">[' . $time . '] ' . htmlspecialchars($_GET['error']) . '</div>';
+            }
+            if (isset($_GET['success'])) {
+                echo '<div id="status-msg" class="php-message success-box"> [' . $time . '] ' . htmlspecialchars($_GET['success']) . '</div>';
+            }
+            ?>
+            <div id="js-error-msg"></div>
+        </div>
 
-    if (isset($_GET['error'])) {
-        echo '<div id="status-msg" class="php-msg" style="color: red;">[' . $time . '] ' . htmlspecialchars($_GET['error']) . '</div>';
-    }
-    if (isset($_GET['success'])) {
-        echo '<div id="status-msg" class="php-msg" style="color: green;"> [' . $time . '] ' . htmlspecialchars($_GET['success']) . '</div>';
-    }
-    ?>
-    <div id="js-error-msg" style="color: red;"></div>
-</div>
+        <form id="loginForm" class="auth-form" action="process/login.php" method="POST" autocomplete="off" novalidate>
+            <input type="text" id="username" name="username" placeholder="Username" required autofocus autocomplete="off" minlength="3" maxlength="50">
+            <input type="password" id="password" name="password" placeholder="Password" required autocomplete="current-password">
+            <input type="hidden" name="keystroke" id="keystrokeData">
 
-<form id="loginForm" action="process/login.php" method="POST" autocomplete="off" novalidate>
-    <div class="input-group">
-        <input type="text" id="username" name="username" placeholder="Username" required autofocus autocomplete="off" minlength="3" maxlength="50">
+            <button type="submit">Login</button>
+        </form>
+
+        <p class="page-note">Belum punya akun? <a href="register.php">Daftar di sini</a></p>
     </div>
-    <br>
-    <div class="input-group">
-        <input type="password" id="password" name="password" placeholder="Password" required autocomplete="current-password" onpaste="return false;" ondrop="return false;">
-    </div>
-    <br>
-
-    <input type="hidden" name="keystroke" id="keystrokeData">
-
-    <button type="submit">Login</button>
-</form>
-
-<p style="margin-top: 20px; font-size: 14px;">Belum punya akun? <a href="register.php">Daftar di sini</a></p>
 
 <script src="../assets/js/keystroke.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
-<script src="../assets/tutorial/guide.js"></script>
-<script>
-// Fungsi auto hide pesan
-function initAutoHide() {
-    // 1. Ambil semua elemen yang mungkin berisi pesan
-    const msgIds = ['status-msg', 'js-error-msg'];
-
-    msgIds.forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-
-        // Jika ID adalah js-error-msg, pakai Observer (karena teks muncul tanpa reload)
-        if (id === 'js-error-msg') {
-            const observer = new MutationObserver(() => {
-                if (el.innerText !== "") startTimer(el);
-            });
-            observer.observe(el, { childList: true });
-        } 
-        // Jika status-msg dari PHP sudah ada isinya saat page load
-        else if (el.innerText.trim() !== "") {
-            startTimer(el);
-        }
-    });
-
-    function startTimer(el) {
-        // Reset opacity dulu agar terlihat
-        el.style.opacity = "1";
-        
-        setTimeout(() => {
-            el.style.opacity = "0"; // Mulai memudar
-            setTimeout(() => {
-                el.innerText = ""; // Hapus teks
-                el.style.opacity = "1"; // Reset untuk pesan berikutnya
-            }, 500);
-        }, 3000); // Tampil selama 3 detik
-    }
-}
-
-document.addEventListener("DOMContentLoaded", initAutoHide);
-
-// Logika data keystroke
-
-function prepareKeystroke() {
-    if (typeof window.getKeystrokeData === "function") {
-        const data = window.getKeystrokeData();
-        document.getElementById("keystrokeData").value = data;
-        return JSON.parse(data);
-    }
-    return null;
-}
-
-document.getElementById("loginForm").addEventListener("submit", function(e) {
-    const parsed = prepareKeystroke();
-    const jsErrorDisplay = document.getElementById("js-error-msg");
-    
-    if (!parsed || !parsed.dwell || parsed.dwell.length === 0) {
-        e.preventDefault();
-        jsErrorDisplay.innerText = "Pola ketikan tidak terdeteksi. Silakan ketik ulang password.";
-    }
-});
-
-// Navigasi Shortcut Enter
-document.getElementById("username").addEventListener("keydown", function(e) {
-    if (e.key === "Enter") {
-        e.preventDefault();
-        document.getElementById("password").focus();
-    }
-});
-
-document.getElementById("password").addEventListener("keydown", function(e) {
-    if (e.key === "Enter") {
-        e.preventDefault();
-        setTimeout(() => {
-            document.getElementById("loginForm").requestSubmit();
-        }, 100);
-    }
-});
-</script>
+<script src="../assets/js/auth-forms.js"></script>
 </body>
 </html> 
