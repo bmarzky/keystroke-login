@@ -10,15 +10,15 @@ header("Pragma: no-cache");
 // Lapisan keamanan tambahan
 header("X-XSS-Protection: 1; mode=block");
 
-include "../../config/database.php";
-include "../../core/biometrics.php";
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../core/biometrics.php';
 
 $conn = getConnection();
 
 // Helper: Redirect dengan pesan error dan berhenti seketika
 function redirectWithError($msg) {
-    header("Location: ../login.php?error=" . urlencode($msg));
-    exit(); 
+    header('Location: ../login.php?error=' . urlencode($msg));
+    exit();
 }
 
 // Helper: Deteksi Python Executable
@@ -81,9 +81,9 @@ if (strlen($password) < 6) {
 }
 
 // 2. Validasi Format JSON
-$decodedInput = @json_decode($inputKeystroke, true);
-if (json_last_error() !== JSON_ERROR_NONE || !is_array($decodedInput) || !isset($decodedInput['speed'])) {
-    redirectWithError("Data biometrik rusak atau tidak valid");
+$decodedInput = json_decode($inputKeystroke, true);
+if (!is_array($decodedInput) || json_last_error() !== JSON_ERROR_NONE || !isset($decodedInput['speed'])) {
+    redirectWithError('Data biometrik rusak atau tidak valid');
 }
 
 // 3. Cari User
@@ -129,23 +129,25 @@ if ($user && password_verify($password, $user['password'])) {
             $pythonOut = trim(shell_exec($cmd));
             $mlResult  = null;
 
+            $jsonError = JSON_ERROR_NONE;
             if (!empty($pythonOut)) {
                 $mlResult = json_decode($pythonOut, true);
+                $jsonError = json_last_error();
             }
 
             // Bersihkan file sementara
             @unlink($tmpFile);
 
-            if ($mlResult === null || json_last_error() !== JSON_ERROR_NONE) {
-                error_log("[SVM] Output Python invalid atau kosong. RAW: " . substr($pythonOut, 0, 400));
-                $reason = "AI tidak tersedia, fallback ke Mahalanobis";
-            } elseif ($mlResult['status'] === 'success') {
+            if ($mlResult === null || $jsonError !== JSON_ERROR_NONE) {
+                error_log('[SVM] Output Python invalid atau kosong. RAW: ' . substr($pythonOut, 0, 400));
+                $reason = 'AI tidak tersedia, fallback ke Mahalanobis';
+            } elseif (isset($mlResult['status']) && $mlResult['status'] === 'success') {
                 $svmUsed = true;
                 $isMatch = $mlResult['is_match'];
                 $score   = $mlResult['decision_score'] ?? ($isMatch ? 1 : -1);
                 $thresh  = 0; // Boundary One-Class SVM adalah 0
-                $reason  = "Metode AI OneClassSVM (Python)";
-            } elseif ($mlResult['status'] === 'fallback') {
+                $reason  = 'Metode AI OneClassSVM (Python)';
+            } elseif (isset($mlResult['status']) && $mlResult['status'] === 'fallback') {
                 $reason = "AI Meminta Fallback ke Mahalanobis";
                 // Auto-Retrain: Jika model hilang tapi data cukup, picu training ulang secara otomatis
                 triggerBackgroundTraining($user['id']);
