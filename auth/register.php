@@ -6,6 +6,8 @@
     <meta name="description" content="Halaman pendaftaran akun dengan Keystroke Dynamics">
     <title>Register</title>
     <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
+    <link rel="stylesheet" href="../assets/tutorial/guide.css">
 </head>
 <body>
     <div class="auth-wrapper">
@@ -39,5 +41,7 @@
 
 <script src="../assets/js/keystroke.js"></script>
 <script src="../assets/js/auth-forms.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
+<script src="../assets/tutorial/guide.js"></script>
 </body>
 </html>
