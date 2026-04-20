@@ -3,9 +3,6 @@ const runTutorial = () => {
     // Check if user has already seen the tutorial
     const hasSeenTutorial = localStorage.getItem('keystroke_tutorial_done');
 
-    // Log untuk memastikan fungsi terpanggil
-    console.log("Memeriksa tutorial... Status di storage:", hasSeenTutorial);
-
     if (hasSeenTutorial === 'true') {
         return;
     }
@@ -30,7 +27,6 @@ const runTutorial = () => {
 
         onDestroyed: () => {
             localStorage.setItem('keystroke_tutorial_done', 'true');
-            console.log("Tutorial selesai, storage diupdate.");
         },
         steps: [
             {
