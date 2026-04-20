@@ -62,52 +62,16 @@ if (!empty($currentFeatures['dwell'])) {
 <html lang="id">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Keystroke Dynamics</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        html, body { 
-            height: 100vh; margin: 0; overflow: hidden; 
-            font-family: 'Segoe UI', Arial, sans-serif; 
-            background: #fff; color: #000;
-        }
-        .main-wrapper {
-            display: flex; flex-direction: column;
-            height: 100%; padding: 20px 40px; box-sizing: border-box;
-        }
-        header { 
-            display: flex; justify-content: space-between; align-items: center; 
-            border-bottom: 2px solid #000; margin-bottom: 15px; padding-bottom: 5px;
-        }
-        h2 { margin: 0; font-size: 1.4rem; text-transform: uppercase; }
-        .stats-grid { 
-            display: grid; grid-template-columns: repeat(6, 1fr); 
-            border: 1px solid #000; margin-bottom: 15px;
-        }
-        .stat-item { padding: 10px; text-align: center; border-right: 1px solid #000; }
-        .stat-item:last-child { border-right: none; }
-        .stat-item small { display: block; font-size: 0.65rem; font-weight: bold; color: #666; }
-        .stat-item b { font-size: 1.2rem; }
-        .chart-box { 
-            flex: 1; min-height: 0; border: 1px solid #000; 
-            padding: 10px; margin-bottom: 15px; display: flex; align-items: center;
-        }
-        .table-container { max-height: 25%; overflow-y: auto; border: 1px solid #000; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        table th, table td { border: 1px solid #000; padding: 6px; text-align: center; }
-        table th { background-color: #f2f2f2; position: sticky; top: 0; }
-        .label-cell { text-align: left; font-weight: bold; background: #fafafa; position: sticky; left: 0; }
-        .btn-logout { 
-            background: #fff; border: 1px solid #000; padding: 8px 20px; 
-            cursor: pointer; font-weight: bold; text-transform: uppercase;
-        }
-        .btn-logout:hover { background: #000; color: #fff; }
-    </style>
 </head>
-<body>
+<body class="dashboard-page">
 
-<div class="main-wrapper">
-    <header>
-        <h2>Analisis Keystroke: <?php echo htmlspecialchars($_SESSION['username']); ?></h2>
+<div class="dashboard-wrapper">
+    <header class="dashboard-header">
+        <h2 class="dashboard-title">Analisis Keystroke: <?php echo htmlspecialchars($_SESSION['username']); ?></h2>
         <form id="logoutForm" action="../auth/process/logout.php" method="POST">
             <button type="submit" class="btn-logout">Logout</button>
         </form>
@@ -126,8 +90,10 @@ if (!empty($currentFeatures['dwell'])) {
         <canvas id="keystrokeChart"></canvas>
     </div>
 
+    <div id="dashboard-data" class="hidden-dashboard-data" data-current='<?php echo htmlspecialchars(json_encode($currentFeatures), ENT_QUOTES); ?>' data-prev='<?php echo htmlspecialchars(json_encode($prevFeatures), ENT_QUOTES); ?>'></div>
+
     <div class="table-container">
-        <table>
+        <table class="dashboard-table">
             <thead>
                 <tr>
                     <th>Fitur (ms)</th>
@@ -140,21 +106,29 @@ if (!empty($currentFeatures['dwell'])) {
             <tbody>
                 <tr>
                     <td class="label-cell">Dwell (Current)</td>
-                    <?php foreach($currentFeatures['dwell'] as $val) echo "<td>" . round($val * 1000, 0) . "</td>"; ?>
-                </tr>
-                <tr style="color: #888;">
-                    <td class="label-cell">Dwell (Prev)</td>
-                    <?php 
-                    if(!empty($prevFeatures['dwell'])) {
-                        foreach($prevFeatures['dwell'] as $val) echo "<td>" . round($val * 1000, 0) . "</td>";
-                    } else { echo "<td colspan='$maxKeys'>N/A</td>"; }
+                    <?php
+                    for ($i = 0; $i < $maxKeys; $i++) {
+                        $value = $currentFeatures['dwell'][$i] ?? null;
+                        echo '<td>' . ($value !== null ? round($value * 1000, 0) : '-') . '</td>';
+                    }
                     ?>
                 </tr>
-                <tr style="border-top: 2px solid #000;">
+                <tr class="row-muted">
+                    <td class="label-cell">Dwell (Prev)</td>
+                    <?php
+                    for ($i = 0; $i < $maxKeys; $i++) {
+                        $value = $prevFeatures['dwell'][$i] ?? null;
+                        echo '<td>' . ($value !== null ? round($value * 1000, 0) : '-') . '</td>';
+                    }
+                    ?>
+                </tr>
+                <tr class="row-divider">
                     <td class="label-cell">Flight (Current)</td>
-                    <?php 
-                    foreach($currentFeatures['flight'] as $val) echo "<td>" . round($val * 1000, 0) . "</td>"; 
-                    echo "<td>-</td>"; 
+                    <?php
+                    for ($i = 0; $i < $maxKeys; $i++) {
+                        $value = $currentFeatures['flight'][$i] ?? null;
+                        echo '<td>' . ($value !== null ? round($value * 1000, 0) : '-') . '</td>';
+                    }
                     ?>
                 </tr>
             </tbody>
@@ -162,62 +136,16 @@ if (!empty($currentFeatures['dwell'])) {
     </div>
 </div>
 
+<script src="../assets/js/dashboard.js"></script>
 <script>
-    // Ambil data asli (detik)
-    const rawCurrent = <?php echo json_encode($currentFeatures); ?>;
-    const rawPrev = <?php echo json_encode($prevFeatures); ?>;
-
-    // Konversi ke Milidetik (ms) untuk tampilan grafik agar lebih enak dibaca
-    const currentDwellMs = rawCurrent.dwell.map(v => Math.round(v * 1000));
-    const prevDwellMs = rawPrev.dwell ? rawPrev.dwell.map(v => Math.round(v * 1000)) : [];
-    
-    const ctx = document.getElementById('keystrokeChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: currentDwellMs.map((_, i) => "K"+(i+1)),
-            datasets: [
-                {
-                    label: 'Dwell Terbaru (ms)',
-                    data: currentDwellMs,
-                    borderColor: '#000',
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0.2
-                },
-                {
-                    label: 'Dwell Sebelumnya (ms)',
-                    data: prevDwellMs,
-                    borderColor: '#ccc',
-                    borderWidth: 2,
-                    borderDash: [5, 5],
-                    fill: false,
-                    tension: 0.2
-                }
-            ]
-        },
-        options: {
-            maintainAspectRatio: false,
-            responsive: true,
-            plugins: { 
-                legend: { position: 'top', labels: { boxWidth: 12, font: { weight: 'bold' } } },
-                tooltip: { callbacks: { label: (ctx) => ctx.raw + " ms" } }
-            },
-            scales: { 
-                y: { 
-                    beginAtZero: true,
-                    title: { display: true, text: 'Durasi (Milidetik)' }
-                } 
-            }
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+        const logoutForm = document.getElementById('logoutForm');
+        if (logoutForm) {
+            logoutForm.submit();
         }
-    });
-
-    // Shortcut Enter untuk Logout
-    document.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && e.target.tagName !== 'INPUT') {
-            document.getElementById("logoutForm").submit();
-        }
-    });
+    }
+});
 </script>
 </body>
 </html>
