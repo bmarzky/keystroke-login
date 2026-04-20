@@ -40,8 +40,7 @@ body {
     width: 100% !important;
 }
 
-.auth-form input,
-.auth-form button {
+.auth-form input {
     width: 100% !important;
 }
 
@@ -68,7 +67,8 @@ body {
 }
 
 .auth-form button {
-    width: 76px;
+    width: auto;
+    min-width: 64px;
     margin: 0 auto;
     padding: 8px 10px;
     border: 1px solid #999999;
