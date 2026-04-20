@@ -31,10 +31,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const jsErrorDisplay = document.getElementById("js-error-msg");
 
     const resetData = () => {
-        dwellTimes = []; flightTimes = []; d2dTimes = []; u2uTimes = [];
-        pendingKeyDowns = {}; lastKeyDownTime = null; lastKeyUpTime = null;
+        dwellTimes = [];
+        flightTimes = [];
+        d2dTimes = [];
+        u2uTimes = [];
+        pendingKeyDowns = {};
+        lastKeyDownTime = null;
+        lastKeyUpTime = null;
         startTime = null;
-        console.log("Data Keystroke Reset.");
     };
 
     // Fungsi untuk menampilkan pesan error di halaman (pengganti alert)
