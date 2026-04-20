@@ -186,7 +186,6 @@ function verifyKeystroke($allStoredJson, $inputJson) {
         if ($currentLength === $expectedLength && isValidVector($vector)) {
             $samples[] = $vector;
         } else {
-            // Tambahkan log ini untuk debug di PHP
             error_log("Sample diabaikan: Ukuran $currentLength, Harusnya $expectedLength");
         }
     }
@@ -235,8 +234,3 @@ function verifyKeystroke($allStoredJson, $inputJson) {
     ];
 }
 
-// compare multiple keystroke
-function compareMultipleKeystroke($allData, $inputKeystroke) {
-    $result = verifyKeystroke($allData, $inputKeystroke);
-    return $result['distance'];
-}
