@@ -20,15 +20,15 @@ def load_model(user_id):
         sys.exit(0)
     return joblib.load(model_path)
 
+from mahalanobis import extract_features as mh_extract
+
 def extract_features(data):
     """
-    Parsing dict keystroke {dwell, flight, d2d, u2u, speed}
-    menjadi vektor flat numerik yang sama persis dengan format training.
+    Menggunakan ekstraksi 8-dim fitur yang sama dengan data training
+    dan Mahalanobis.
     """
-    if not all(k in data for k in ['dwell', 'flight', 'd2d', 'u2u', 'speed']):
-        raise ValueError("Fitur keystroke tidak lengkap. Harus ada: dwell, flight, d2d, u2u, speed.")
-    vector = data['dwell'] + data['flight'] + data['d2d'] + data['u2u'] + [float(data['speed'])]
-    return np.array(vector).reshape(1, -1)
+    vec_8dim = mh_extract(data)
+    return np.array(vec_8dim).reshape(1, -1)
 
 def predict(features, model):
     """

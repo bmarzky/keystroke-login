@@ -13,6 +13,9 @@ from sklearn.svm import OneClassSVM
 import joblib
 from datetime import datetime
 
+# Import fitur 8-dimensi dari mahalanobis
+from mahalanobis import extract_features
+
 # Logging Setup
 LOG_FILE = os.path.join(os.path.dirname(__file__), 'train.log')
 
@@ -74,13 +77,9 @@ def load_data(user_id):
     for row in rows:
         try:
             data = json.loads(row['features'])
-            # Format DB adalah JSON object: {dwell, flight, d2d, u2u, speed}
-            # Gabungkan jadi satu vektor flat (sama seperti PHP biometrics.php)
-            if not all(k in data for k in ['dwell', 'flight', 'd2d', 'u2u', 'speed']):
-                continue
-            vector = data['dwell'] + data['flight'] + data['d2d'] + data['u2u'] + [float(data['speed'])]
-            if all(isinstance(v, (int, float)) and v >= 0 for v in vector):
-                vectors.append(vector)
+            # Gunakan ekstraksi 8-dim stat fitur (sama persis dengan mahalanobis)
+            vec_8dim = extract_features(data)
+            vectors.append(vec_8dim)
         except Exception:
             continue
 
@@ -88,17 +87,15 @@ def load_data(user_id):
         print(json.dumps({"status": "error", "message": "Tidak ada fitur valid yang berhasil diparsing."}))
         sys.exit(1)
 
-    # Filter hanya panjang vektor yang paling umum (konsisten)
-    lengths = [len(v) for v in vectors]
-    dominant_length = Counter(lengths).most_common(1)[0][0]
-    clean_vectors = [v for v in vectors if len(v) == dominant_length]
-
-    if len(clean_vectors) < MIN_DATA_THRESHOLD:
-        print(json.dumps({"status": "insufficient_data", "count": len(clean_vectors), "message": f"Hanya {len(clean_vectors)} sampel valid, butuh minimal {MIN_DATA_THRESHOLD}. Gunakan Mahalanobis."}))
+    # Karena selalu 8 dimensi, kita tidak butuh lagi hard-filter 'dominant_length'
+    # SVM akan bisa mentraining walau ada data yang aslinya beda panjang saat diketik
+    
+    if len(vectors) < MIN_DATA_THRESHOLD:
+        print(json.dumps({"status": "insufficient_data", "count": len(vectors), "message": f"Hanya {len(vectors)} sampel valid, butuh minimal {MIN_DATA_THRESHOLD}. Gunakan Mahalanobis."}))
         sys.exit(0)
 
-    print(f"Data siap: {len(clean_vectors)} sampel valid dengan {dominant_length} fitur.", file=sys.stderr)
-    return pd.DataFrame(clean_vectors)
+    print(f"Data siap: {len(vectors)} sampel valid dengan 8 fitur statistik.", file=sys.stderr)
+    return pd.DataFrame(vectors)
 
 def train_model(X):
     """
