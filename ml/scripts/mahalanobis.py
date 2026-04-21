@@ -40,6 +40,23 @@ def extract_features(data: dict) -> list:
             features.append(0.0)
     return features  # Panjang selalu N_FEATURES = 8
 
+def extract_relative_rhythm(data: dict) -> tuple:
+    """
+    Mengekstrak raw array untuk dwell dan flight, 
+    lalu menormalisasinya (membaginya dengan total waktu)
+    sehingga membentuk 'Relative Rhythm' persentase.
+    Absolut speed diabaikan.
+    """
+    dwell = np.array(data.get('dwell', []), dtype=float)
+    flight = np.array(data.get('flight', []), dtype=float)
+    
+    if len(dwell) == 0 or len(flight) == 0:
+        return None, None
+        
+    s_dwell = np.sum(dwell) if np.sum(dwell) > 0 else 1.0
+    s_flight = np.sum(flight) if np.sum(flight) > 0 else 1.0
+    
+    return dwell / s_dwell, flight / s_flight
 
 def calculate_mahalanobis(json_path: str) -> dict:
     try:
@@ -59,7 +76,54 @@ def calculate_mahalanobis(json_path: str) -> dict:
             }
 
         # ----------------------------------------------------------
-        # 2. Ekstrak fitur input → 8-dim vector
+        # 2. EARLY STAGE FINGERPRINT (Relative Rhythm)
+        # Jika data masih sedikit (misal < 5), fitur 8-dim mudah ditipu.
+        # Kita pakai raw fingerprint untuk melihat bentuk iramanya ("shape").
+        # Bobot Dwell 75% vs Flight 25%.
+        # ----------------------------------------------------------
+        if 1 <= len(history) < 5:
+            in_dwell, in_flight = extract_relative_rhythm(input_data)
+            if in_dwell is not None:
+                best_distance = 9999.0
+                
+                for hist in history:
+                    h_dwell, h_flight = extract_relative_rhythm(hist)
+                    # Syarat telak: jumlah ketukan (panjang array) harus sama persis
+                    if h_dwell is None or len(in_dwell) != len(h_dwell) or len(in_flight) != len(h_flight):
+                        continue
+                        
+                    dist_dwell = np.sqrt(np.sum((in_dwell - h_dwell) ** 2))
+                    dist_flight = np.sqrt(np.sum((in_flight - h_flight) ** 2))
+                    
+                    total_dist = (dist_dwell * 0.75) + (dist_flight * 0.25)
+                    if total_dist < best_distance:
+                        best_distance = total_dist
+                
+                # Threshold 0.15 - 0.20 wajar untuk Euclidean pada array persentase.
+                # Karena kalau selisih 10% per tombol = sqrt(0.01 + 0.01) = ~0.14
+                rhythm_threshold = 0.15
+                
+                if best_distance <= rhythm_threshold:
+                    return {
+                        "status": True,
+                        "distance": float(best_distance),
+                        "threshold": float(rhythm_threshold),
+                        "reason": "Pola Ritme Cocok (Early-Stage Fingerprint)",
+                        "n_samples": len(history),
+                        "n_features": len(in_dwell) + len(in_flight)
+                    }
+                else:
+                    return {
+                        "status": False,
+                        "distance": float(best_distance) if best_distance != 9999.0 else 0.0,
+                        "threshold": float(rhythm_threshold),
+                        "reason": "Pola Ritme Tidak Cocok (Early-Stage Fingerprint)",
+                        "n_samples": len(history),
+                        "n_features": len(in_dwell) + len(in_flight) if in_dwell is not None else 0
+                    }
+
+        # ----------------------------------------------------------
+        # 3. Ekstrak fitur input → 8-dim vector (Gunakan untuk > 4 data)
         # ----------------------------------------------------------
         input_vector = np.array(extract_features(input_data), dtype=float)
 
