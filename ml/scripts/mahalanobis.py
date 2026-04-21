@@ -81,12 +81,13 @@ def calculate_mahalanobis(json_path: str) -> dict:
         if 1 <= len(history) < 5:
             in_dwell, in_flight, in_time = extract_relative_rhythm(input_data)
             if in_dwell is not None:
-                best_distance = 9999.0
+                distances = []
                 
                 for hist in history:
                     h_dwell, h_flight, h_time = extract_relative_rhythm(hist)
                     # Syarat telak: jumlah ketukan (panjang array) harus sama persis
                     if h_dwell is None or len(in_dwell) != len(h_dwell) or len(in_flight) != len(h_flight):
+                        distances.append(999.0)
                         continue
                         
                     # Euclidean Jarak Ritme (Persentase)
@@ -94,16 +95,24 @@ def calculate_mahalanobis(json_path: str) -> dict:
                     dist_flight = np.sqrt(np.sum((in_flight - h_flight) ** 2))
                     
                     # Absolute Speed Anchor: Penalti jika kecepatan mutlak (detik) beda
-                    # Semakin beda kecepatan, time_penalty mendekati 1.0
                     time_ratio = min(in_time, h_time) / max(in_time, h_time)
                     time_penalty = 1.0 - time_ratio 
                     
-                    # Gabungkan: Dwell (70%), Flight (15%), Speed (15% - penalti maksimal cukup besar)
+                    # PERBAIKAN STRIKE: 
+                    # Penalti jauh lebih agresif (1.5x) untuk Absolute Speed.
+                    # Jika speed beda 15%, skor eror langsung +0.22, pasti terhempas.
                     rhythm_dist = (dist_dwell * 0.75) + (dist_flight * 0.25)
-                    total_dist = rhythm_dist + (time_penalty * 0.40)
-                    
-                    if total_dist < best_distance:
-                        best_distance = total_dist
+                    total_dist = rhythm_dist + (time_penalty * 1.5)
+                    distances.append(total_dist)
+                
+                if not distances:
+                    best_distance = 9999.0
+                else:
+                    # PERBAIKAN POISONING: 
+                    # Jangan gunakan nilai MIN(), karena jika penyusup lolos 1x saja,
+                    # dia akan cocok dengan sidik jarinya sendiri (0.00).
+                    # Gunakan MEAN() sehingga input selalu diadu juga terhadap anchor asli
+                    best_distance = float(np.mean(distances))
                 
                 # Threshold dinaikkan ke 0.18 karena ada tambahan Absolute Speed Penalty
                 rhythm_threshold = 0.18
