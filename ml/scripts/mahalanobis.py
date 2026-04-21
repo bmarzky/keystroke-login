@@ -76,65 +76,61 @@ def calculate_mahalanobis(json_path: str) -> dict:
             }
 
         # ----------------------------------------------------------
-        # 2. EARLY STAGE FINGERPRINT (Relative Rhythm + Speed Anchor)
+        # 2. EARLY STAGE FINGERPRINT (Hard Speed Gate + Absolute Anchor)
         # ----------------------------------------------------------
         if 1 <= len(history) < 5:
             in_dwell, in_flight, in_time = extract_relative_rhythm(input_data)
-            if in_dwell is not None:
-                distances = []
-                
-                for hist in history:
-                    h_dwell, h_flight, h_time = extract_relative_rhythm(hist)
-                    # Syarat telak: jumlah ketukan (panjang array) harus sama persis
-                    if h_dwell is None or len(in_dwell) != len(h_dwell) or len(in_flight) != len(h_flight):
-                        distances.append(999.0)
-                        continue
-                        
-                    # Euclidean Jarak Ritme (Persentase)
-                    dist_dwell = np.sqrt(np.sum((in_dwell - h_dwell) ** 2))
-                    dist_flight = np.sqrt(np.sum((in_flight - h_flight) ** 2))
-                    
-                    # Absolute Speed Anchor: Penalti jika kecepatan mutlak (detik) beda
-                    time_ratio = min(in_time, h_time) / max(in_time, h_time)
-                    time_penalty = 1.0 - time_ratio 
-                    
-                    # PERBAIKAN STRIKE: 
-                    # Penalti jauh lebih agresif (1.5x) untuk Absolute Speed.
-                    # Jika speed beda 15%, skor eror langsung +0.22, pasti terhempas.
-                    rhythm_dist = (dist_dwell * 0.75) + (dist_flight * 0.25)
-                    total_dist = rhythm_dist + (time_penalty * 1.5)
-                    distances.append(total_dist)
-                
-                if not distances:
-                    best_distance = 9999.0
-                else:
-                    # PERBAIKAN POISONING: 
-                    # Jangan gunakan nilai MIN(), karena jika penyusup lolos 1x saja,
-                    # dia akan cocok dengan sidik jarinya sendiri (0.00).
-                    # Gunakan MEAN() sehingga input selalu diadu juga terhadap anchor asli
-                    best_distance = float(np.mean(distances))
-                
-                # Threshold dinaikkan ke 0.18 karena ada tambahan Absolute Speed Penalty
-                rhythm_threshold = 0.18
-                
-                if best_distance <= rhythm_threshold:
+            
+            # LANGKAH 1: Kunci Baseline Hanya pada Data Registrasi Murni (history[0])
+            base_dwell, base_flight, base_time = extract_relative_rhythm(history[0])
+            
+            if in_dwell is not None and base_dwell is not None:
+                # Syarat telak: jumlah ketukan harus konsisten
+                if len(in_dwell) != len(base_dwell) or len(in_flight) != len(base_flight):
                     return {
-                        "status": True,
-                        "distance": float(best_distance),
-                        "threshold": float(rhythm_threshold),
+                        "status": False, "distance": 999.0, "threshold": 0.15,
+                        "reason": "Pola Ritme Tidak Cocok (Panjang Ketikan Berubah)",
+                        "n_samples": len(history), "n_features": 0
+                    }
+                
+                # LANGKAH 2: Terapkan "Hard Speed Gate" (Blokir Otomatis)
+                # Hitung persentase deviasi kecepatan terhadap ketikan asli pertama
+                speed_deviation = abs(in_time - base_time) / max(base_time, 0.001)
+                
+                # Jika bedanya lebih dari 15%, langsung REJECT seketika!
+                if speed_deviation > 0.15:
+                    return {
+                        "status": False, "distance": 999.0, "threshold": 0.15,
+                        "reason": f"Kecepatan Abnormal (Deviasi {int(speed_deviation*100)}% dari Baseline Asli)",
+                        "n_samples": len(history), "n_features": len(in_dwell) + len(in_flight)
+                    }
+                
+                # LANGKAH 3: Hitung Jarak Ritme Relatif Ekstrem Ketat
+                dist_dwell = np.sqrt(np.sum((in_dwell - base_dwell) ** 2))
+                dist_flight = np.sqrt(np.sum((in_flight - base_flight) ** 2))
+                
+                total_dist = (dist_dwell * 0.75) + (dist_flight * 0.25)
+                
+                # Kembalikan Threshold ke angka ketat (0.15)
+                rhythm_threshold = 0.15
+                
+                if total_dist <= rhythm_threshold:
+                    return {
+                        "status": True, "distance": float(total_dist), "threshold": float(rhythm_threshold),
                         "reason": "Pola Ritme Cocok (Early-Stage Fingerprint)",
-                        "n_samples": len(history),
-                        "n_features": len(in_dwell) + len(in_flight)
+                        "n_samples": len(history), "n_features": len(in_dwell) + len(in_flight)
                     }
                 else:
                     return {
-                        "status": False,
-                        "distance": float(best_distance) if best_distance != 9999.0 else 0.0,
-                        "threshold": float(rhythm_threshold),
+                        "status": False, "distance": float(total_dist), "threshold": float(rhythm_threshold),
                         "reason": "Pola Ritme Tidak Cocok (Early-Stage Fingerprint)",
-                        "n_samples": len(history),
-                        "n_features": len(in_dwell) + len(in_flight) if in_dwell is not None else 0
+                        "n_samples": len(history), "n_features": len(in_dwell) + len(in_flight)
                     }
+            else:
+                return {
+                    "status": False, "distance": 999.0, "threshold": 0.15,
+                    "reason": "Data Input Tidak Valid", "n_samples": len(history), "n_features": 0
+                }
 
         # ----------------------------------------------------------
         # 3. Ekstrak fitur input → 8-dim vector (Gunakan untuk > 4 data)
