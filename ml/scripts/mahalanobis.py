@@ -45,18 +45,17 @@ def extract_relative_rhythm(data: dict) -> tuple:
     Mengekstrak raw array untuk dwell dan flight, 
     lalu menormalisasinya (membaginya dengan total waktu)
     sehingga membentuk 'Relative Rhythm' persentase.
-    Juga mengembalikan total waktu absolut sebagai Speed Anchor.
     """
     dwell = np.array(data.get('dwell', []), dtype=float)
     flight = np.array(data.get('flight', []), dtype=float)
     
     if len(dwell) == 0 or len(flight) == 0:
-        return None, None, None
+        return None, None
         
     s_dwell = np.sum(dwell) if np.sum(dwell) > 0 else 1.0
     s_flight = np.sum(flight) if np.sum(flight) > 0 else 1.0
     
-    return dwell / s_dwell, flight / s_flight, (s_dwell + s_flight)
+    return dwell / s_dwell, flight / s_flight
 
 def calculate_mahalanobis(json_path: str) -> dict:
     try:
@@ -79,10 +78,12 @@ def calculate_mahalanobis(json_path: str) -> dict:
         # 2. EARLY STAGE FINGERPRINT (Hard Speed Gate + Absolute Anchor)
         # ----------------------------------------------------------
         if 1 <= len(history) < 5:
-            in_dwell, in_flight, in_time = extract_relative_rhythm(input_data)
+            in_dwell, in_flight = extract_relative_rhythm(input_data)
             
-            # LANGKAH 1: Kunci Baseline Hanya pada Data Registrasi Murni (history[0])
-            base_dwell, base_flight, base_time = extract_relative_rhythm(history[0])
+            # LANGKAH 1: Kunci Baseline Hanya pada Data Registrasi Murni (history[-1])
+            # Karena array ditarik dengan ORDER BY id DESC, data asli pendaftaran ada di ujung akhir [-1]
+            baseline = history[-1]
+            base_dwell, base_flight = extract_relative_rhythm(baseline)
             
             if in_dwell is not None and base_dwell is not None:
                 # Syarat telak: jumlah ketukan harus konsisten
@@ -94,8 +95,11 @@ def calculate_mahalanobis(json_path: str) -> dict:
                     }
                 
                 # LANGKAH 2: Terapkan "Hard Speed Gate" (Blokir Otomatis)
+                input_speed = float(input_data.get('speed', 0))
+                baseline_speed = float(baseline.get('speed', 0))
+                
                 # Hitung persentase deviasi kecepatan terhadap ketikan asli pertama
-                speed_deviation = abs(in_time - base_time) / max(base_time, 0.001)
+                speed_deviation = abs(input_speed - baseline_speed) / max(baseline_speed, 1.0)
                 
                 # Jika bedanya lebih dari 15%, langsung REJECT seketika!
                 if speed_deviation > 0.15:
