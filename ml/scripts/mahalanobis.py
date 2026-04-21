@@ -45,18 +45,18 @@ def extract_relative_rhythm(data: dict) -> tuple:
     Mengekstrak raw array untuk dwell dan flight, 
     lalu menormalisasinya (membaginya dengan total waktu)
     sehingga membentuk 'Relative Rhythm' persentase.
-    Absolut speed diabaikan.
+    Juga mengembalikan total waktu absolut sebagai Speed Anchor.
     """
     dwell = np.array(data.get('dwell', []), dtype=float)
     flight = np.array(data.get('flight', []), dtype=float)
     
     if len(dwell) == 0 or len(flight) == 0:
-        return None, None
+        return None, None, None
         
     s_dwell = np.sum(dwell) if np.sum(dwell) > 0 else 1.0
     s_flight = np.sum(flight) if np.sum(flight) > 0 else 1.0
     
-    return dwell / s_dwell, flight / s_flight
+    return dwell / s_dwell, flight / s_flight, (s_dwell + s_flight)
 
 def calculate_mahalanobis(json_path: str) -> dict:
     try:
@@ -76,32 +76,37 @@ def calculate_mahalanobis(json_path: str) -> dict:
             }
 
         # ----------------------------------------------------------
-        # 2. EARLY STAGE FINGERPRINT (Relative Rhythm)
-        # Jika data masih sedikit (misal < 5), fitur 8-dim mudah ditipu.
-        # Kita pakai raw fingerprint untuk melihat bentuk iramanya ("shape").
-        # Bobot Dwell 75% vs Flight 25%.
+        # 2. EARLY STAGE FINGERPRINT (Relative Rhythm + Speed Anchor)
         # ----------------------------------------------------------
         if 1 <= len(history) < 5:
-            in_dwell, in_flight = extract_relative_rhythm(input_data)
+            in_dwell, in_flight, in_time = extract_relative_rhythm(input_data)
             if in_dwell is not None:
                 best_distance = 9999.0
                 
                 for hist in history:
-                    h_dwell, h_flight = extract_relative_rhythm(hist)
+                    h_dwell, h_flight, h_time = extract_relative_rhythm(hist)
                     # Syarat telak: jumlah ketukan (panjang array) harus sama persis
                     if h_dwell is None or len(in_dwell) != len(h_dwell) or len(in_flight) != len(h_flight):
                         continue
                         
+                    # Euclidean Jarak Ritme (Persentase)
                     dist_dwell = np.sqrt(np.sum((in_dwell - h_dwell) ** 2))
                     dist_flight = np.sqrt(np.sum((in_flight - h_flight) ** 2))
                     
-                    total_dist = (dist_dwell * 0.75) + (dist_flight * 0.25)
+                    # Absolute Speed Anchor: Penalti jika kecepatan mutlak (detik) beda
+                    # Semakin beda kecepatan, time_penalty mendekati 1.0
+                    time_ratio = min(in_time, h_time) / max(in_time, h_time)
+                    time_penalty = 1.0 - time_ratio 
+                    
+                    # Gabungkan: Dwell (70%), Flight (15%), Speed (15% - penalti maksimal cukup besar)
+                    rhythm_dist = (dist_dwell * 0.75) + (dist_flight * 0.25)
+                    total_dist = rhythm_dist + (time_penalty * 0.40)
+                    
                     if total_dist < best_distance:
                         best_distance = total_dist
                 
-                # Threshold 0.15 - 0.20 wajar untuk Euclidean pada array persentase.
-                # Karena kalau selisih 10% per tombol = sqrt(0.01 + 0.01) = ~0.14
-                rhythm_threshold = 0.15
+                # Threshold dinaikkan ke 0.18 karena ada tambahan Absolute Speed Penalty
+                rhythm_threshold = 0.18
                 
                 if best_distance <= rhythm_threshold:
                     return {
