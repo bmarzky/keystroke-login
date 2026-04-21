@@ -158,10 +158,13 @@ if ($user && password_verify($password, $user['password'])) {
         // TIER 1: Kalkulasi Mahalanobis Murni di PHP (Otomatis jika SVM absen/gagal dieksekusi)
         if (!$svmUsed) {
             $verification = verifyKeystroke($allData, $inputKeystroke); 
-            $isMatch = (isset($verification['status']) && $verification['status'] === true);
-            $score   = $verification['distance'] ?? 0;
-            $thresh  = $verification['threshold'] ?? 0;
-            $phpReason = $verification['reason'] ?? 'N/A';
+            $isMatch    = (isset($verification['status']) && $verification['status'] === true);
+            $score      = $verification['distance']  ?? 0;
+            $thresh     = $verification['threshold'] ?? 0;
+            $phpReason  = $verification['reason']    ?? 'N/A';
+            // Info dimensi dari Python (8 = healthy, hanya ada jika response baru)
+            $nFeatures  = $verification['n_features'] ?? '?';
+            $nSamplesOk = $verification['n_samples']  ?? '?';
             
             // Label eksplisit sesuai jumlah data dan tahap yang dilalui
             if ($dataCount >= 15) {
@@ -169,7 +172,7 @@ if ($user && password_verify($password, $user['password'])) {
             } elseif ($dataCount >= 6) {
                 $tierLabel = "[Tier-1:Mahalanobis (Strict)]";
             } else {
-                $tierLabel = "[Tier-1:Mahalanobis (Adaptive Blending)]";
+                $tierLabel = "[Tier-1:Mahalanobis (Adaptive)]";
             }
             
             $reason = ($reason !== 'N/A') ? "$tierLabel $reason -> $phpReason" : "$tierLabel $phpReason";
@@ -180,15 +183,17 @@ if ($user && password_verify($password, $user['password'])) {
     // Logging (Sekarang mencatat semua usaha, baik training maupun verifikasi)
     $logStatus = $isMatch ? 'MATCH' : 'REJECT';
     $logMsg = sprintf(
-        "[%s] User: %s | Score: %.2f | Thresh: %.2f | Speed: %.2f CPM | Status: %s | Reason: %s | DataCount: %d\n",
+        "[%s] User: %s | Score: %.2f | Thresh: %.2f | Speed: %.2f CPM | Status: %s | Dim: %s | ValidSamples: %s | DataCount: %d | Reason: %s\n",
         date('Y-m-d H:i:s'), 
         $username, 
         $score, 
         $thresh,
         (float)$decodedInput['speed'],
         $logStatus,
-        $reason,
-        $dataCount
+        $nFeatures  ?? '-',
+        $nSamplesOk ?? '-',
+        $dataCount,
+        $reason
     );
     file_put_contents('biometric_debug.log', $logMsg, FILE_APPEND);
 
