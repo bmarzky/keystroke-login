@@ -109,10 +109,17 @@ def calculate_mahalanobis(json_path: str) -> dict:
 
             mean_dist = float(np.mean(hist_dists))
             # ddof=1 agar std tidak biased; jika hanya 1 nilai, fallback 50% mean
-            std_dist  = float(np.std(hist_dists, ddof=1)) if len(hist_dists) > 1 else mean_dist * 0.5
+            std_raw   = float(np.std(hist_dists, ddof=1)) if len(hist_dists) > 1 else mean_dist * 0.5
 
-            # Z=2.5 – lebih gentle dari 3.0 karena dim sudah kecil & sehat
-            calculated_threshold = mean_dist + (2.5 * std_dist)
+            # Minimum variability guard:
+            # Enrollment awal sering dilakukan dgn hati-hati → std_raw sangat kecil.
+            # Tanpa guard ini, threshold kolaps ke ~mean saja → ketikan natural REJECT.
+            # Guard: std minimal 35% dari mean (slack relatif, bukan absolut).
+            min_std  = mean_dist * 0.35
+            std_dist = max(std_raw, min_std)
+
+            # Z=3.0 (99.7% confidence interval) – lebih gentle dari 2.5
+            calculated_threshold = mean_dist + (3.0 * std_dist)
 
         elif n_samples == 2:
             # Belum cukup untuk kovarians: pakai Euclidean + inter-sample distance
@@ -135,15 +142,19 @@ def calculate_mahalanobis(json_path: str) -> dict:
         #    Floor = sqrt(N_FEATURES) × multiplier
         #          = sqrt(8)          × multiplier
         #          ≈ 2.83             × multiplier
+        #
+        # CATATAN: floor_multiplier sengaja TIDAK turun terlalu agresif.
+        # Mahalanobis 8-dim cukup diskriminatif; threshold rendah bukan
+        # tanda akurasi, tapi tanda model overfit ke enrollment awal.
         # ----------------------------------------------------------
         if n_samples < 3:
             floor_multiplier = 3.5   # Sangat pemaaf (1 atau 2 sampel)
         elif n_samples < 6:
             floor_multiplier = 2.5   # Pemaaf menengah
         elif n_samples < 10:
-            floor_multiplier = 1.8   # Mulai ketat
+            floor_multiplier = 2.0   # Mulai ketat
         else:
-            floor_multiplier = 1.2   # Stabil + akurat
+            floor_multiplier = 1.8   # Stabil – TIDAK turun ke 1.2 (terlalu ketat)
 
         dynamic_floor    = float(np.sqrt(N_FEATURES)) * floor_multiplier
         final_threshold  = float(max(calculated_threshold, dynamic_floor))
