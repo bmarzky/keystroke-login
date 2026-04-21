@@ -115,10 +115,17 @@ def calculate_mahalanobis(json_path: str) -> dict:
                 
                 total_dist = (dist_dwell * 0.75) + (dist_flight * 0.25)
                 
-                # Kembalikan Threshold ke angka ketat (0.15)
+                # LANGKAH 4: Pertahanan Anti Brute-Force (Kombinasi Edge-Case)
+                # Jika imposter mencoba berbagai kecepatan (seperti 381->300->525) 
+                # dan tidak sengaja masuk jendela 15%, kita periksa TOTAL deviasi.
+                total_deviation = total_dist + speed_deviation
+                
+                # Kembalikan Threshold individu ke angka ketat
                 rhythm_threshold = 0.15
                 
-                if total_dist <= rhythm_threshold:
+                # Jika total deviasi (Ritme + Kecepatan) melebihi 0.22, tolak!
+                # Artinya: Jika ritme jelek (0.14) dan kecepatan beda (11%), total = 0.25 -> GAGAL.
+                if total_dist <= rhythm_threshold and total_deviation <= 0.22:
                     return {
                         "status": True, "distance": float(total_dist), "threshold": float(rhythm_threshold),
                         "reason": "Pola Ritme Cocok (Early-Stage Fingerprint)",
@@ -127,7 +134,7 @@ def calculate_mahalanobis(json_path: str) -> dict:
                 else:
                     return {
                         "status": False, "distance": float(total_dist), "threshold": float(rhythm_threshold),
-                        "reason": "Pola Ritme Tidak Cocok (Early-Stage Fingerprint)",
+                        "reason": f"Pola Ritme Tidak Cocok (Gesekan Total: {total_deviation:.2f})",
                         "n_samples": len(history), "n_features": len(in_dwell) + len(in_flight)
                     }
             else:
