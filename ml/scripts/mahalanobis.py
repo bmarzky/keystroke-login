@@ -116,16 +116,16 @@ def calculate_mahalanobis(json_path: str) -> dict:
                 total_dist = (dist_dwell * 0.75) + (dist_flight * 0.25)
                 
                 # LANGKAH 4: Pertahanan Anti Brute-Force (Kombinasi Edge-Case)
-                # Jika imposter mencoba berbagai kecepatan (seperti 381->300->525) 
+                # Jika imposter mencoba berbagai kecepatan 
                 # dan tidak sengaja masuk jendela 15%, kita periksa TOTAL deviasi.
                 total_deviation = total_dist + speed_deviation
                 
-                # Kembalikan Threshold individu ke angka ketat
-                rhythm_threshold = 0.15
+                # 1. Turunkan Threshold Ritme Mahalanobis menjadi 0.12 (Maksimal deviasi bentuk 12%)
+                rhythm_threshold = 0.12
                 
-                # Jika total deviasi (Ritme + Kecepatan) melebihi 0.22, tolak!
-                # Artinya: Jika ritme jelek (0.14) dan kecepatan beda (11%), total = 0.25 -> GAGAL.
-                if total_dist <= rhythm_threshold and total_deviation <= 0.22:
+                # 2. Turunkan Batas Gesekan Total menjadi 0.18
+                # Artinya: Jika ritme pas-pasan di 0.11, maka kecepatan hanya boleh meleset 7%
+                if total_dist <= rhythm_threshold and total_deviation <= 0.18:
                     return {
                         "status": True, "distance": float(total_dist), "threshold": float(rhythm_threshold),
                         "reason": "Pola Ritme Cocok (Early-Stage Fingerprint)",
