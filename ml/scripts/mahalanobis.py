@@ -132,10 +132,13 @@ def calculate_mahalanobis(json_path: str) -> dict:
                 if len(in_d2d_raw) > 0 and len(base_d2d_raw) > 0:
                     in_d2d_mean = np.mean(in_d2d_raw)
                     base_d2d_mean = np.mean(base_d2d_raw)
-                    d2d_deviation = abs(in_d2d_mean - base_d2d_mean) / max(base_d2d_mean, 1.0)
+                    
+                    # PERBAIKAN: Gunakan 0.001 untuk data desimal/detik
+                    d2d_deviation = abs(in_d2d_mean - base_d2d_mean) / max(base_d2d_mean, 0.001)
+                    
                     if d2d_deviation > 0.20:
                         return {
-                            "status": False, "distance": 999.0, "threshold": 0.15,
+                            "status": False, "distance": 999.0, "threshold": 0.20,
                             "reason": f"D2D Flow Anomali (Deviasi {int(d2d_deviation*100)}% dari Bawah Sadar)",
                             "n_samples": len(history), "n_features": len(in_dwell) + len(in_flight)
                         }
