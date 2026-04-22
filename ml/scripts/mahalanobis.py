@@ -126,7 +126,35 @@ def calculate_mahalanobis(json_path: str) -> dict:
                 # 1. Turunkan Threshold Ritme Mahalanobis menjadi 0.12 (Maksimal deviasi bentuk 12%)
                 rhythm_threshold = 0.12
                 
-                # 2. Turunkan Batas Gesekan Total menjadi 0.18
+                # LANGKAH 5 (BARU): D2D Flow Veto (Gerbang Transisi Bawah Sadar)
+                in_d2d_raw = np.array(input_data.get('d2d', []), dtype=float)
+                base_d2d_raw = np.array(baseline.get('d2d', []), dtype=float)
+                if len(in_d2d_raw) > 0 and len(base_d2d_raw) > 0:
+                    in_d2d_mean = np.mean(in_d2d_raw)
+                    base_d2d_mean = np.mean(base_d2d_raw)
+                    d2d_deviation = abs(in_d2d_mean - base_d2d_mean) / max(base_d2d_mean, 1.0)
+                    if d2d_deviation > 0.20:
+                        return {
+                            "status": False, "distance": 999.0, "threshold": 0.15,
+                            "reason": f"D2D Flow Anomali (Deviasi {int(d2d_deviation*100)}% dari Bawah Sadar)",
+                            "n_samples": len(history), "n_features": len(in_dwell) + len(in_flight)
+                        }
+
+                # LANGKAH 6 (BARU): Key Overlap Veto (Deteksi Ketikan Tumpang Tindih)
+                in_flight_raw = np.array(input_data.get('flight', []), dtype=float)
+                base_flight_raw = np.array(baseline.get('flight', []), dtype=float)
+                if len(in_flight_raw) > 0 and len(base_flight_raw) > 0:
+                    base_has_overlap = np.any(base_flight_raw < 0)
+                    in_has_overlap = np.any(in_flight_raw < 0)
+                    # Jika baseline menggelinding (ada overlap), tapi input kaku (tidak ada overlap sama sekali)
+                    if base_has_overlap and not in_has_overlap:
+                        return {
+                            "status": False, "distance": 999.0, "threshold": 0.15,
+                            "reason": "Key Overlap Veto (Gaya mengetik kaku, tidak menggelinding)",
+                            "n_samples": len(history), "n_features": len(in_dwell) + len(in_flight)
+                        }
+                
+                # KEPUTUSAN AKHIR: Batas Gesekan Total menjadi 0.18
                 # Artinya: Jika ritme pas-pasan di 0.11, maka kecepatan hanya boleh meleset 7%
                 if total_dist <= rhythm_threshold and total_deviation <= 0.18:
                     return {
