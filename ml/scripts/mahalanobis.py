@@ -52,8 +52,11 @@ def extract_relative_rhythm(data: dict) -> tuple:
     if len(dwell) == 0 or len(flight) == 0:
         return None, None
         
-    s_dwell = np.sum(dwell) if np.sum(dwell) > 0 else 1.0
-    s_flight = np.sum(flight) if np.sum(flight) > 0 else 1.0
+    s_dwell = np.sum(dwell)
+    s_dwell = s_dwell if s_dwell > 0 else 1.0
+    
+    s_flight = np.sum(flight)
+    s_flight = s_flight if s_flight > 0 else 1.0
     
     return dwell / s_dwell, flight / s_flight
 
