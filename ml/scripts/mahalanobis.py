@@ -126,20 +126,42 @@ def calculate_mahalanobis(json_path: str) -> dict:
                 # 1. Turunkan Threshold Ritme Mahalanobis menjadi 0.12 (Maksimal deviasi bentuk 12%)
                 rhythm_threshold = 0.12
                 
-                # LANGKAH 5 (BARU): D2D Flow Veto (Gerbang Transisi Bawah Sadar)
-                in_d2d_raw = np.array(input_data.get('d2d', []), dtype=float)
-                base_d2d_raw = np.array(baseline.get('d2d', []), dtype=float)
-                if len(in_d2d_raw) > 0 and len(base_d2d_raw) > 0:
-                    in_d2d_mean = np.mean(in_d2d_raw)
-                    base_d2d_mean = np.mean(base_d2d_raw)
+                # LANGKAH 5 (BARU): Ratio Dwell-to-Flight & D2D Consistency Veto
+                # Penjelasan Matematis: mean(D2D) adalah kebalikan dari Speed. Jika Speed cocok, mean(D2D) pasti cocok.
+                # Untuk mendeteksi peniru yang menyamakan Speed, kita WAJIB mengecek:
+                # 1. Rasio mutlak antara waktu menekan tombol (Dwell) vs waktu pindah jari (Flight).
+                # 2. Konsistensi / Standar Deviasi dari D2D (Peniru biasanya ritmenya berantakan).
+                
+                # 5a. Dwell-to-Flight Ratio Veto
+                in_dwell_raw = np.array(input_data.get('dwell', []), dtype=float)
+                in_flight_raw = np.array(input_data.get('flight', []), dtype=float)
+                base_dwell_raw = np.array(baseline.get('dwell', []), dtype=float)
+                base_flight_raw = np.array(baseline.get('flight', []), dtype=float)
+                
+                if len(in_dwell_raw) > 0 and len(base_dwell_raw) > 0:
+                    in_ratio = np.sum(in_dwell_raw) / max(np.sum(in_flight_raw), 0.001)
+                    base_ratio = np.sum(base_dwell_raw) / max(np.sum(base_flight_raw), 0.001)
+                    ratio_dev = abs(in_ratio - base_ratio) / max(base_ratio, 0.001)
                     
-                    # PERBAIKAN: Gunakan 0.001 untuk data desimal/detik
-                    d2d_deviation = abs(in_d2d_mean - base_d2d_mean) / max(base_d2d_mean, 0.001)
-                    
-                    if d2d_deviation > 0.20:
+                    if ratio_dev > 0.25: # Toleransi rasio 25%
                         return {
                             "status": False, "distance": 999.0, "threshold": 0.20,
-                            "reason": f"D2D Flow Anomali (Deviasi {int(d2d_deviation*100)}% dari Bawah Sadar)",
+                            "reason": f"Rasio Dwell/Flight Anomali (Deviasi {int(ratio_dev*100)}%)",
+                            "n_samples": len(history), "n_features": len(in_dwell) + len(in_flight)
+                        }
+
+                # 5b. D2D Consistency Veto (Standard Deviation)
+                in_d2d_raw = np.array(input_data.get('d2d', []), dtype=float)
+                base_d2d_raw = np.array(baseline.get('d2d', []), dtype=float)
+                if len(in_d2d_raw) > 1 and len(base_d2d_raw) > 1:
+                    in_d2d_std = np.std(in_d2d_raw, ddof=1)
+                    base_d2d_std = np.std(base_d2d_raw, ddof=1)
+                    
+                    std_dev = abs(in_d2d_std - base_d2d_std) / max(base_d2d_std, 0.001)
+                    if std_dev > 0.40: # Toleransi variance 40% (karena std dev fluktuatif)
+                        return {
+                            "status": False, "distance": 999.0, "threshold": 0.20,
+                            "reason": f"D2D Consistency Anomali (Deviasi Varians {int(std_dev*100)}%)",
                             "n_samples": len(history), "n_features": len(in_dwell) + len(in_flight)
                         }
 
