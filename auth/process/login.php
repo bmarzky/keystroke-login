@@ -113,7 +113,7 @@ if ($user && password_verify($password, $user['password'])) {
     $svmUsed = false;
     $reason = 'N/A';
     
-    if ($dataCount >= 15) {
+    if (false && $dataCount >= 15) { // DISABLED: OCSVM dimatikan sementara
         $pyPathPredict = realpath(__DIR__ . '/../../ml/scripts/predict.py');
 
         if ($pyPathPredict) {

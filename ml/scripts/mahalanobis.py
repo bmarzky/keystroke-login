@@ -78,9 +78,9 @@ def calculate_mahalanobis(json_path: str) -> dict:
             }
 
         # ----------------------------------------------------------
-        # 2. EARLY STAGE FINGERPRINT (Hard Speed Gate + Absolute Anchor)
+        # 2. EARLY STAGE FINGERPRINT (Sekarang digunakan untuk SEMUA tahap)
         # ----------------------------------------------------------
-        if 1 <= len(history) < 5:
+        if len(history) >= 1:
             in_dwell, in_flight = extract_relative_rhythm(input_data)
             
             # LANGKAH 1: Kunci Baseline Hanya pada Data Registrasi Murni (history[-1])
@@ -198,121 +198,6 @@ def calculate_mahalanobis(json_path: str) -> dict:
                     "status": False, "distance": 999.0, "threshold": 0.15,
                     "reason": "Data Input Tidak Valid", "n_samples": len(history), "n_features": 0
                 }
-
-        # ----------------------------------------------------------
-        # 3. Ekstrak fitur input → 8-dim vector (Gunakan untuk > 4 data)
-        # ----------------------------------------------------------
-        input_vector = np.array(extract_features(input_data), dtype=float)
-
-        # ----------------------------------------------------------
-        # 3. Ekstrak fitur historis
-        #    TIDAK ADA hard-length filter!
-        #    extract_features() sudah handle panjang berbeda dengan aman.
-        # ----------------------------------------------------------
-        samples = []
-        for hist in history:
-            try:
-                vec = extract_features(hist)
-                samples.append(vec)
-            except Exception:
-                continue
-
-        n_samples = len(samples)
-        if n_samples < 1:
-            return {
-                "status": False, "distance": 9998.0, "threshold": 0.0,
-                "reason": "Tidak ada sampel historis yang valid"
-            }
-
-        samples = np.array(samples, dtype=float)  # shape: (n, 8)
-
-        distance           = 0.0
-        calculated_threshold = 0.0
-
-        # ----------------------------------------------------------
-        # 4. Kalkulasi jarak berdasarkan jumlah sampel
-        # ----------------------------------------------------------
-        if n_samples >= 3:
-            # Ledoit-Wolf sangat stabil untuk 8 dim + ≥3 sampel
-            lw = LedoitWolf(assume_centered=False)
-            lw.fit(samples)
-            mean_vector = lw.location_
-            inv_cov     = lw.precision_
-
-            diff     = input_vector - mean_vector
-            distance = float(np.sqrt(np.clip(diff @ inv_cov @ diff, 0.0, None)))
-
-            # Threshold adaptif dari distribusi jarak historis
-            hist_dists = []
-            for s in samples:
-                d = s - mean_vector
-                hist_dists.append(float(np.sqrt(np.clip(d @ inv_cov @ d, 0.0, None))))
-
-            mean_dist = float(np.mean(hist_dists))
-            # ddof=1 agar std tidak biased; jika hanya 1 nilai, fallback 50% mean
-            std_raw   = float(np.std(hist_dists, ddof=1)) if len(hist_dists) > 1 else mean_dist * 0.5
-
-            # Minimum variability guard:
-            # Enrollment awal sering dilakukan dgn hati-hati → std_raw sangat kecil.
-            # Tanpa guard ini, threshold kolaps ke ~mean saja → ketikan natural REJECT.
-            # Guard: std minimal 35% dari mean (slack relatif, bukan absolut).
-            min_std  = mean_dist * 0.35
-            std_dist = max(std_raw, min_std)
-
-            # Z=3.0 (99.7% confidence interval) – lebih gentle dari 2.5
-            calculated_threshold = mean_dist + (3.0 * std_dist)
-
-        elif n_samples == 2:
-            # Belum cukup untuk kovarians: pakai Euclidean + inter-sample distance
-            mean_vector = np.mean(samples, axis=0)
-            diff        = input_vector - mean_vector
-            distance    = float(np.sqrt(np.sum(diff ** 2)))
-
-            inter_dist           = float(np.sqrt(np.sum((samples[0] - samples[1]) ** 2)))
-            calculated_threshold = max(inter_dist * 2.0, 1.5)
-
-        else:  # n_samples == 1 – single reference
-            mean_vector = samples[0]
-            diff        = input_vector - mean_vector
-            distance    = float(np.sqrt(np.sum(diff ** 2)))
-            # Threshold murni dari floor, calculated = 0
-            calculated_threshold = 0.0
-
-        # ----------------------------------------------------------
-        # 5. Dynamic floor threshold (memaafkan saat data masih sedikit)
-        #    Floor = sqrt(N_FEATURES) × multiplier
-        #          = sqrt(8)          × multiplier
-        #          ≈ 2.83             × multiplier
-        #
-        # CATATAN: floor_multiplier sengaja TIDAK turun terlalu agresif.
-        # Mahalanobis 8-dim cukup diskriminatif; threshold rendah bukan
-        # tanda akurasi, tapi tanda model overfit ke enrollment awal.
-        # ----------------------------------------------------------
-        if n_samples < 3:
-            floor_multiplier = 3.5   # Sangat pemaaf (1 atau 2 sampel)
-        elif n_samples < 6:
-            floor_multiplier = 2.5   # Pemaaf menengah
-        elif n_samples < 10:
-            floor_multiplier = 2.0   # Mulai ketat
-        else:
-            floor_multiplier = 1.8   # Stabil – TIDAK turun ke 1.2 (terlalu ketat)
-
-        dynamic_floor    = float(np.sqrt(N_FEATURES)) * floor_multiplier
-        final_threshold  = float(max(calculated_threshold, dynamic_floor))
-        is_match         = bool(distance <= final_threshold)
-
-        return {
-            "status":    is_match,
-            "distance":  float(distance),
-            "threshold": final_threshold,
-            "reason":    (
-                "Pola Cocok (Stat-Mahalanobis 8-dim)"
-                if is_match else
-                "Pola Tidak Cocok (Terlalu Menyimpang)"
-            ),
-            "n_samples":  n_samples,
-            "n_features": N_FEATURES
-        }
 
     except Exception as e:
         return {
