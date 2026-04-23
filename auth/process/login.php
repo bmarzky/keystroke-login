@@ -195,13 +195,29 @@ if ($user && password_verify($password, $user['password'])) {
         $dataCount,
         $reason
     );
-    file_put_contents('biometric_debug.log', $logMsg, FILE_APPEND);
+    // Memastikan folder data ada
+    $dataDir = __DIR__ . '/../../ml/data';
+    if (!is_dir($dataDir)) {
+        mkdir($dataDir, 0777, true);
+    }
+
+    file_put_contents($dataDir . '/biometric_debug.log', $logMsg, FILE_APPEND);
 
     if ($isMatch) {
         // Berhasil Verifikasi (Atau Mode Belajar di Tahap Sangat Awal jika ingin dibedakan labelnya)
         $statusLabel = ($dataCount < 5) ? "Verified (Learning Mode)" : "Verified";
         processSuccessfulLogin($user, $conn, $inputKeystroke, $statusLabel);
     } else {
+        // Logging data mentah yang ditolak ke file terpisah untuk debugging (persis format database)
+        $failedDataLog = sprintf(
+            "[%s] User: %s | Reason: %s\n%s\n\n",
+            date('Y-m-d H:i:s'),
+            $username,
+            $reason,
+            $inputKeystroke
+        );
+        file_put_contents($dataDir . '/failed_keystrokes_raw.log', $failedDataLog, FILE_APPEND);
+
         // Jika tidak cocok, cek apakah skornya menunjukkan error kritis (robot) atau sekadar pola beda
         $errorDetail = ($reason !== 'N/A') ? $reason : "Pola ketikan tidak cocok";
         redirectWithError("Akses Ditolak: $errorDetail (Skor: " . round($score, 2) . ")");
