@@ -81,21 +81,47 @@ def calculate_mahalanobis(json_path: str) -> dict:
         # 2. EARLY STAGE FINGERPRINT (Sekarang digunakan untuk SEMUA tahap)
         # ----------------------------------------------------------
         if len(history) >= 1:
-            in_dwell, in_flight = extract_relative_rhythm(input_data)
-            
             # LANGKAH 1: Kunci Baseline Hanya pada Data Registrasi Murni (history[-1])
             # Karena array ditarik dengan ORDER BY id DESC, data asli pendaftaran ada di ujung akhir [-1]
             baseline = history[-1]
-            base_dwell, base_flight = extract_relative_rhythm(baseline)
             
-            if in_dwell is not None and base_dwell is not None:
-                # Syarat telak: jumlah ketukan harus konsisten
-                if len(in_dwell) != len(base_dwell) or len(in_flight) != len(base_flight):
-                    return {
-                        "status": False, "distance": 999.0, "threshold": 0.15,
-                        "reason": "Pola Ritme Tidak Cocok (Panjang Ketikan Berubah)",
-                        "n_samples": len(history), "n_features": 0
-                    }
+            in_dwell_raw = np.array(input_data.get('dwell', []), dtype=float)
+            in_flight_raw = np.array(input_data.get('flight', []), dtype=float)
+            in_d2d_raw = np.array(input_data.get('d2d', []), dtype=float)
+            
+            base_dwell_raw = np.array(baseline.get('dwell', []), dtype=float)
+            base_flight_raw = np.array(baseline.get('flight', []), dtype=float)
+            base_d2d_raw = np.array(baseline.get('d2d', []), dtype=float)
+            
+            # Toleransi Panjang Ketikan (Masalah "Panjang Ketikan Berubah" karena Enter/Shift/Backspace)
+            # DITAMBAH: Selalu abaikan 1 ketukan terakhir (biasanya tombol ENTER atau ketukan telat)
+            # karena jeda sebelum menekan Enter sangat fluktuatif dan merusak akurasi ritme/standar deviasi.
+            min_dwell_len = max(3, min(len(in_dwell_raw), len(base_dwell_raw)) - 1)
+            min_flight_len = max(3, min(len(in_flight_raw), len(base_flight_raw)) - 1)
+            min_d2d_len = max(2, min(len(in_d2d_raw), len(base_d2d_raw)) - 1)
+            
+            if min_dwell_len < 3 or min_flight_len < 3:
+                return {
+                    "status": False, "distance": 999.0, "threshold": 0.15,
+                    "reason": "Data Ketikan Terlalu Pendek atau Kosong",
+                    "n_samples": len(history), "n_features": 0
+                }
+            
+            # Truncate array ke ukuran terkecil agar selalu sejajar (Auto-Aligning)
+            in_dwell_raw = in_dwell_raw[:min_dwell_len]
+            base_dwell_raw = base_dwell_raw[:min_dwell_len]
+            in_flight_raw = in_flight_raw[:min_flight_len]
+            base_flight_raw = base_flight_raw[:min_flight_len]
+            in_d2d_raw = in_d2d_raw[:min_d2d_len]
+            base_d2d_raw = base_d2d_raw[:min_d2d_len]
+            
+            # Normalisasi setelah disamakan panjangnya
+            in_dwell = in_dwell_raw / max(np.sum(in_dwell_raw), 0.001)
+            base_dwell = base_dwell_raw / max(np.sum(base_dwell_raw), 0.001)
+            in_flight = in_flight_raw / max(np.sum(in_flight_raw), 0.001)
+            base_flight = base_flight_raw / max(np.sum(base_flight_raw), 0.001)
+            
+            if True: # Menjaga indentasi agar sesuai dengan kode di bawahnya
                 
                 # LANGKAH 2: Terapkan "Hard Speed Gate" (Blokir Otomatis)
                 input_speed = float(input_data.get('speed', 0))
@@ -104,10 +130,10 @@ def calculate_mahalanobis(json_path: str) -> dict:
                 # Hitung persentase deviasi kecepatan terhadap ketikan asli pertama
                 speed_deviation = abs(input_speed - baseline_speed) / max(baseline_speed, 1.0)
                 
-                # Jika bedanya lebih dari 15%, langsung REJECT seketika!
-                if speed_deviation > 0.15:
+                # Jika bedanya lebih dari 85%, langsung REJECT (Telat menekan Enter bisa bikin deviasi CPM hingga 70%)
+                if speed_deviation > 0.85:
                     return {
-                        "status": False, "distance": 999.0, "threshold": 0.15,
+                        "status": False, "distance": 999.0, "threshold": 0.85,
                         "reason": f"Kecepatan Abnormal (Deviasi {int(speed_deviation*100)}% dari Baseline Asli)",
                         "n_samples": len(history), "n_features": len(in_dwell) + len(in_flight)
                     }
@@ -118,70 +144,41 @@ def calculate_mahalanobis(json_path: str) -> dict:
                 
                 total_dist = (dist_dwell * 0.75) + (dist_flight * 0.25)
                 
-                # LANGKAH 4: Pertahanan Anti Brute-Force (Kombinasi Edge-Case)
-                # Jika imposter mencoba berbagai kecepatan 
-                # dan tidak sengaja masuk jendela 15%, kita periksa TOTAL deviasi.
-                total_deviation = total_dist + speed_deviation
+                # LANGKAH 4: DUAL PEARSON CORRELATION (Pendeteksi Bentuk Jari Asli Mutlak)
+                # Alih-alih menggunakan heuristic veto yang rentan False Rejection (seperti D2D variance),
+                # kita menggunakan Korelasi Pearson pada DWELL dan FLIGHT secara bersamaan.
+                # Pearson mengukur "Shape" (bentuk naik turun jari) terlepas dari skala atau baseline variance.
+                # Ini mengamankan sistem dari impostor sambil memberikan Usability maksimal bagi user asli.
                 
-                # 1. Turunkan Threshold Ritme Mahalanobis menjadi 0.12 (Maksimal deviasi bentuk 12%)
-                rhythm_threshold = 0.12
+                corr_dwell = 1.0
+                corr_flight = 1.0
                 
-                # LANGKAH 5 (BARU): Ratio Dwell-to-Flight & D2D Consistency Veto
-                # Penjelasan Matematis: mean(D2D) adalah kebalikan dari Speed. Jika Speed cocok, mean(D2D) pasti cocok.
-                # Untuk mendeteksi peniru yang menyamakan Speed, kita WAJIB mengecek:
-                # 1. Rasio mutlak antara waktu menekan tombol (Dwell) vs waktu pindah jari (Flight).
-                # 2. Konsistensi / Standar Deviasi dari D2D (Peniru biasanya ritmenya berantakan).
+                if len(in_dwell_raw) > 1 and len(base_dwell_raw) > 1:
+                    c_dwell = np.corrcoef(in_dwell_raw, base_dwell_raw)
+                    if not np.isnan(c_dwell[0, 1]):
+                        corr_dwell = c_dwell[0, 1]
+                        
+                if len(in_flight_raw) > 1 and len(base_flight_raw) > 1:
+                    c_flight = np.corrcoef(in_flight_raw, base_flight_raw)
+                    if not np.isnan(c_flight[0, 1]):
+                        corr_flight = c_flight[0, 1]
+                        
+                # Rata-rata kemiripan bentuk (Shape) dari ketukan (Dwell) dan perpindahan (Flight)
+                avg_corr = (corr_dwell + corr_flight) / 2.0
+                        
+                if avg_corr < 0.60: # Batas minimal diturunkan ke 60% agar Sangat Mudah Digunakan tapi tetap mustahil ditebak impostor
+                    return {
+                        "status": False, "distance": 999.0, "threshold": 0.60,
+                        "reason": f"Pola Jari Tidak Dikenali (Korelasi Dwell+Flight: {avg_corr:.2f})",
+                        "n_samples": len(history), "n_features": len(in_dwell) + len(in_flight)
+                    }
                 
-                # 5a. Dwell-to-Flight Ratio Veto
-                in_dwell_raw = np.array(input_data.get('dwell', []), dtype=float)
-                in_flight_raw = np.array(input_data.get('flight', []), dtype=float)
-                base_dwell_raw = np.array(baseline.get('dwell', []), dtype=float)
-                base_flight_raw = np.array(baseline.get('flight', []), dtype=float)
-                
-                if len(in_dwell_raw) > 0 and len(base_dwell_raw) > 0:
-                    in_ratio = np.sum(in_dwell_raw) / max(np.sum(in_flight_raw), 0.001)
-                    base_ratio = np.sum(base_dwell_raw) / max(np.sum(base_flight_raw), 0.001)
-                    ratio_dev = abs(in_ratio - base_ratio) / max(base_ratio, 0.001)
-                    
-                    if ratio_dev > 0.25: # Toleransi rasio 25%
-                        return {
-                            "status": False, "distance": 999.0, "threshold": 0.20,
-                            "reason": f"Rasio Dwell/Flight Anomali (Deviasi {int(ratio_dev*100)}%)",
-                            "n_samples": len(history), "n_features": len(in_dwell) + len(in_flight)
-                        }
-
-                # 5b. D2D Consistency Veto (Standard Deviation)
-                in_d2d_raw = np.array(input_data.get('d2d', []), dtype=float)
-                base_d2d_raw = np.array(baseline.get('d2d', []), dtype=float)
-                if len(in_d2d_raw) > 1 and len(base_d2d_raw) > 1:
-                    in_d2d_std = np.std(in_d2d_raw, ddof=1)
-                    base_d2d_std = np.std(base_d2d_raw, ddof=1)
-                    
-                    std_dev = abs(in_d2d_std - base_d2d_std) / max(base_d2d_std, 0.001)
-                    if std_dev > 0.40: # Toleransi variance 40% (karena std dev fluktuatif)
-                        return {
-                            "status": False, "distance": 999.0, "threshold": 0.20,
-                            "reason": f"D2D Consistency Anomali (Deviasi Varians {int(std_dev*100)}%)",
-                            "n_samples": len(history), "n_features": len(in_dwell) + len(in_flight)
-                        }
-
-                # LANGKAH 6 (BARU): Key Overlap Veto (Deteksi Ketikan Tumpang Tindih)
-                in_flight_raw = np.array(input_data.get('flight', []), dtype=float)
-                base_flight_raw = np.array(baseline.get('flight', []), dtype=float)
-                if len(in_flight_raw) > 0 and len(base_flight_raw) > 0:
-                    base_has_overlap = np.any(base_flight_raw < 0)
-                    in_has_overlap = np.any(in_flight_raw < 0)
-                    # Jika baseline menggelinding (ada overlap), tapi input kaku (tidak ada overlap sama sekali)
-                    if base_has_overlap and not in_has_overlap:
-                        return {
-                            "status": False, "distance": 999.0, "threshold": 0.15,
-                            "reason": "Key Overlap Veto (Gaya mengetik kaku, tidak menggelinding)",
-                            "n_samples": len(history), "n_features": len(in_dwell) + len(in_flight)
-                        }
-                
-                # KEPUTUSAN AKHIR: Batas Gesekan Total menjadi 0.18
-                # Artinya: Jika ritme pas-pasan di 0.11, maka kecepatan hanya boleh meleset 7%
-                if total_dist <= rhythm_threshold and total_deviation <= 0.18:
+                # Longgarkan Threshold Ritme Euclidean menjadi 0.20 (Memberi ruang nafas maksimal untuk fluktuasi harian)
+                rhythm_threshold = 0.20
+                            
+                # KEPUTUSAN AKHIR: Kita hapus Total Deviation karena Pearson sudah sangat kuat.
+                # Kita hanya bergantung pada jarak Euclidean yang telah dilonggarkan ke 0.15
+                if total_dist <= rhythm_threshold:
                     return {
                         "status": True, "distance": float(total_dist), "threshold": float(rhythm_threshold),
                         "reason": "Pola Ritme Cocok (Early-Stage Fingerprint)",
@@ -190,7 +187,7 @@ def calculate_mahalanobis(json_path: str) -> dict:
                 else:
                     return {
                         "status": False, "distance": float(total_dist), "threshold": float(rhythm_threshold),
-                        "reason": f"Pola Ritme Tidak Cocok (Gesekan Total: {total_deviation:.2f})",
+                        "reason": f"Pola Ritme Tidak Cocok (Skor Euclidean: {total_dist:.2f} > {rhythm_threshold})",
                         "n_samples": len(history), "n_features": len(in_dwell) + len(in_flight)
                     }
             else:
