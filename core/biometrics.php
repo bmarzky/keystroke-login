@@ -26,8 +26,11 @@ function verifyKeystroke($allStoredJson, $inputJson) {
     }
 
     // 2. Deteksi Robot / Copy-Paste via Typing Speed
-    if ($input['speed'] > 1000 || $input['speed'] <= 0) {
+    if ($input['speed'] > 1000) {
         return ['status' => false, 'distance' => 9993, 'threshold' => 0, 'reason' => 'Abnormal typing speed (Terlalu Cepat)'];
+    }
+    if ($input['speed'] <= 0) {
+        return ['status' => false, 'distance' => 9993, 'threshold' => 0, 'reason' => 'Kecepatan ketikan tidak valid (<= 0)'];
     }
 
     // 3. Ekstrak Riwayat untuk Dilempar ke Python
