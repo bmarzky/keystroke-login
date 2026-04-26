@@ -48,8 +48,10 @@ function verifyKeystroke($allStoredJson, $inputJson) {
     ];
     
     // Simpan ke Temporary OS Windows Folder untuk dibaca Python
-    $tmpFile = tempnam(sys_get_temp_dir(), 'biom_') . '.json';
+    $baseTmp = tempnam(sys_get_temp_dir(), 'biom_');
+    $tmpFile = $baseTmp . '.json';
     file_put_contents($tmpFile, json_encode($dataToPython));
+    @unlink($baseTmp); // Hapus file kosong bawaan tempnam
     
     // 5. Panggil Python External Script (mahalanobis.py)
     $pyPath = realpath(__DIR__ . '/../ml/scripts/mahalanobis.py');
