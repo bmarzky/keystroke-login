@@ -10,3 +10,4 @@ ml/model/*.pkl
 ml/data/
 ml/scripts/train.log
 *.log
+__pycache__/
