@@ -118,8 +118,10 @@ if ($user && password_verify($password, $user['password'])) {
 
         if ($pyPathPredict) {
             // Tulis JSON ke temp file agar tidak rusak saat di-escape oleh Windows CLI
-            $tmpFile = tempnam(sys_get_temp_dir(), 'ks_') . '.json';
+            $baseTmp = tempnam(sys_get_temp_dir(), 'ks_');
+            $tmpFile = $baseTmp . '.json';
             file_put_contents($tmpFile, $inputKeystroke);
+            @unlink($baseTmp); // Hapus file kosong bawaan tempnam
 
             $argUser    = escapeshellarg($user['id']);
             $argTmpFile = escapeshellarg($tmpFile);
