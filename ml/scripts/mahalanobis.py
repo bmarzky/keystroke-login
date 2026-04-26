@@ -1,6 +1,11 @@
 import sys
 import json
 import numpy as np
+import warnings
+
+# Suppress warnings that could corrupt JSON output sent to PHP
+warnings.filterwarnings('ignore')
+
 from sklearn.covariance import LedoitWolf
 
 # ============================================================

@@ -8,6 +8,10 @@ import os
 import json
 import joblib
 import numpy as np
+import warnings
+
+# Suppress warnings that could corrupt JSON output sent to PHP
+warnings.filterwarnings('ignore')
 
 MODEL_DIR = os.path.join(os.path.dirname(__file__), '../model')
 
