@@ -6,8 +6,6 @@ import warnings
 # Suppress warnings that could corrupt JSON output sent to PHP
 warnings.filterwarnings('ignore')
 
-from sklearn.covariance import LedoitWolf
-
 # ============================================================
 # FEATURE EXTRACTION: Per-keystroke arrays → 8-dim summary
 # ============================================================
@@ -44,26 +42,6 @@ def extract_features(data: dict) -> list:
             features.append(0.0)   # Tidak ada data → impute nol
             features.append(0.0)
     return features  # Panjang selalu N_FEATURES = 8
-
-def extract_relative_rhythm(data: dict) -> tuple:
-    """
-    Mengekstrak raw array untuk dwell dan flight, 
-    lalu menormalisasinya (membaginya dengan total waktu)
-    sehingga membentuk 'Relative Rhythm' persentase.
-    """
-    dwell = np.array(data.get('dwell', []), dtype=float)
-    flight = np.array(data.get('flight', []), dtype=float)
-    
-    if len(dwell) == 0 or len(flight) == 0:
-        return None, None
-        
-    s_dwell = np.sum(dwell)
-    s_dwell = s_dwell if s_dwell > 0 else 1.0
-    
-    s_flight = np.sum(flight)
-    s_flight = s_flight if s_flight > 0 else 1.0
-    
-    return dwell / s_dwell, flight / s_flight
 
 def calculate_mahalanobis(json_path: str) -> dict:
     try:
