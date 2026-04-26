@@ -96,9 +96,9 @@ def calculate_mahalanobis(json_path: str) -> dict:
             # Toleransi Panjang Ketikan (Masalah "Panjang Ketikan Berubah" karena Enter/Shift/Backspace)
             # DITAMBAH: Selalu abaikan 1 ketukan terakhir (biasanya tombol ENTER atau ketukan telat)
             # karena jeda sebelum menekan Enter sangat fluktuatif dan merusak akurasi ritme/standar deviasi.
-            min_dwell_len = max(3, min(len(in_dwell_raw), len(base_dwell_raw)) - 1)
-            min_flight_len = max(3, min(len(in_flight_raw), len(base_flight_raw)) - 1)
-            min_d2d_len = max(2, min(len(in_d2d_raw), len(base_d2d_raw)) - 1)
+            min_dwell_len = min(len(in_dwell_raw), len(base_dwell_raw)) - 1
+            min_flight_len = min(len(in_flight_raw), len(base_flight_raw)) - 1
+            min_d2d_len = min(len(in_d2d_raw), len(base_d2d_raw)) - 1
             
             if min_dwell_len < 3 or min_flight_len < 3:
                 return {
