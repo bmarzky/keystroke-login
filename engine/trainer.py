@@ -13,11 +13,11 @@ from sklearn.svm import OneClassSVM
 import joblib
 from datetime import datetime
 
-# Import fitur 8-dimensi dari mahalanobis
-from mahalanobis import extract_features
+# Import fitur 8-dimensi dari core
+from core import extract_features
 
 # Logging Setup
-LOG_FILE = os.path.join(os.path.dirname(__file__), 'train.log')
+LOG_FILE = os.path.join(os.path.dirname(__file__), '../ml/logs/train.log')
 
 def log_message(msg):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -26,13 +26,13 @@ def log_message(msg):
     print(f"[{timestamp}] {msg}")  # Also print to console
 
 # Konfigurasi Direktori & Parameter
-MODEL_DIR = os.path.join(os.path.dirname(__file__), '../model')
+MODEL_DIR = os.path.join(os.path.dirname(__file__), '../ml/models')
 os.makedirs(MODEL_DIR, exist_ok=True)
 MIN_DATA_THRESHOLD = 15 # Butuh minimal 15 sesi ketikan untuk melatih pola SVM yang stabil
 
 
 def get_db_connection():
-    env_path = os.path.join(os.path.dirname(__file__), '../../.env')
+    env_path = os.path.join(os.path.dirname(__file__), '../.env')
     config = {'DB_HOST': 'localhost', 'DB_USER': 'root', 'DB_PASS': '', 'DB_NAME': 'keystroke_db'}
     if os.path.exists(env_path):
         with open(env_path, 'r') as f:
