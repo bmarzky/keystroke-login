@@ -56,10 +56,10 @@ function verifyKeystroke($allStoredJson, $inputJson) {
     file_put_contents($tmpFile, json_encode($dataToPython));
     @unlink($baseTmp); // Hapus file kosong bawaan tempnam
     
-    // 5. Panggil Python External Script (mahalanobis.py)
-    $pyPath = realpath(__DIR__ . '/../ml/scripts/mahalanobis.py');
+    // 5. Panggil Python External Script (core.py)
+    $pyPath = realpath(__DIR__ . '/core.py');
     if (!$pyPath) {
-        return ['status' => false, 'distance' => 9999, 'threshold' => 0, 'reason' => 'Script Engine Python tidak ditemukan pada ml/scripts/mahalanobis.py'];
+        return ['status' => false, 'distance' => 9999, 'threshold' => 0, 'reason' => 'Script Engine Python tidak ditemukan pada engine/core.py'];
     }
 
     $pyExec = getPythonExecBiometrics();
