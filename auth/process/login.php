@@ -41,7 +41,7 @@ function triggerBackgroundTraining($user_id) {
 }
 
 // Helper: Proses Login Sukses
-function processSuccessfulLogin($user, $conn, $rawKeystroke, $status) {
+function processSuccessfulLogin($user, $conn, $rawKeystroke, $status, $shouldSave = true) {
     // Bersihkan session sisa sebelum diisi yang baru
     session_unset();
     session_regenerate_id(true);
@@ -51,13 +51,15 @@ function processSuccessfulLogin($user, $conn, $rawKeystroke, $status) {
     $_SESSION['login_status'] = $status;
     $_SESSION['last_login'] = date('Y-m-d H:i:s');
 
-    // Simpan data baru untuk memperkaya dataset (Adaptive Learning)
-    $stmt = $conn->prepare("INSERT INTO keystroke_data (user_id, features) VALUES (?, ?)");
-    $stmt->bind_param("is", $user['id'], $rawKeystroke);
-    $stmt->execute();
+    // 🛡️ ANTI-POISONING: Simpan data HANYA jika skor sangat tinggi atau di tahap awal
+    if ($shouldSave) {
+        $stmt = $conn->prepare("INSERT INTO keystroke_data (user_id, features) VALUES (?, ?)");
+        $stmt->bind_param("is", $user['id'], $rawKeystroke);
+        $stmt->execute();
 
-    // Mengaktifkan AI di Latar Belakang (Retrain Model) ketika data baru berhasil masuk
-    triggerBackgroundTraining($user['id']);
+        // Mengaktifkan AI di Latar Belakang (Retrain Model) ketika data baru berhasil masuk
+        triggerBackgroundTraining($user['id']);
+    }
 
     header("Location: ../../dashboard/index.php");
     exit(); 
@@ -160,10 +162,12 @@ if ($user && password_verify($password, $user['password'])) {
         // TIER 1: Kalkulasi Mahalanobis Murni di PHP (Otomatis jika SVM absen/gagal dieksekusi)
         if (!$svmUsed) {
             $verification = verifyKeystroke($allData, $inputKeystroke); 
-            $isMatch    = (isset($verification['status']) && $verification['status'] === true);
-            $score      = $verification['distance']  ?? 0;
-            $thresh     = $verification['threshold'] ?? 0;
-            $phpReason  = $verification['reason']    ?? 'N/A';
+            $isMatch      = (isset($verification['status']) && $verification['status'] === true);
+            $score        = $verification['distance']  ?? 0;
+            $thresh       = $verification['threshold'] ?? 0;
+            $shouldUpdate = $verification['should_update'] ?? false; // 🔹 Ambil instruksi update
+            $phpReason    = $verification['reason']    ?? 'N/A';
+            
             // Info dimensi dari Python (8 = healthy, hanya ada jika response baru)
             $nFeatures  = $verification['n_features'] ?? '?';
             $nSamplesOk = $verification['n_samples']  ?? '?';
@@ -208,7 +212,9 @@ if ($user && password_verify($password, $user['password'])) {
     if ($isMatch) {
         // Berhasil Verifikasi (Atau Mode Belajar di Tahap Sangat Awal jika ingin dibedakan labelnya)
         $statusLabel = ($dataCount < 5) ? "Verified (Learning Mode)" : "Verified";
-        processSuccessfulLogin($user, $conn, $inputKeystroke, $statusLabel);
+        // Jika SVM dipakai, default simpan adalah true, jika Mahalanobis, ikuti instruksi shouldUpdate
+        $finalUpdateFlag = $svmUsed ? true : $shouldUpdate;
+        processSuccessfulLogin($user, $conn, $inputKeystroke, $statusLabel, $finalUpdateFlag);
     } else {
         // Logging data mentah yang ditolak ke file terpisah untuk debugging (persis format database)
         $failedDataLog = sprintf(

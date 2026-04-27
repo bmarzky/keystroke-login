@@ -86,12 +86,13 @@ function verifyKeystroke($allStoredJson, $inputJson) {
     // Kembalikan ke Login.php (Sistem Tier-1/Fallback)
     // n_features = 8 (sehat) menunjukkan sistem sudah pakai statistical aggregation
     return [
-       'status'     => $result['status']     ?? false,
-       'distance'   => $result['distance']   ?? 9999,
-       'threshold'  => $result['threshold']  ?? 0,
-       'reason'     => $result['reason']     ?? 'Kesalahan Tanpa Penjelasan',
-       'n_features' => $result['n_features'] ?? null,
-       'n_samples'  => $result['n_samples']  ?? null,
+       'status'        => $result['status'] ?? false,
+       'distance'      => $result['score']  ?? 9999, // Gunakan score dari Python
+       'threshold'     => $result['threshold']  ?? 0,
+       'should_update' => $result['should_update_history'] ?? false, // 🔹 INI KUNCINYA
+       'reason'        => $result['reason']     ?? 'Kesalahan Tanpa Penjelasan',
+       'n_features'    => $result['n_features'] ?? null,
+       'n_samples'     => $result['n_samples']  ?? null,
     ];
 }
 
