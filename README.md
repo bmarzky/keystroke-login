@@ -1,6 +1,6 @@
 # Keystroke Biometric Login System (Titanium Edition)
 
-Sistem autentikasi login mutakhir yang menggabungkan keamanan password tradisional dengan lapisan biometrik perilaku (*behavioral biometrics*) berbasis pola pengetikan. Sistem ini menggunakan **Titanium Scoring Engine** yang ditenagai oleh Machine Learning (Python) untuk membedakan pengguna asli dengan penyusup (*imposter*) melalui analisis ritme, kecepatan, stabilitas, dan akselerasi pengetikan.
+Sistem autentikasi login mutakhir yang menggabungkan keamanan password tradisional dengan lapisan biometrik perilaku (*behavioral biometrics*) berbasis pola pengetikan. Sistem ini menggunakan **Titanium Scoring Engine** yang diperkuat oleh algoritma **Mahalanobis Distance** dan Machine Learning (Python) untuk membedakan pengguna asli dengan penyusup (*imposter*) melalui analisis multidimensi terhadap ritme, kecepatan, stabilitas, dan akselerasi pengetikan.
 
 ## Fitur Unggulan
 
@@ -65,50 +65,21 @@ Sistem autentikasi login mutakhir yang menggabungkan keamanan password tradision
 
 ```text
 keystroke-login/
-├── assets/
-│   ├── css/
-│   │   └── style.css
-│   ├── js/
-│   │   ├── auth-forms.js
-│   │   ├── dashboard.js
-│   │   └── keystroke.js
-│   └── tutorial/
-│       ├── guide.css
-│       └── guide.js
-├── auth/
-│   ├── process/
-│   │   ├── login.php
-│   │   ├── logout.php
-│   │   └── register.php
-│   ├── login.php
-│   └── register.php
-├── config/
-│   └── database.php
-├── core/
-│   └── biometrics.php
-├── dashboard/
-│   └── index.php
-├── database/
-│   └── keystroke.sql
-├── ml/
-│   ├── data/
-│   │   ├── biometric_debug.log
-│   │   └── failed_keystrokes_raw.log
-│   ├── model/
-│   │   ├── keystroke_model_107.pkl
-│   │   └── keystroke_model_109.pkl
-│   ├── scripts/
-│   │   ├── inspect_models.py
-│   │   ├── mahalanobis.py
-│   │   ├── predict.py
-│   │   └── train.py
-│   └── requirements.txt
-├── .env
-├── .gitignore
-├── .htaccess
-├── index.php
-├── LICENSE
-└── README.md
+├── assets/             # Frontend assets (CSS, JS)
+├── auth/               # Authentication UI & process
+├── config/             # Database connection & env config
+├── database/           # SQL migration files
+├── engine/             # Biometric Core Logic (PHP & Python)
+│   ├── bridge.php      # PHP-Python Bridge
+│   ├── core.py         # Titanium Scoring Engine
+│   ├── predictor.py    # SVM Prediction script
+│   └── trainer.py      # Background AI training
+├── ml/                 # Machine Learning Artifacts
+│   ├── logs/           # Predicition & system logs
+│   └── models/         # Trained .pkl models
+├── .env                # Environment variables
+├── index.php           # Landing & routing
+└── README.md           # Documentation
 ```
 
 ## Lisensi
