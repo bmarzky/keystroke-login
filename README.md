@@ -1,6 +1,6 @@
 # Keystroke Biometric Login System (Titanium Edition)
 
-Sistem autentikasi login mutakhir yang menggabungkan keamanan password tradisional dengan lapisan biometrik perilaku (*behavioral biometrics*) berbasis pola pengetikan. Sistem ini menggunakan **Titanium Scoring Engine** yang diperkuat oleh algoritma **Mahalanobis Distance** dan Machine Learning (Python) untuk membedakan pengguna asli dengan penyusup (*imposter*) melalui analisis multidimensi terhadap ritme, kecepatan, stabilitas, dan akselerasi pengetikan.
+Sistem autentikasi login mutakhir yang menggabungkan keamanan password tradisional dengan lapisan biometrik perilaku (*behavioral biometrics*) berbasis pola pengetikan. Sistem ini menggunakan **Titanium Scoring Engine** yang diperkuat oleh algoritma **Mahalanobis Distance** dan Machine Learning (One Class SVM) untuk membedakan pengguna asli dengan penyusup (*imposter*) melalui analisis multidimensi terhadap ritme, kecepatan, stabilitas, dan akselerasi pengetikan.
 
 ## Fitur Unggulan
 
