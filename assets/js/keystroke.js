@@ -2,6 +2,7 @@ let dwellTimes = [];
 let flightTimes = [];
 let d2dTimes = [];
 let u2uTimes = [];
+let keySequence = []; // 🔹 BARU: Menyimpan urutan tombol yang diketik
 let pendingKeyDowns = {};
 let lastKeyDownTime = null;
 let lastKeyUpTime = null;
@@ -22,6 +23,7 @@ window.getKeystrokeData = function () {
         flight: flightTimes,
         d2d: d2dTimes,
         u2u: u2uTimes,
+        keys: keySequence, // 🔹 BARU: Kirim urutan tombol
         speed: parseFloat(speedCPM.toFixed(2))
     });
 };
@@ -35,6 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
         flightTimes = [];
         d2dTimes = [];
         u2uTimes = [];
+        keySequence = []; // 🔹 Reset urutan
         pendingKeyDowns = {};
         lastKeyDownTime = null;
         lastKeyUpTime = null;
@@ -89,9 +92,20 @@ document.addEventListener("DOMContentLoaded", () => {
             let now = Date.now();
             if (startTime === null) startTime = now;
             pendingKeyDowns[e.key] = now;
+            keySequence.push(e.key); // 🔹 Catat tombol yang ditekan
 
             if (lastKeyDownTime !== null) d2dTimes.push((now - lastKeyDownTime) / 1000);
-            if (lastKeyUpTime !== null) flightTimes.push((now - lastKeyUpTime) / 1000);
+            
+            // 🔹 LOGIKA OVERLAP (ROLLOVER):
+            // Jika lastKeyUpTime belum ada atau lebih besar dari sekarang (dalam kasus tertentu),
+            // tetap hitung selisihnya. Nilai negatif = Overlap.
+            if (lastKeyUpTime !== null) {
+                flightTimes.push((now - lastKeyUpTime) / 1000);
+            } else if (startTime !== now) {
+                // Kasus tombol pertama belum dilepas tapi tombol kedua sudah masuk
+                flightTimes.push(0); // Inisialisasi awal jika perlu
+            }
+            
             lastKeyDownTime = now;
         });
 
