@@ -3,32 +3,11 @@ import json
 import numpy as np
 import warnings
 
-# Suppress warnings that could corrupt JSON output sent to PHP
 warnings.filterwarnings('ignore')
 
-# ============================================================
-# FEATURE EXTRACTION: Per-keystroke arrays → 8-dim summary
-# ============================================================
-# Sebelumnya: dwell(n) + flight(n-1) + d2d(n-1) + u2u(n-1)
-#             = 25–45 dimensi tergantung panjang password → FATAL
-#
-# Sekarang: mean + std per tipe = 8 dimensi TETAP
-#   [mean_dwell, std_dwell, mean_flight, std_flight,
-#    mean_d2d,   std_d2d,   mean_u2u,   std_u2u]
-#
-# Keuntungan:
-#   1. Dimensi TETAP → tidak sensitif panjang vector / typo
-#   2. 8 << 3 samples → rasio sehat untuk Mahalanobis
-#   3. Hard length-filter tidak lagi dibutuhkan
-# ============================================================
-
-N_FEATURES = 8  # Selalu 8 dimensi, tidak pernah berubah
+N_FEATURES = 8
 
 def extract_features(data: dict) -> list:
-    """
-    Mengkompres raw keystroke arrays menjadi 8 statistical features.
-    Aman untuk array kosong atau panjang berbeda.
-    """
     features = []
     for key in ['dwell', 'flight', 'd2d', 'u2u']:
         arr = np.array(data.get(key, []), dtype=float)
@@ -37,11 +16,12 @@ def extract_features(data: dict) -> list:
             features.append(float(np.std(arr, ddof=1)))
         elif len(arr) == 1:
             features.append(float(arr[0]))
-            features.append(0.0)   # std = 0 jika hanya 1 data poin
-        else:
-            features.append(0.0)   # Tidak ada data → impute nol
             features.append(0.0)
-    return features  # Panjang selalu N_FEATURES = 8
+        else:
+            features.append(0.0)
+            features.append(0.0)
+    features = [float(f) if np.isfinite(f) else 0.0 for f in features]
+    return features
 
 def calculate_mahalanobis(json_path: str) -> dict:
     try:
@@ -51,148 +31,195 @@ def calculate_mahalanobis(json_path: str) -> dict:
         input_data = data.get('input', {})
         history    = data.get('history', [])
 
-        # ----------------------------------------------------------
-        # 1. Tidak ada riwayat sama sekali
-        # ----------------------------------------------------------
         if len(history) < 1:
             return {
-                "status": False, "distance": 9996.0, "threshold": 0.0,
+                "status": False, "distance": 0.0, "score": 0.0, "threshold": 0.55,
                 "reason": "Tidak ada riwayat ketikan (enroll dulu)"
             }
 
-        # ----------------------------------------------------------
-        # 2. EARLY STAGE FINGERPRINT (Sekarang digunakan untuk SEMUA tahap)
-        # ----------------------------------------------------------
-        if len(history) >= 1:
-            # LANGKAH 1: Kunci Baseline Hanya pada Data Registrasi Murni (history[-1])
-            # Karena array ditarik dengan ORDER BY id DESC, data asli pendaftaran ada di ujung akhir [-1]
-            baseline = history[-1]
+        n_history = len(history)
+        # Threshold diperketat lagi (Titanium Hardened)
+        # 0.63 untuk tahap awal agar teman/imposter tidak mudah tembus
+        threshold = 0.63 if n_history < 5 else 0.70 
+
+        in_dwell_raw = np.array(input_data.get('dwell', []), dtype=float)
+        in_flight_raw = np.array(input_data.get('flight', []), dtype=float)
+        input_speed = float(input_data.get('speed', 0))
+
+        if np.sum(in_dwell_raw) < 0.01 or np.sum(in_flight_raw) < 0.01:
+            return {
+                "status": False, "distance": 0.0, "score": 0.0, "threshold": threshold,
+                "reason": "Data tidak valid / terlalu kecil"
+            }
+
+        # 🔹 HARD VETO GUARD (Mencegah bot / gaya ngetik ekstrim beda)
+        primary_base = history[0]
+        pb_speed = float(primary_base.get('speed', 0))
+        pb_speed_dev = abs(input_speed - pb_speed) / max(pb_speed, 1.0)
+        
+        if pb_speed_dev > 0.40: # Perketat dari 60% ke 40%
+             return {
+                "status": False, "distance": 0.0, "score": 0.0, "threshold": threshold,
+                "reason": f"Sistem Gate: Kecepatan Tidak Wajar (Deviasi {pb_speed_dev:.1%})"
+            }
+
+        # 🔹 SCORING SYSTEM (MULTI-BASELINE FUSION)
+        # Bobot TITANIUM: Korelasi (30%), Ritme (20%), Speed (10%), Rasio (10%), Stabilitas (15%), Flow (15%)
+        w_rhythm, w_corr, w_speed, w_ratio, w_stability, w_flow = 0.20, 0.30, 0.10, 0.10, 0.15, 0.15
+        baselines = history[:5]
+        all_scores = []
+
+        for baseline in baselines:
+            # Load Full Spectrum (4 Tipe Data)
+            b_data = {
+                'dwell': np.array(baseline.get('dwell', []), dtype=float),
+                'flight': np.array(baseline.get('flight', []), dtype=float),
+                'd2d': np.array(baseline.get('d2d', []), dtype=float),
+                'u2u': np.array(baseline.get('u2u', []), dtype=float)
+            }
+            baseline_speed = float(baseline.get('speed', 0))
+
+            # Sinkronisasi Panjang Array (Auto-Align)
+            # Kita bandingkan 4 tipe sekaligus
+            scores_r = []
+            scores_c = []
             
-            in_dwell_raw = np.array(input_data.get('dwell', []), dtype=float)
-            in_flight_raw = np.array(input_data.get('flight', []), dtype=float)
-            in_d2d_raw = np.array(input_data.get('d2d', []), dtype=float)
-            
-            base_dwell_raw = np.array(baseline.get('dwell', []), dtype=float)
-            base_flight_raw = np.array(baseline.get('flight', []), dtype=float)
-            base_d2d_raw = np.array(baseline.get('d2d', []), dtype=float)
-            
-            # Toleransi Panjang Ketikan (Masalah "Panjang Ketikan Berubah" karena Enter/Shift/Backspace)
-            # DITAMBAH: Selalu abaikan 1 ketukan terakhir (biasanya tombol ENTER atau ketukan telat)
-            # karena jeda sebelum menekan Enter sangat fluktuatif dan merusak akurasi ritme/standar deviasi.
-            min_dwell_len = min(len(in_dwell_raw), len(base_dwell_raw)) - 1
-            min_flight_len = min(len(in_flight_raw), len(base_flight_raw)) - 1
-            min_d2d_len = min(len(in_d2d_raw), len(base_d2d_raw)) - 1
-            
-            if min_dwell_len < 3 or min_flight_len < 3:
-                return {
-                    "status": False, "distance": 999.0, "threshold": 0.15,
-                    "reason": "Data Ketikan Terlalu Pendek atau Kosong",
-                    "n_samples": len(history), "n_features": 0
-                }
-            
-            # Truncate array ke ukuran terkecil agar selalu sejajar (Auto-Aligning)
-            in_dwell_raw = in_dwell_raw[:min_dwell_len]
-            base_dwell_raw = base_dwell_raw[:min_dwell_len]
-            in_flight_raw = in_flight_raw[:min_flight_len]
-            base_flight_raw = base_flight_raw[:min_flight_len]
-            in_d2d_raw = in_d2d_raw[:min_d2d_len]
-            base_d2d_raw = base_d2d_raw[:min_d2d_len]
-            
-            # Normalisasi setelah disamakan panjangnya
-            in_dwell = in_dwell_raw / max(np.sum(in_dwell_raw), 0.001)
-            base_dwell = base_dwell_raw / max(np.sum(base_dwell_raw), 0.001)
-            in_flight = in_flight_raw / max(np.sum(in_flight_raw), 0.001)
-            base_flight = base_flight_raw / max(np.sum(base_flight_raw), 0.001)
-            
-            if True: # Menjaga indentasi agar sesuai dengan kode di bawahnya
+            for key in ['dwell', 'flight', 'd2d', 'u2u']:
+                in_arr = np.array(input_data.get(key, []), dtype=float)
+                base_arr = b_data[key]
                 
-                # LANGKAH 2: Terapkan "Hard Speed Gate" (Blokir Otomatis)
-                input_speed = float(input_data.get('speed', 0))
-                baseline_speed = float(baseline.get('speed', 0))
+                # Truncate (abaikan Enter jika ada)
+                mlen = min(len(in_arr), len(base_arr)) - 1
+                if mlen < 3: continue
                 
-                # Hitung persentase deviasi kecepatan terhadap ketikan asli pertama
-                speed_deviation = abs(input_speed - baseline_speed) / max(baseline_speed, 1.0)
-                
-                # Jika bedanya lebih dari 85%, langsung REJECT (Telat menekan Enter bisa bikin deviasi CPM hingga 70%)
-                if speed_deviation > 0.85:
-                    return {
-                        "status": False, "distance": 999.0, "threshold": 0.85,
-                        "reason": f"Kecepatan Abnormal (Deviasi {int(speed_deviation*100)}% dari Baseline Asli)",
-                        "n_samples": len(history), "n_features": len(in_dwell) + len(in_flight)
-                    }
-                
-                # LANGKAH 3: Hitung Jarak Ritme Relatif Ekstrem Ketat
-                dist_dwell = np.sqrt(np.sum((in_dwell - base_dwell) ** 2))
-                dist_flight = np.sqrt(np.sum((in_flight - base_flight) ** 2))
-                
-                total_dist = (dist_dwell * 0.75) + (dist_flight * 0.25)
-                
-                # LANGKAH 4: DUAL PEARSON CORRELATION (Pendeteksi Bentuk Jari Asli Mutlak)
-                # Alih-alih menggunakan heuristic veto yang rentan False Rejection (seperti D2D variance),
-                # kita menggunakan Korelasi Pearson pada DWELL dan FLIGHT secara bersamaan.
-                # Pearson mengukur "Shape" (bentuk naik turun jari) terlepas dari skala atau baseline variance.
-                # Ini mengamankan sistem dari impostor sambil memberikan Usability maksimal bagi user asli.
-                
-                corr_dwell = 1.0
-                corr_flight = 1.0
-                
-                if len(in_dwell_raw) > 1 and len(base_dwell_raw) > 1:
-                    c_dwell = np.corrcoef(in_dwell_raw, base_dwell_raw)
-                    if not np.isnan(c_dwell[0, 1]):
-                        corr_dwell = c_dwell[0, 1]
-                        
-                if len(in_flight_raw) > 1 and len(base_flight_raw) > 1:
-                    c_flight = np.corrcoef(in_flight_raw, base_flight_raw)
-                    if not np.isnan(c_flight[0, 1]):
-                        corr_flight = c_flight[0, 1]
-                        
-                # Rata-rata kemiripan bentuk (Shape) dari ketukan (Dwell) dan perpindahan (Flight)
-                avg_corr = (corr_dwell + corr_flight) / 2.0
-                        
-                if avg_corr < 0.60: # Batas minimal diturunkan ke 60% agar Sangat Mudah Digunakan tapi tetap mustahil ditebak impostor
-                    return {
-                        "status": False, "distance": 999.0, "threshold": 0.60,
-                        "reason": f"Pola Jari Tidak Dikenali (Korelasi Dwell+Flight: {avg_corr:.2f})",
-                        "n_samples": len(history), "n_features": len(in_dwell) + len(in_flight)
-                    }
-                
-                # Longgarkan Threshold Ritme Euclidean menjadi 0.20 (Memberi ruang nafas maksimal untuk fluktuasi harian)
-                rhythm_threshold = 0.20
-                            
-                # KEPUTUSAN AKHIR: Kita hapus Total Deviation karena Pearson sudah sangat kuat.
-                # Kita hanya bergantung pada jarak Euclidean yang telah dilonggarkan ke 0.15
-                if total_dist <= rhythm_threshold:
-                    return {
-                        "status": True, "distance": float(total_dist), "threshold": float(rhythm_threshold),
-                        "reason": "Pola Ritme Cocok (Early-Stage Fingerprint)",
-                        "n_samples": len(history), "n_features": len(in_dwell) + len(in_flight)
-                    }
+                in_v = in_arr[:mlen]
+                bs_v = base_arr[:mlen]
+
+                # B. Rhythm Score (Euclidean) per tipe
+                # Gunakan absolut untuk normalisasi agar mendukung Overlap (angka negatif)
+                norm_in = in_v / max(np.sum(np.abs(in_v)), 0.001)
+                norm_bs = bs_v / max(np.sum(np.abs(bs_v)), 0.001)
+                dist = np.sqrt(np.sum((norm_in - norm_bs) ** 2))
+                # Mapping: Jarak 0.18 dianggap skor 0 (Lebih Sensitif)
+                scores_r.append(max(0.0, 1.0 - (dist / 0.18)))
+
+                # C. Correlation Score (Pearson)
+                if len(in_v) > 2 and np.std(in_v) > 0 and np.std(bs_v) > 0:
+                    c_val = np.corrcoef(in_v, bs_v)[0, 1]
+                    correlation_score = max(0.0, c_val) if np.isfinite(c_val) else 0.5
                 else:
-                    return {
-                        "status": False, "distance": float(total_dist), "threshold": float(rhythm_threshold),
-                        "reason": f"Pola Ritme Tidak Cocok (Skor Euclidean: {total_dist:.2f} > {rhythm_threshold})",
-                        "n_samples": len(history), "n_features": len(in_dwell) + len(in_flight)
-                    }
+                    correlation_score = 0.5
+                scores_c.append(correlation_score)
+
+            if not scores_r: continue
+
+            # Rata-rata skor dari semua komponen yang tersedia
+            rhythm_score = np.mean(scores_r)
+            correlation_score = np.mean(scores_c)
+
+            # A. Speed Score (Global)
+            speed_dev = abs(input_speed - baseline_speed) / max(baseline_speed, 1.0)
+            speed_score = max(0.0, 1.0 - (speed_dev / 0.50))
+
+            # D. Ratio Score (Anatomi Jari - Tetap menggunakan Dwell vs Flight)
+            in_ratio = np.sum(input_data.get('dwell', [])) / max(np.sum(input_data.get('flight', [])), 0.01)
+            base_ratio = np.sum(baseline.get('dwell', [])) / max(np.sum(baseline.get('flight', [])), 0.01)
+            ratio_dev = abs(in_ratio - base_ratio) / max(base_ratio, 0.01)
+            ratio_score = max(0.0, 1.0 - (ratio_dev / 0.40)) # Perketat ke 40%
+
+            # E. Stability Score (Consistency - BARU)
+            # Menghitung apakah tingkat "gugup/jitter" sama dengan baseline
+            in_jitter = np.std(in_dwell_raw) / max(np.mean(in_dwell_raw), 0.01)
+            base_dwell = np.array(baseline.get('dwell', []), dtype=float)
+            base_jitter = np.std(base_dwell) / max(np.mean(base_dwell), 0.01)
+            jitter_dev = abs(in_jitter - base_jitter)
+            stability_score = max(0.0, 1.0 - (jitter_dev / 0.30))
+
+            # F. Flow Score (Transitional Acceleration - BARU)
+            # Mengukur percepatan/perlambatan antar tombol (np.diff)
+            in_flight = np.array(input_data.get('flight', []), dtype=float)
+            base_flight = np.array(baseline.get('flight', []), dtype=float)
+            flen = min(len(in_flight), len(base_flight))
+            if flen > 3:
+                in_acc = np.diff(in_flight[:flen])
+                bs_acc = np.diff(base_flight[:flen])
+                if np.std(in_acc) > 0 and np.std(bs_acc) > 0:
+                    c_acc = np.corrcoef(in_acc, bs_acc)[0, 1]
+                    flow_score = max(0.0, c_acc) if np.isfinite(c_acc) else 0.5
+                else:
+                    flow_score = 0.5
             else:
-                return {
-                    "status": False, "distance": 999.0, "threshold": 0.15,
-                    "reason": "Data Input Tidak Valid", "n_samples": len(history), "n_features": 0
-                }
+                flow_score = 0.5
+
+            # FUSION SCORE
+            final_b_score = (w_rhythm * rhythm_score) + \
+                            (w_corr * correlation_score) + \
+                            (w_speed * speed_score) + \
+                            (w_ratio * ratio_score) + \
+                            (w_stability * stability_score) + \
+                            (w_flow * flow_score)
+            
+            all_scores.append(final_b_score)
+
+        if not all_scores:
+            return {
+                "status": False, "distance": 0.0, "score": 0.0, "threshold": threshold,
+                "reason": "Data Ketikan Terlalu Pendek atau Tidak Valid"
+            }
+
+        # 🔹 LOGIKA ADAPTIF: Ambil Rata-rata dari 2 gaya ngetik terbaikmu!
+        # Manusia tidak konsisten. Jika 2 history cocok, biarkan masuk!
+        all_scores.sort(reverse=True)
+        top_k = all_scores[:2] if all_scores else [0.0]
+        final_score = float(np.mean(top_k))
+        
+        # Penjaga: Pastikan tidak NaN agar JSON tidak crash
+        if not np.isfinite(final_score):
+            final_score = 0.0
+
+        # 🔹 HYBRID LAYER: MAHALANOBIS (Aktif jika data >= 5)
+        if len(history) >= 5:
+            try:
+                X = np.array([extract_features(h) for h in history])
+                mu = np.mean(X, axis=0)
+                cov = np.cov(X, rowvar=False) + np.eye(N_FEATURES) * 1e-3
+                inv_cov = np.linalg.inv(cov)
+                
+                x_input = np.array(extract_features(input_data))
+                diff = x_input - mu
+                mahal_dist = np.sqrt(max(0, diff.T @ inv_cov @ diff))
+                
+                # Konversi jarak Mahalanobis ke Skor 0-1 yang ramah
+                mahal_score = max(0.0, 1.0 - (mahal_dist / 10.0)) 
+                
+                # Blend: 80% Heuristic Fusion + 20% Mahalanobis AI
+                final_score = (0.8 * final_score) + (0.2 * mahal_score)
+            except:
+                pass 
+
+        # 🔹 ANTI-POISONING GUARD: 
+        # Jangan update history jika skor "pas-pasan" (mencegah data imposter masuk)
+        should_update = (final_score > 0.75) or (final_score > threshold and n_history < 3)
+
+        return {
+            "status": final_score >= threshold,
+            "score": round(final_score, 4),
+            "threshold": threshold,
+            "should_update_history": should_update, 
+            "reason": f"Score Fusion: {final_score:.2f} | Status: {'ACCEPT' if final_score >= threshold else 'REJECT'}",
+            "n_features": 8,
+            "n_samples": n_history
+        }
 
     except Exception as e:
         return {
-            "status": False, "distance": 9999.0, "threshold": 0.0,
+            "status": False, "distance": 0.0, "score": 0.0, "threshold": 0.0,
             "reason": f"Python Exception: {str(e)}"
         }
 
-
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print(json.dumps({
-            "status": False, "distance": 9999.0, "threshold": 0.0,
-            "reason": "No input file provided"
-        }))
+        print(json.dumps({"status": False, "reason": "No input file provided"}))
         sys.exit(1)
-
     result = calculate_mahalanobis(sys.argv[1])
     print(json.dumps(result))
