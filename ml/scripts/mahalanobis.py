@@ -52,22 +52,29 @@ def calculate_mahalanobis(json_path: str) -> dict:
                 "reason": "Data tidak valid / terlalu kecil"
             }
 
-        # 🔹 HARD VETO GUARD (Mencegah bot / gaya ngetik ekstrim beda)
-        primary_base = history[0]
-        pb_speed = float(primary_base.get('speed', 0))
-        pb_speed_dev = abs(input_speed - pb_speed) / max(pb_speed, 1.0)
+        # 🔹 DYNAMIC SPEED GATE (Bukan cuma history[0], tapi rata-rata riwayat)
+        history_speeds = [float(h.get('speed', 0)) for h in history]
+        avg_base_speed = float(np.mean(history_speeds))
+        pb_speed_dev   = abs(input_speed - avg_base_speed) / max(avg_base_speed, 1.0)
         
-        if pb_speed_dev > 0.40: # Perketat dari 60% ke 40%
+        if pb_speed_dev > 0.40: 
              return {
-                "status": False, "distance": 0.0, "score": 0.0, "threshold": threshold,
-                "reason": f"Sistem Gate: Kecepatan Tidak Wajar (Deviasi {pb_speed_dev:.1%})"
+                "status": False, "score": 0.0, "threshold": threshold,
+                "reason": f"Sistem Gate: Kecepatan Tidak Wajar (Deviasi {pb_speed_dev:.1%} dari Rata-rata)"
             }
 
-        # 🔹 SCORING SYSTEM (MULTI-BASELINE FUSION)
-        # Bobot TITANIUM: Korelasi (30%), Ritme (20%), Speed (10%), Rasio (10%), Stabilitas (15%), Flow (15%)
+        # 🔹 ADAPTIVE BASES (Anchor + Drift Adaptation)
+        # Ambil 2 data awal (Jangkar) dan 3 data terbaru (Adaptasi)
+        if len(history) <= 5:
+            baselines = history
+        else:
+            baselines = history[:2] + history[-3:]
+            
+        # 🔹 SCORING WEIGHTS (Bobot Titanium)
         w_rhythm, w_corr, w_speed, w_ratio, w_stability, w_flow = 0.20, 0.30, 0.10, 0.10, 0.15, 0.15
-        baselines = history[:5]
+            
         all_scores = []
+        mahal_error = None
 
         for baseline in baselines:
             # Load Full Spectrum (4 Tipe Data)
@@ -194,19 +201,23 @@ def calculate_mahalanobis(json_path: str) -> dict:
                 
                 # Blend: 80% Heuristic Fusion + 20% Mahalanobis AI
                 final_score = (0.8 * final_score) + (0.2 * mahal_score)
-            except:
-                pass 
+            except Exception as me:
+                mahal_error = f"Mahalanobis Error: {str(me)}"
 
         # 🔹 ANTI-POISONING GUARD: 
         # Jangan update history jika skor "pas-pasan" (mencegah data imposter masuk)
         should_update = (final_score > 0.75) or (final_score > threshold and n_history < 3)
+
+        res_reason = f"Score Fusion: {final_score:.2f} | Status: {'ACCEPT' if final_score >= threshold else 'REJECT'}"
+        if mahal_error:
+            res_reason += f" | {mahal_error}"
 
         return {
             "status": final_score >= threshold,
             "score": round(final_score, 4),
             "threshold": threshold,
             "should_update_history": should_update, 
-            "reason": f"Score Fusion: {final_score:.2f} | Status: {'ACCEPT' if final_score >= threshold else 'REJECT'}",
+            "reason": res_reason,
             "n_features": 8,
             "n_samples": n_history
         }
