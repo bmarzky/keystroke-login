@@ -213,13 +213,13 @@ def calculate_mahalanobis(json_path: str) -> dict:
             res_reason += f" | {mahal_error}"
 
         return {
-            "status": final_score >= threshold,
-            "score": round(final_score, 4),
-            "threshold": threshold,
-            "should_update_history": should_update, 
-            "reason": res_reason,
+            "status": bool(final_score >= threshold),
+            "score": float(round(final_score, 4)),
+            "threshold": float(threshold),
+            "should_update_history": bool(should_update), 
+            "reason": str(res_reason),
             "n_features": 8,
-            "n_samples": n_history
+            "n_samples": int(n_history)
         }
 
     except Exception as e:
