@@ -1,32 +1,35 @@
-# Keystroke Login System
+# Keystroke Biometric Login System (Titanium Edition)
 
-Sistem autentikasi login berbasis biometrik keystroke menggunakan PHP, MySQL, JavaScript, dan Machine Learning (Python). Sistem ini menganalisis pola penekanan tombol keyboard pengguna untuk verifikasi identitas, memberikan lapisan keamanan tambahan selain password tradisional.
+Sistem autentikasi login mutakhir yang menggabungkan keamanan password tradisional dengan lapisan biometrik perilaku (*behavioral biometrics*) berbasis pola pengetikan. Sistem ini menggunakan **Titanium Scoring Engine** yang ditenagai oleh Machine Learning (Python) untuk membedakan pengguna asli dengan penyusup (*imposter*) melalui analisis ritme, kecepatan, stabilitas, dan akselerasi pengetikan.
 
-## Fitur
+## 🚀 Fitur Unggulan
 
-- **Registrasi Pengguna**: Pengguna dapat mendaftar dengan username, password, dan pola keystroke unik sebagai *baseline*.
-- **Hybrid Authentication Tier**: Sistem keamanan bertingkat yang otomatis beradaptasi dengan jumlah data pengguna:
-    - **Tier 1 (Sparse Data - Hard Wall Strategy)**: Verifikasi sejak login pertama. Menggunakan baseline absolut (`history[-1]`) dan **Hard Speed Gate (15%)** untuk melindungi baseline dari keracunan (*baseline poisoning*) oleh imposters.
-    - **Tier 1 (Normal Data - True Mahalanobis Distance)**: Menggunakan algoritma **Mahalanobis Distance** via Python (`ml/scripts/mahalanobis.py`) yang menyelesaikan masalah *feature correlation bias* melalui perhitungan *covariance matrix* saat sampel ≥ 5.
-    - **Tier 2 (Advanced AI)**: Beralih ke **One-Class SVM** (Python) untuk perlindungan tinggi saat sampel ≥ 15.
-- **Side-Channel Gates**: Melindungi dari serangan *shoulder-surfing* dan *automated replay attacks* melalui:
-    - **D2D Flow Veto**: Analisis transisi ritme/jeda antar tombol.
-    - **Key Overlap Veto**: Deteksi anomali pada tumpang-tindih (overlap) penekanan tombol.
-- **Auto-Aligning Truncation Logic**: Menangani variasi pengetikan alami pengguna, seperti penekanan tombol 'Enter' yang tertunda.
-- **Centralized Logging & Debugging**: Penyimpanan log khusus untuk upaya login gagal (`failed_keystrokes_raw.log`) guna kemudahan audit dan debugging, serta halaman dashboard dengan Decision Score.
-- **Adaptive Learning**: Model Machine Learning otomatis dilatih ulang (retrain) di *background* setiap login berhasil untuk beradaptasi dengan perubahan gaya ketik pengguna.
-- **Interactive Tutorial**: Dilengkapi dengan pemandu interaktif menggunakan **Driver.js** (jika diaktifkan) untuk edukasi pengguna baru.
+- **Titanium Scoring Engine**: Mesin penilaian komposit yang menggabungkan 6 metrik keamanan utama:
+    - **Rhythm Score (Euclidean)**: Analisis jarak Euclidean pada 4 spektrum data (Dwell, Flight, D2D, U2U).
+    - **Correlation Score (Pearson)**: Mengukur kemiripan bentuk gelombang (*waveform*) pola pengetikan.
+    - **Speed Score**: Validasi kecepatan mengetik global terhadap rata-rata historis.
+    - **Ratio Score (Finger Anatomy)**: Analisis rasio *dwell-to-flight* yang unik untuk setiap struktur tangan.
+    - **Stability Score (Jitter Analysis)**: Mengukur konsistensi varians/getaran pengetikan.
+    - **Flow Score (Transitional Acceleration)**: Analisis korelasi pada percepatan antar tombol (perubahan ritme).
+- **Hybrid AI Layer**:
+    - **Early Stage (Data < 5)**: Menggunakan *Soft Scoring Fusion* yang pemaaf namun tetap aman untuk *cold start*.
+    - **Production Stage (Data ≥ 5)**: Mengaktifkan **Mahalanobis Distance** berbasis *Covariance Matrix* untuk mendeteksi anomali korelasi fitur yang kompleks.
+- **Adaptive Learning (Anchor + Drift)**:
+    - Sistem secara cerdas memilih data "Jangkar" (2 data awal) dan data "Adaptasi" (3 data terbaru) sebagai pembanding.
+    - Menjamin sistem tetap akurat meskipun gaya mengetik pengguna berubah perlahan seiring waktu (*drift adaptation*).
+- **Dynamic Gate System**: Perlindungan *real-time* yang langsung memblokir percobaan login jika deviasi kecepatan melampaui ambang batas keamanan (40%) bahkan sebelum analisis AI dilakukan.
+- **Anti-Poisoning Guard**: Mekanisme perlindungan yang mencegah pembaruan data biometrik jika skor login dianggap "mencurigakan" atau "pas-pasan", guna mencegah penyusup merusak profil asli pengguna.
+- **Auto-Aligning Truncation**: Penanganan otomatis terhadap variasi jumlah tombol (seperti tombol 'Enter' tambahan atau jeda akhir) agar perbandingan data tetap presisi.
 
-## Prasyarat
+## 🛠️ Prasyarat
 
-- **XAMPP** (atau server web dengan PHP dan MySQL)
-- **PHP 7.4+**
-- **MySQL 5.7+**
-- Browser web modern dengan JavaScript aktif
-- **Python 3.x** dengan pustaka (NumPy, SciPy, scikit-learn)
-- File `.env` yang disiapkan dengan kredensial yang tepat
+- **Web Server**: Apache (XAMPP/Laragon) dengan PHP 7.4+
+- **Database**: MySQL 5.7+
+- **Python Runtime**: Python 3.8+
+- **Python Libraries**: `numpy`, `scipy`, `scikit-learn`
+- **Environment**: File `.env` untuk konfigurasi database.
 
-## Instalasi
+## 📥 Instalasi
 
 1. **Clone Repository**:
    ```bash
@@ -34,15 +37,9 @@ Sistem autentikasi login berbasis biometrik keystroke menggunakan PHP, MySQL, Ja
    cd keystroke-login
    ```
 
-2. **Setup Web Server (XAMPP)**:
-   - Pastikan folder `keystroke-login` berada di dalam `C:\xampp\htdocs\`.
-   - Jalankan XAMPP Control Panel dan start Apache serta MySQL.
-
-3. **Konfigurasi Database**:
-   - Buka phpMyAdmin (http://localhost/phpmyadmin).
-   - Buat database baru (misalnya, `keystroke_db`).
-   - Import file `database/keystroke.sql` ke database tersebut.
-   - Buat file `.env` di root direktori proyek dan isi kredensial database Anda (lihat konfigurasi pada `config/database.php`).
+2. **Setup Database**:
+   - Import `database/keystroke.sql` menggunakan phpMyAdmin.
+   - Buat file `.env` di root folder:
      ```ini
      DB_HOST=localhost
      DB_USER=root
@@ -50,85 +47,39 @@ Sistem autentikasi login berbasis biometrik keystroke menggunakan PHP, MySQL, Ja
      DB_NAME=keystroke_db
      ```
 
-4. **Jalankan Aplikasi**:
-   - Buka browser dan akses `http://localhost/keystroke-login`.
+3. **Install Python Dependencies**:
+   ```bash
+   pip install -r ml/requirements.txt
+   ```
 
-## Penggunaan
+## 🧠 Cara Kerja (Titanium Scoring)
 
-1. **Registrasi**:
-   - Akses halaman reguler atau klik register pada halaman awal (`auth/register.php`).
-   - Isi form username, password, dan ketik ulang password secara alami pada field yang disediakan untuk menangkap biometrik (pola kecepatan Anda) sebagai *baseline*.
-   - Klik "Register".
+1.  **Capture**: JavaScript (`keystroke.js`) menangkap waktu *Dwell* (tekan-lepas) dan *Flight* (lepas-tekan) secara presisi di sisi klien.
+2.  **Pre-Process**: Data dikirim ke PHP dan diteruskan ke mesin Python (`mahalanobis.py`).
+3.  **Heuristic Fusion**: Sistem menghitung skor dari 6 dimensi biometrik terhadap multi-baseline (Anchor & Drift).
+4.  **AI Blending**: Jika sampel cukup, sistem menggabungkan 80% skor Heuristik dengan 20% skor Mahalanobis AI.
+5.  **Decision**: Jika total skor ≥ Threshold (misal: 0.63-0.70), login diizinkan (**ACCEPT**).
+6.  **Adaptive Update**: Jika skor sangat meyakinkan (> 0.75), profil biometrik pengguna akan diperbarui secara otomatis.
 
-2. **Login**:
-   - Akses menu `auth/login.php`.
-   - Masukkan username dan ketik password dengan ritme natural Anda.
-   - **Proses Verifikasi**:
-     - Sistem memvalidasi password konvensional terlebih dahulu.
-     - Sistem memicu mesin biometrik yang terhubung ke Python (Hybrid Tier):
-        - **Data 1-4 (Early Stage)**: Evaluasi heuristik & Side-Channel Gates, ditambah perlindungan *Hard Wall Gate* 15%.
-        - **Data 5-14**: Kalkulasi statistik dengan True Mahalanobis Distance untuk menangkal anomali korelasi.
-        - **Data 15+**: Deteksi tingkat tinggi menggunakan One-Class SVM.
-     - Login akan ditolak jika mencoba merekayasa kecepatan, menggunakan script (replay), atau mencoba meniru (imposter bypass).
-
-3. **Dashboard & Audit**:
-   - Jika login berhasil, Anda dialihkan ke `dashboard/index.php`.
-   - Log percobaan gagal dan anomali dapat diaudit di folder `ml/data/`.
-
-## Struktur Proyek
+## 📂 Struktur Proyek
 
 ```text
 keystroke-login/
-├── .env                       # File konfigurasi environment variables (harus dibuat)
-├── assets/                    # Aset front-end (CSS, JS)
-│   ├── css/
-│   └── js/
-│       ├── keystroke.js       # Sensor biometrik untuk frontend
-│       └── auth-forms.js      # Pengelola form login/register
-├── auth/                      # Modul Autentikasi UI & Backend
-│   ├── login.php              
-│   ├── register.php           
-│   └── process/               # Controller autentikasi PHP
-├── config/                    # Konfigurasi system wide
-│   └── database.php           
-├── core/                      # Logika pemrosesan sistem PHP
-│   └── biometrics.php         # Penghubung PHP dengan mesin biometrik Python
-├── dashboard/                 # Area tampilan privat pengguna
-├── database/                  # Repositori database query
-│   └── keystroke.sql          
-├── ml/                        # Modul Model Machine Learning (AI-Powered Biometrics)
-│   ├── data/                  # Folder kumpulan dataset biometrik
-│   │   ├── biometric_debug.log         # Log lengkap hasil prediksi
-│   │   └── failed_keystrokes_raw.log   # Raw log khusus percobaan login gagal (imposters)
-│   ├── model/                 # Tempat ekspor pre-trained model SVM
-│   ├── scripts/               # Algoritma Machine Learning (Python)
-│   │   ├── mahalanobis.py     # Mesin True Mahalanobis Distance berbasis Covariance
-│   │   ├── predict.py         # Skrip SVM prediction
-│   │   ├── inspect_models.py  # Skrip visualisasi & inspeksi (PCA)
-│   │   └── train.py           # Skrip background training SVM
-│   └── requirements.txt       # Dependencies modul library Python (pip)
-└── index.php                  # Entry point pertama pengunjung (Routing utama)
+├── assets/js/keystroke.js      # Sensor biometrik (Client-side)
+├── core/biometrics.php         # Bridge PHP-Python & Scoring Logic
+├── ml/scripts/
+│   ├── mahalanobis.py          # Core Titanium Scoring Engine (Python)
+│   ├── train.py                # Model training (Background)
+│   └── inspect_models.py       # Visualisasi data (PCA)
+├── ml/data/
+│   ├── biometric_debug.log     # Log analisis lengkap
+│   └── failed_keystrokes_raw.log # Log forensik percobaan gagal
+└── .env                        # Konfigurasi sistem
 ```
 
-## Kontribusi
+## ⚖️ Lisensi
 
-Kontribusi sangat diterima! Silakan fork repository ini, buat branch fitur baru, dan kirim pull request.
+Proyek ini menggunakan lisensi **MIT**. Bebas digunakan untuk keperluan edukasi maupun komersial dengan tetap mencantumkan atribusi.
 
-1. Fork repository.
-2. Buat branch fitur baru: `git checkout -b fitur-baru`.
-3. Commit perubahan: `git commit -m 'Tambah fitur inovasi baru'`.
-4. Push ke branch: `git push origin fitur-baru`.
-5. Buat Pull Request dan biarkan direview.
-
-## Troubleshooting
-
-Jika Anda mengalami masalah koneksi database, pastikan file `.env` sudah dikonfigurasi dengan benar dan MySQL sedang berjalan.
-Jika terjadi kesalahan pada sistem biometrik (Python execution), pastikan Python 3.x dan semua package di `ml/requirements.txt` telah terinstal, dan `python` dapat dipanggil secara global melalui command line.
-
-## Kontak
-
-Jika ada kendala, ide fitur maupun pertanyaan lebih lanjut, silakan bebas melayangkan pesan ke [bmarzky](https://github.com/bmarzky).
-
-## Lisensi
-
-Proyek ini didistribusikan di bawah Lisensi MIT (Massachusetts Institute of Technology). Bebas untuk dimodifikasi dan digunakan sesuai keperluan proyek Anda.
+---
+**Maintained by [bmarzky](https://github.com/bmarzky)**
