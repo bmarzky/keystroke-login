@@ -11,7 +11,7 @@ header("Pragma: no-cache");
 header("X-XSS-Protection: 1; mode=block");
 
 require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../core/biometrics.php';
+require_once __DIR__ . '/../../engine/bridge.php';
 
 $conn = getConnection();
 
@@ -30,7 +30,7 @@ function getPythonExec() {
 
 // Helper: Picu Training AI di Latar Belakang (Self-Healing & Adaptive)
 function triggerBackgroundTraining($user_id) {
-    $pyPathTrain = realpath(__DIR__ . '/../../ml/scripts/train.py');
+    $pyPathTrain = realpath(__DIR__ . '/../../engine/trainer.py');
     if ($pyPathTrain) {
         $pyExec = getPythonExec();
         $argTrainUser = escapeshellarg($user_id);
@@ -116,7 +116,7 @@ if ($user && password_verify($password, $user['password'])) {
     $reason = 'N/A';
     
     if (false && $dataCount >= 15) { // DISABLED: OCSVM dimatikan sementara
-        $pyPathPredict = realpath(__DIR__ . '/../../ml/scripts/predict.py');
+        $pyPathPredict = realpath(__DIR__ . '/../../engine/predictor.py');
 
         if ($pyPathPredict) {
             // Tulis JSON ke temp file agar tidak rusak saat di-escape oleh Windows CLI
@@ -202,7 +202,7 @@ if ($user && password_verify($password, $user['password'])) {
         $reason
     );
     // Memastikan folder data ada
-    $dataDir = __DIR__ . '/../../ml/data';
+    $dataDir = __DIR__ . '/../../ml/logs';
     if (!is_dir($dataDir)) {
         mkdir($dataDir, 0777, true);
     }
