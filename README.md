@@ -2,7 +2,7 @@
 
 Sistem autentikasi login mutakhir yang menggabungkan keamanan password tradisional dengan lapisan biometrik perilaku (*behavioral biometrics*) berbasis pola pengetikan. Sistem ini menggunakan **Titanium Scoring Engine** yang ditenagai oleh Machine Learning (Python) untuk membedakan pengguna asli dengan penyusup (*imposter*) melalui analisis ritme, kecepatan, stabilitas, dan akselerasi pengetikan.
 
-## 🚀 Fitur Unggulan
+## Fitur Unggulan
 
 - **Titanium Scoring Engine**: Mesin penilaian komposit yang menggabungkan 6 metrik keamanan utama:
     - **Rhythm Score (Euclidean)**: Analisis jarak Euclidean pada 4 spektrum data (Dwell, Flight, D2D, U2U).
@@ -21,7 +21,7 @@ Sistem autentikasi login mutakhir yang menggabungkan keamanan password tradision
 - **Anti-Poisoning Guard**: Mekanisme perlindungan yang mencegah pembaruan data biometrik jika skor login dianggap "mencurigakan" atau "pas-pasan", guna mencegah penyusup merusak profil asli pengguna.
 - **Auto-Aligning Truncation**: Penanganan otomatis terhadap variasi jumlah tombol (seperti tombol 'Enter' tambahan atau jeda akhir) agar perbandingan data tetap presisi.
 
-## 🛠️ Prasyarat
+## Prasyarat
 
 - **Web Server**: Apache (XAMPP/Laragon) dengan PHP 7.4+
 - **Database**: MySQL 5.7+
@@ -29,7 +29,7 @@ Sistem autentikasi login mutakhir yang menggabungkan keamanan password tradision
 - **Python Libraries**: `numpy`, `scipy`, `scikit-learn`
 - **Environment**: File `.env` untuk konfigurasi database.
 
-## 📥 Instalasi
+## Instalasi
 
 1. **Clone Repository**:
    ```bash
@@ -52,7 +52,7 @@ Sistem autentikasi login mutakhir yang menggabungkan keamanan password tradision
    pip install -r ml/requirements.txt
    ```
 
-## 🧠 Cara Kerja (Titanium Scoring)
+## Cara Kerja (Titanium Scoring)
 
 1.  **Capture**: JavaScript (`keystroke.js`) menangkap waktu *Dwell* (tekan-lepas) dan *Flight* (lepas-tekan) secara presisi di sisi klien.
 2.  **Pre-Process**: Data dikirim ke PHP dan diteruskan ke mesin Python (`mahalanobis.py`).
@@ -61,23 +61,57 @@ Sistem autentikasi login mutakhir yang menggabungkan keamanan password tradision
 5.  **Decision**: Jika total skor ≥ Threshold (misal: 0.63-0.70), login diizinkan (**ACCEPT**).
 6.  **Adaptive Update**: Jika skor sangat meyakinkan (> 0.75), profil biometrik pengguna akan diperbarui secara otomatis.
 
-## 📂 Struktur Proyek
+## Struktur Proyek
 
 ```text
 keystroke-login/
-├── assets/js/keystroke.js      # Sensor biometrik (Client-side)
-├── core/biometrics.php         # Bridge PHP-Python & Scoring Logic
-├── ml/scripts/
-│   ├── mahalanobis.py          # Core Titanium Scoring Engine (Python)
-│   ├── train.py                # Model training (Background)
-│   └── inspect_models.py       # Visualisasi data (PCA)
-├── ml/data/
-│   ├── biometric_debug.log     # Log analisis lengkap
-│   └── failed_keystrokes_raw.log # Log forensik percobaan gagal
-└── .env                        # Konfigurasi sistem
+├── assets/
+│   ├── css/
+│   │   └── style.css
+│   ├── js/
+│   │   ├── auth-forms.js
+│   │   ├── dashboard.js
+│   │   └── keystroke.js
+│   └── tutorial/
+│       ├── guide.css
+│       └── guide.js
+├── auth/
+│   ├── process/
+│   │   ├── login.php
+│   │   ├── logout.php
+│   │   └── register.php
+│   ├── login.php
+│   └── register.php
+├── config/
+│   └── database.php
+├── core/
+│   └── biometrics.php
+├── dashboard/
+│   └── index.php
+├── database/
+│   └── keystroke.sql
+├── ml/
+│   ├── data/
+│   │   ├── biometric_debug.log
+│   │   └── failed_keystrokes_raw.log
+│   ├── model/
+│   │   ├── keystroke_model_107.pkl
+│   │   └── keystroke_model_109.pkl
+│   ├── scripts/
+│   │   ├── inspect_models.py
+│   │   ├── mahalanobis.py
+│   │   ├── predict.py
+│   │   └── train.py
+│   └── requirements.txt
+├── .env
+├── .gitignore
+├── .htaccess
+├── index.php
+├── LICENSE
+└── README.md
 ```
 
-## ⚖️ Lisensi
+## Lisensi
 
 Proyek ini menggunakan lisensi **MIT**. Bebas digunakan untuk keperluan edukasi maupun komersial dengan tetap mencantumkan atribusi.
 
