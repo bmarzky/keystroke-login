@@ -13,7 +13,7 @@ import warnings
 # Suppress warnings that could corrupt JSON output sent to PHP
 warnings.filterwarnings('ignore')
 
-MODEL_DIR = os.path.join(os.path.dirname(__file__), '../model')
+MODEL_DIR = os.path.join(os.path.dirname(__file__), '../ml/models')
 
 def load_model(user_id):
     """Memuat model ML yang sudah disimpan spesifik untuk tiap user."""
@@ -24,7 +24,7 @@ def load_model(user_id):
         sys.exit(0)
     return joblib.load(model_path)
 
-from mahalanobis import extract_features as mh_extract
+from core import extract_features as mh_extract
 
 def extract_features(data):
     """
