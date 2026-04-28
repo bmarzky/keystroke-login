@@ -54,7 +54,7 @@ class BiometricCore:
         cv_clamped      = float(np.clip(cv, 0.10, 0.60))
         base_speed_gate = 0.20 + cv_clamped * 0.50   # 0.25 – 0.50
         base_mahal_gate = 1.50 + cv_clamped * 6.0    # 2.10 – 5.10
-        base_threshold  = 0.65 - cv_clamped * 0.15   # 0.56 – 0.63
+        base_threshold  = 0.60 - cv_clamped * 0.10   # 0.54 – 0.59
 
         if n == 1:
             return {
@@ -183,7 +183,15 @@ class BiometricCore:
 
             # ── Soft Scoring ──
             baselines = history if n_history <= 5 else history[:2] + history[-3:]
-            w_rhythm, w_corr, w_speed, w_ratio, w_stability, w_flow = 0.50, 0.20, 0.15, 0.00, 0.00, 0.15
+            
+            if n_history < 5:
+                # Masa adaptasi awal: user belum punya ritme stabil.
+                # Fokus pada korelasi kasar dan kurangi hukuman Euclidean.
+                w_rhythm, w_corr, w_speed, w_ratio, w_stability, w_flow = 0.30, 0.40, 0.15, 0.00, 0.00, 0.15
+            else:
+                # Fase stabil: Kunci mati pada Rhythm untuk mencegah Expert Mimicry.
+                w_rhythm, w_corr, w_speed, w_ratio, w_stability, w_flow = 0.50, 0.20, 0.15, 0.00, 0.00, 0.15
+
             all_scores = []
             comp_rhythm, comp_corr, comp_speed, comp_ratio, comp_stability, comp_flow = [], [], [], [], [], []
             mahal_error = None
@@ -267,6 +275,15 @@ class BiometricCore:
                 "flow": float(comp_flow[best_idx]),
             }
 
+            fusion_weights = {
+                "w_rhythm": w_rhythm,
+                "w_corr": w_corr,
+                "w_speed": w_speed,
+                "w_ratio": w_ratio,
+                "w_stability": w_stability,
+                "w_flow": w_flow
+            }
+
             # ── Mahalanobis (Adaptive Gate) ──
             method    = adapt_phase
             m_dist_val = None
@@ -333,6 +350,7 @@ class BiometricCore:
                     "stability": float(round(components["stability"], 4)) if components else None,
                     "flow":      float(round(components["flow"],      4)) if components else None,
                 },
+                "weights": fusion_weights
             }
 
         except Exception as e:

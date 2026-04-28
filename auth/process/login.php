@@ -69,15 +69,25 @@ if ($user && password_verify($password, $user['password'])) {
 
     // Skor per-komponen (Titanium Fusion)
     $comp       = $result['components'] ?? [];
+    $weights    = $result['weights'] ?? [];
+    
+    // Default fallback (fase stabil)
+    $wRhythm = isset($weights['w_rhythm']) ? $weights['w_rhythm'] * 100 : 50;
+    $wCorr   = isset($weights['w_corr'])   ? $weights['w_corr'] * 100 : 20;
+    $wSpeed  = isset($weights['w_speed'])  ? $weights['w_speed'] * 100 : 15;
+    $wFlow   = isset($weights['w_flow'])   ? $weights['w_flow'] * 100 : 15;
+    $wRatio  = isset($weights['w_ratio'])  ? $weights['w_ratio'] * 100 : 0;
+    $wStab   = isset($weights['w_stability']) ? $weights['w_stability'] * 100 : 0;
+
     $fmtComp    = function($v) { return $v !== null ? number_format($v * 100, 1) . '%' : 'N/A'; };
     $scoringBlock =
         "  --- Scoring Breakdown (Titanium Fusion) ---\n" .
-        sprintf("  Rhythm    (50%%) : %s  [Euclidean Distance]\n",  $fmtComp($comp['rhythm']    ?? null)) .
-        sprintf("  Corr.     (20%%) : %s  [Pearson Coefficient]\n", $fmtComp($comp['corr']      ?? null)) .
-        sprintf("  Speed     (15%%) : %s  [Global CPM]\n",          $fmtComp($comp['speed']     ?? null)) .
-        sprintf("  Flow      (15%%) : %s  [Acceleration]\n",        $fmtComp($comp['flow']      ?? null)) .
-        sprintf("  Ratio     (0%%)  : %s  [Info Only - Handled by Mahalanobis]\n",  $fmtComp($comp['ratio']     ?? null)) .
-        sprintf("  Stability (0%%)  : %s  [Info Only - Handled by Mahalanobis]\n",     $fmtComp($comp['stability'] ?? null));
+        sprintf("  Rhythm    (%d%%) : %s  [Euclidean Distance]\n",  $wRhythm, $fmtComp($comp['rhythm']    ?? null)) .
+        sprintf("  Corr.     (%d%%) : %s  [Pearson Coefficient]\n", $wCorr,   $fmtComp($comp['corr']      ?? null)) .
+        sprintf("  Speed     (%d%%) : %s  [Global CPM]\n",          $wSpeed,  $fmtComp($comp['speed']     ?? null)) .
+        sprintf("  Flow      (%d%%) : %s  [Acceleration]\n",        $wFlow,   $fmtComp($comp['flow']      ?? null)) .
+        sprintf("  Ratio     (%d%%)  : %s  [Info Only - Handled by Mahalanobis]\n",  $wRatio, $fmtComp($comp['ratio']     ?? null)) .
+        sprintf("  Stability (%d%%)  : %s  [Info Only - Handled by Mahalanobis]\n",  $wStab,  $fmtComp($comp['stability'] ?? null));
 
     $rawDataBlock =
         "  --- Raw Keystroke Data ---\n" .
