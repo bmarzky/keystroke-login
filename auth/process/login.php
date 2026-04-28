@@ -2,70 +2,22 @@
 session_start();
 date_default_timezone_set('Asia/Jakarta');
 
-// Header untuk mencegah caching agar session lama tidak nyangkut
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-header("Cache-Control: post-check=0, pre-check=0", false);
-header("Pragma: no-cache");
-
-// Lapisan keamanan tambahan
 header("X-XSS-Protection: 1; mode=block");
 
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../engine/bridge.php';
 
-$conn = getConnection();
+// Inisialisasi Class OOP
+$db = new Database();
+$conn = $db->getConnection();
+$biomManager = new KeystrokeManager();
 
-// Helper: Redirect dengan pesan error dan berhenti seketika
 function redirectWithError($msg) {
     header('Location: ../login.php?error=' . urlencode($msg));
     exit();
 }
 
-// Helper: Deteksi Python Executable
-function getPythonExec() {
-    $pyExec = trim(shell_exec('where python 2>NUL') ?? '');
-    $pyExec = strtok($pyExec, "\n"); // Ambil baris pertama saja
-    return empty($pyExec) ? 'python' : $pyExec;
-}
-
-// Helper: Picu Training AI di Latar Belakang (Self-Healing & Adaptive)
-function triggerBackgroundTraining($user_id) {
-    $pyPathTrain = realpath(__DIR__ . '/../../engine/trainer.py');
-    if ($pyPathTrain) {
-        $pyExec = getPythonExec();
-        $argTrainUser = escapeshellarg($user_id);
-        // Format Windows background: cmd /c start /B "" "python" "script" ...
-        $cmd = 'cmd /c "start /B "" ' . escapeshellarg($pyExec) . ' ' . escapeshellarg($pyPathTrain) . ' ' . $argTrainUser . ' > NUL 2>&1"';
-        pclose(popen($cmd, "r"));
-    }
-}
-
-// Helper: Proses Login Sukses
-function processSuccessfulLogin($user, $conn, $rawKeystroke, $status, $shouldSave = true) {
-    // Bersihkan session sisa sebelum diisi yang baru
-    session_unset();
-    session_regenerate_id(true);
-
-    $_SESSION['user_id'] = $user['id'];
-    $_SESSION['username'] = $user['username'];
-    $_SESSION['login_status'] = $status;
-    $_SESSION['last_login'] = date('Y-m-d H:i:s');
-
-    // 🛡️ ANTI-POISONING: Simpan data HANYA jika skor sangat tinggi atau di tahap awal
-    if ($shouldSave) {
-        $stmt = $conn->prepare("INSERT INTO keystroke_data (user_id, features) VALUES (?, ?)");
-        $stmt->bind_param("is", $user['id'], $rawKeystroke);
-        $stmt->execute();
-
-        // Mengaktifkan AI di Latar Belakang (Retrain Model) ketika data baru berhasil masuk
-        triggerBackgroundTraining($user['id']);
-    }
-
-    header("Location: ../../dashboard/index.php");
-    exit(); 
-}
-
-// 1. Validasi Input Dasar
 if (!isset($_POST['username'], $_POST['password'], $_POST['keystroke'])) {
     redirectWithError("Form tidak lengkap");
 }
@@ -74,164 +26,154 @@ $username = trim($_POST['username']);
 $password = trim($_POST['password']);
 $inputKeystroke = trim($_POST['keystroke']);
 
-// 1.5. Validasi Panjang Username & Password
-if (strlen($username) < 3) {
-    redirectWithError("Username harus minimal 3 karakter");
-}
-if (strlen($password) < 6) {
-    redirectWithError("Password harus minimal 6 karakter");
-}
-
-// 2. Validasi Format JSON
-$decodedInput = json_decode($inputKeystroke, true);
-if (!is_array($decodedInput) || json_last_error() !== JSON_ERROR_NONE || !isset($decodedInput['speed'])) {
-    redirectWithError('Data biometrik rusak atau tidak valid');
-}
-
-// 3. Cari User
+// 1. Cari User di Database
 $stmt = $conn->prepare("SELECT id, username, password FROM users WHERE username = ?");
 $stmt->bind_param("s", $username);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
 
-// Proses otentikasi utama
-
 if ($user && password_verify($password, $user['password'])) {
-
-    // Ambil data referensi
+    
+    // 2. Ambil data history untuk verifikasi biometrik
     $stmt = $conn->prepare("SELECT features FROM keystroke_data WHERE user_id = ? ORDER BY id DESC LIMIT 20");
     $stmt->bind_param("i", $user['id']);
     $stmt->execute();
-    $result = $stmt->get_result();
+    $historyResult = $stmt->get_result();
 
-    $allData = [];
-    while ($row = $result->fetch_assoc()) {
-        $allData[] = $row['features']; 
+    $history = [];
+    while ($row = $historyResult->fetch_assoc()) {
+        $history[] = $row['features']; 
     }
 
-    $dataCount = count($allData);
-
-    // TIER 2: Otentikasi Lanjut dengan AI OneClassSVM Python
-    $svmUsed = false;
-    $reason = 'N/A';
+    // 3. Verifikasi Biometrik menggunakan OOP Class KeystrokeManager
+    $result = $biomManager->verify($history, $inputKeystroke);
     
-    if (false && $dataCount >= 15) { // DISABLED: OCSVM dimatikan sementara
-        $pyPathPredict = realpath(__DIR__ . '/../../engine/predictor.py');
+    $isMatch    = $result['status'];
+    $score      = $result['score'];
+    $thresh     = $result['threshold'];
+    $reason     = $result['reason'];
+    $method     = $result['method']     ?? 'Unknown';
+    $nSamples   = $result['n_samples']  ?? 0;
+    $mahalDist  = $result['mahal_dist'] !== null ? number_format($result['mahal_dist'], 4) : 'N/A';
+    $speedDev    = $result['speed_dev']  !== null ? number_format($result['speed_dev'] * 100, 1) . '%' : 'N/A';
+    $ipAddr      = $_SERVER['REMOTE_ADDR'] ?? 'N/A';
+    $userAgent   = $_SERVER['HTTP_USER_AGENT'] ?? 'N/A';
 
-        if ($pyPathPredict) {
-            // Tulis JSON ke temp file agar tidak rusak saat di-escape oleh Windows CLI
-            $baseTmp = tempnam(sys_get_temp_dir(), 'ks_');
-            $tmpFile = $baseTmp . '.json';
-            file_put_contents($tmpFile, $inputKeystroke);
-            @unlink($baseTmp); // Hapus file kosong bawaan tempnam
+    // Parse input JSON untuk ditampilkan di log
+    $inputParsed = json_decode($inputKeystroke, true) ?? [];
+    $dwellArr    = $inputParsed['dwell']  ?? [];
+    $flightArr   = $inputParsed['flight'] ?? [];
+    $d2dArr      = $inputParsed['d2d']    ?? [];
+    $u2uArr      = $inputParsed['u2u']    ?? [];
+    $inputSpeed  = isset($inputParsed['speed']) ? number_format($inputParsed['speed'], 4) : 'N/A';
 
-            $argUser    = escapeshellarg($user['id']);
-            $argTmpFile = escapeshellarg($tmpFile);
+    // Skor per-komponen (Titanium Fusion)
+    $comp       = $result['components'] ?? [];
+    $fmtComp    = function($v) { return $v !== null ? number_format($v * 100, 1) . '%' : 'N/A'; };
+    $scoringBlock =
+        "  --- Scoring Breakdown (Titanium Fusion) ---\n" .
+        sprintf("  Rhythm    (50%%) : %s  [Euclidean Distance]\n",  $fmtComp($comp['rhythm']    ?? null)) .
+        sprintf("  Corr.     (20%%) : %s  [Pearson Coefficient]\n", $fmtComp($comp['corr']      ?? null)) .
+        sprintf("  Speed     (15%%) : %s  [Global CPM]\n",          $fmtComp($comp['speed']     ?? null)) .
+        sprintf("  Flow      (15%%) : %s  [Acceleration]\n",        $fmtComp($comp['flow']      ?? null)) .
+        sprintf("  Ratio     (0%%)  : %s  [Info Only - Handled by Mahalanobis]\n",  $fmtComp($comp['ratio']     ?? null)) .
+        sprintf("  Stability (0%%)  : %s  [Info Only - Handled by Mahalanobis]\n",     $fmtComp($comp['stability'] ?? null));
 
-            $pyExec = getPythonExec();
-            $cmd = escapeshellarg($pyExec) . ' ' . escapeshellarg($pyPathPredict) . " $argUser $argTmpFile 2>NUL";
-            $pythonOut = trim(shell_exec($cmd));
-            $mlResult  = null;
+    $rawDataBlock =
+        "  --- Raw Keystroke Data ---\n" .
+        sprintf("  Speed         : %s char/s\n", $inputSpeed) .
+        sprintf("  Dwell (%d)    : [%s]\n", count($dwellArr),  implode(', ', array_map(fn($v) => number_format($v, 3), $dwellArr))) .
+        sprintf("  Flight (%d)   : [%s]\n", count($flightArr), implode(', ', array_map(fn($v) => number_format($v, 3), $flightArr))) .
+        sprintf("  D2D (%d)      : [%s]\n", count($d2dArr),    implode(', ', array_map(fn($v) => number_format($v, 3), $d2dArr))) .
+        sprintf("  U2U (%d)      : [%s]\n", count($u2uArr),    implode(', ', array_map(fn($v) => number_format($v, 3), $u2uArr)));
 
-            $jsonError = JSON_ERROR_NONE;
-            if (!empty($pythonOut)) {
-                $mlResult = json_decode($pythonOut, true);
-                $jsonError = json_last_error();
-            }
 
-            // Bersihkan file sementara
-            @unlink($tmpFile);
+    // Adaptive Gates
+    $ag          = $result['adaptive_gates'] ?? [];
+    $gatesBlock  =
+        "  --- Adaptive Gates (Per-User) ---\n" .
+        sprintf("  Speed Gate    : %.1f%%\n",   ($ag['speed_gate'] ?? 0.40) * 100) .
+        sprintf("  Mahal. Gate   : %.4f\n",      $ag['mahal_gate'] ?? 3.0) .
+        sprintf("  Threshold     : %.4f\n",      $ag['threshold']  ?? 0.70);
 
-            if ($mlResult === null || $jsonError !== JSON_ERROR_NONE) {
-                error_log('[SVM] Output Python invalid atau kosong. RAW: ' . substr($pythonOut, 0, 400));
-                $reason = 'AI tidak tersedia, fallback ke Mahalanobis';
-            } elseif (isset($mlResult['status']) && $mlResult['status'] === 'success') {
-                $svmUsed = true;
-                $isMatch = $mlResult['is_match'];
-                $score   = $mlResult['decision_score'] ?? ($isMatch ? 1 : -1);
-                $thresh  = 0; // Boundary One-Class SVM adalah 0
-                $reason  = 'Metode AI OneClassSVM (Python)';
-            } elseif (isset($mlResult['status']) && $mlResult['status'] === 'fallback') {
-                $reason = "AI Meminta Fallback ke Mahalanobis";
-                // Auto-Retrain: Jika model hilang tapi data cukup, picu training ulang secara otomatis
-                triggerBackgroundTraining($user['id']);
-            }
-        }
-    }
-    
-        // TIER 1: Kalkulasi Mahalanobis Murni di PHP (Otomatis jika SVM absen/gagal dieksekusi)
-        if (!$svmUsed) {
-            $verification = verifyKeystroke($allData, $inputKeystroke); 
-            $isMatch      = (isset($verification['status']) && $verification['status'] === true);
-            $score        = $verification['distance']  ?? 0;
-            $thresh       = $verification['threshold'] ?? 0;
-            $shouldUpdate = $verification['should_update'] ?? false; // 🔹 Ambil instruksi update
-            $phpReason    = $verification['reason']    ?? 'N/A';
-            
-            // Info dimensi dari Python (8 = healthy, hanya ada jika response baru)
-            $nFeatures  = $verification['n_features'] ?? '?';
-            $nSamplesOk = $verification['n_samples']  ?? '?';
-            
-            // Label eksplisit sesuai jumlah data dan tahap yang dilalui
-            if ($dataCount >= 15) {
-                $tierLabel = "[Tier-1:Mahalanobis (Fallback)]";
-            } elseif ($dataCount >= 6) {
-                $tierLabel = "[Tier-1:Mahalanobis (Strict)]";
-            } else {
-                $tierLabel = "[Tier-1:Mahalanobis (Adaptive)]";
-            }
-            
-            $reason = ($reason !== 'N/A') ? "$tierLabel $reason -> $phpReason" : "$tierLabel $phpReason";
-        } else {
-            $reason = "[Tier-2:SVM] $reason";
-        }
+    // 4. Format Log
+    $LOG_DIR = __DIR__ . '/../../ml/logs/';
 
-    // Logging (Sekarang mencatat semua usaha, baik training maupun verifikasi)
-    $logStatus = $isMatch ? 'MATCH' : 'REJECT';
-    $logMsg = sprintf(
-        "[%s] User: %s | Score: %.2f | Thresh: %.2f | Speed: %.2f CPM | Status: %s | Dim: %s | ValidSamples: %s | DataCount: %d | Reason: %s\n",
-        date('Y-m-d H:i:s'), 
-        $username, 
-        $score, 
+    $logHeader = sprintf(
+        "[%s]\n" .
+        "  User          : %s (ID: %d)\n" .
+        "  IP Address    : %s\n" .
+        "  User-Agent    : %s\n" .
+        "  Method        : %s\n" .
+        "  History Count : %d sampel\n" .
+        "  Score         : %.4f\n" .
+        "  Threshold     : %.4f\n" .
+        "  Speed Dev     : %s\n" .
+        "  Mahal. Dist   : %s\n" .
+        "  Reason        : %s\n",
+        date('Y-m-d H:i:s'),
+        $username, $user['id'],
+        $ipAddr,
+        $userAgent,
+        $method,
+        $nSamples,
+        $score,
         $thresh,
-        (float)$decodedInput['speed'],
-        $logStatus,
-        $nFeatures  ?? '-',
-        $nSamplesOk ?? '-',
-        $dataCount,
+        $speedDev,
+        $mahalDist,
         $reason
     );
-    // Memastikan folder data ada
-    $dataDir = __DIR__ . '/../../ml/logs';
-    if (!is_dir($dataDir)) {
-        mkdir($dataDir, 0777, true);
-    }
 
-    file_put_contents($dataDir . '/biometric_debug.log', $logMsg, FILE_APPEND);
 
     if ($isMatch) {
-        // Berhasil Verifikasi (Atau Mode Belajar di Tahap Sangat Awal jika ingin dibedakan labelnya)
-        $statusLabel = ($dataCount < 5) ? "Verified (Learning Mode)" : "Verified";
-        // Jika SVM dipakai, default simpan adalah true, jika Mahalanobis, ikuti instruksi shouldUpdate
-        $finalUpdateFlag = $svmUsed ? true : $shouldUpdate;
-        processSuccessfulLogin($user, $conn, $inputKeystroke, $statusLabel, $finalUpdateFlag);
-    } else {
-        // Logging data mentah yang ditolak ke file terpisah untuk debugging (persis format database)
-        $failedDataLog = sprintf(
-            "[%s] User: %s | Reason: %s\n%s\n\n",
-            date('Y-m-d H:i:s'),
-            $username,
-            $reason,
-            $inputKeystroke
-        );
-        file_put_contents($dataDir . '/failed_keystrokes_raw.log', $failedDataLog, FILE_APPEND);
+        // Login Sukses
+        session_unset();
+        session_regenerate_id(true);
+        $_SESSION['user_id']  = $user['id'];
+        $_SESSION['username'] = $user['username'];
 
-        // Jika tidak cocok, cek apakah skornya menunjukkan error kritis (robot) atau sekadar pola beda
-        $errorDetail = ($reason !== 'N/A') ? $reason : "Pola ketikan tidak cocok";
-        redirectWithError("Akses Ditolak: $errorDetail (Skor: " . round($score, 2) . ")");
+        // Simpan data jika diperintahkan oleh engine (Anti-Poisoning)
+        $historyUpdated = false;
+        if ($result['should_update']) {
+            $stmt = $conn->prepare("INSERT INTO keystroke_data (user_id, features) VALUES (?, ?)");
+            $stmt->bind_param("is", $user['id'], $inputKeystroke);
+            $stmt->execute();
+            $historyUpdated = true;
+        }
+
+        $successLog = $logHeader .
+            sprintf("  History Updated: %s\n", $historyUpdated ? 'Ya (anti-poisoning lolos)' : 'Tidak') .
+            $gatesBlock .
+            $scoringBlock .
+            $rawDataBlock .
+            str_repeat("-", 60) . "\n";
+
+
+
+
+
+        file_put_contents($LOG_DIR . 'login_success.log', $successLog, FILE_APPEND);
+
+        header("Location: ../../dashboard/index.php");
+        exit();
+
+    } else {
+        // Login Gagal Biometrik
+        $failLog = $logHeader .
+            $gatesBlock .
+            $scoringBlock .
+            $rawDataBlock .
+            str_repeat("-", 60) . "\n";
+
+
+
+
+
+        file_put_contents($LOG_DIR . 'login_failed.log', $failLog, FILE_APPEND);
+
+        redirectWithError("Akses Ditolak: Pola ketikan tidak cocok (Skor: $score)");
     }
 
 } else {
     redirectWithError("Username atau password salah");
 }
-// End of Auth Logic

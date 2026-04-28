@@ -1,26 +1,27 @@
 <?php
 session_start();
-include "../config/database.php";
+require_once __DIR__ . "/../config/database.php";
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../auth/login.php");
     exit();
 }
 
-$conn = getConnection();
+$db = new Database();
+$conn = $db->getConnection();
 $user_id = $_SESSION['user_id'];
 
 // 1. Ambil total data
-$stmtCount = $conn->prepare("SELECT COUNT(*) as total FROM keystroke_data WHERE user_id = ?");
-$stmtCount->bind_param("i", $user_id);
-$stmtCount->execute();
-$totalData = $stmtCount->get_result()->fetch_assoc()['total'];
+$stmt = $conn->prepare("SELECT COUNT(*) as total FROM keystroke_data WHERE user_id = ?");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$totalData = $stmt->get_result()->fetch_assoc()['total'];
 
-// 2. Ambil 2 data terakhir (Data Login Terbaru vs Data Sebelumnya)
-$stmtData = $conn->prepare("SELECT features FROM keystroke_data WHERE user_id = ? ORDER BY id DESC LIMIT 2");
-$stmtData->bind_param("i", $user_id);
-$stmtData->execute();
-$result = $stmtData->get_result();
+// 2. Ambil 2 data terakhir
+$stmt = $conn->prepare("SELECT features FROM keystroke_data WHERE user_id = ? ORDER BY id DESC LIMIT 2");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
 
 $allData = [];
 while ($row = $result->fetch_assoc()) { $allData[] = $row; }
@@ -28,7 +29,7 @@ while ($row = $result->fetch_assoc()) { $allData[] = $row; }
 $currentFeatures = isset($allData[0]) ? json_decode($allData[0]['features'], true) : ['dwell' => [], 'flight' => []];
 $prevFeatures = isset($allData[1]) ? json_decode($allData[1]['features'], true) : ['dwell' => [], 'flight' => []];
 
-// 3. Kalkulasi Statistik (Disesuaikan untuk satuan DETIK)
+// 3. Kalkulasi Statistik
 $avgDwell = 0; $avgFlight = 0; $wpm = 0; $stability = 0;
 
 if (!empty($currentFeatures['dwell'])) {
@@ -36,20 +37,16 @@ if (!empty($currentFeatures['dwell'])) {
     $sumDwell = array_sum($currentFeatures['dwell']);
     $sumFlight = !empty($currentFeatures['flight']) ? array_sum($currentFeatures['flight']) : 0;
     
-    // Rata-rata dalam detik
     $avgDwell = $sumDwell / $cntD;
     if (!empty($currentFeatures['flight'])) {
         $avgFlight = $sumFlight / count($currentFeatures['flight']);
     }
 
-    // Hitung WPM: (Jumlah Karakter / 5) / (Total Waktu dalam Menit)
-    // Karena $sumDwell & $sumFlight dalam detik, maka dibagi 60 untuk jadi menit
     $totalTimeInSeconds = $sumDwell + $sumFlight;
     if ($totalTimeInSeconds > 0) {
         $wpm = ($cntD / 5) / ($totalTimeInSeconds / 60);
     }
 
-    // Stabilitas (Standard Deviation dari Dwell Time)
     $var = 0;
     foreach($currentFeatures['dwell'] as $d) { 
         $var += pow($d - $avgDwell, 2); 
