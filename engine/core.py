@@ -81,14 +81,13 @@ class BiometricCore:
             
             # --- ADAPTIVE THRESHOLD SCALING ---
             # Jika rata-rata jarak Mahal kecil, artinya user sangat konsisten.
-            # Tingkatkan threshold secara proporsional dari 0.74 ke maksimal 0.84
-            # (m_mean 0.0 -> threshold 0.84, m_mean > 1.5 -> threshold 0.74)
+            # Tingkatkan threshold secara proporsional ke maksimal 0.80
             consistency_factor = max(0.0, 1.0 - (m_mean / 1.5))
-            hist_threshold = 0.74 + (consistency_factor * 0.10)
+            hist_threshold = 0.70 + (consistency_factor * 0.10)
 
         else:
             hist_mahal_gate = base_mahal_gate
-            hist_threshold = 0.74 if n >= 5 else 0.65
+            hist_threshold = 0.70 if n >= 5 else 0.60
 
         # --- Blending (Fase 1: 2-4 sample) ---
         if n < 5:
@@ -107,7 +106,7 @@ class BiometricCore:
         # Clamp ke batas keamanan minimum
         speed_gate = float(np.clip(speed_gate, 0.10, 0.50))
         mahal_gate = float(np.clip(mahal_gate, 1.20, 6.00))
-        threshold  = float(np.clip(threshold,  0.60, 0.86))
+        threshold  = float(np.clip(threshold,  0.55, 0.82))
 
         return {
             "speed_gate": round(speed_gate, 4),
@@ -189,8 +188,9 @@ class BiometricCore:
                 # Fokus pada korelasi kasar dan kurangi hukuman Euclidean.
                 w_rhythm, w_corr, w_speed, w_ratio, w_stability, w_flow = 0.30, 0.40, 0.15, 0.00, 0.00, 0.15
             else:
-                # Fase stabil: Kunci mati pada Rhythm untuk mencegah Expert Mimicry.
-                w_rhythm, w_corr, w_speed, w_ratio, w_stability, w_flow = 0.50, 0.20, 0.15, 0.00, 0.00, 0.15
+                # Fase stabil: Kunci pada Rhythm (40%), tapi tingkatkan bobot Speed (20%) dan Flow (20%) 
+                # untuk membedakan Expert Mimic tanpa menghukum pemilik asli saat sedang lelah.
+                w_rhythm, w_corr, w_speed, w_ratio, w_stability, w_flow = 0.40, 0.20, 0.20, 0.00, 0.00, 0.20
 
             all_scores = []
             comp_rhythm, comp_corr, comp_speed, comp_ratio, comp_stability, comp_flow = [], [], [], [], [], []
