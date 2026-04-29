@@ -54,7 +54,7 @@ class BiometricCore:
         cv_clamped      = float(np.clip(cv, 0.10, 0.60))
         base_speed_gate = 0.20 + cv_clamped * 0.50   # 0.25 – 0.50
         base_mahal_gate = 1.50 + cv_clamped * 6.0    # 2.10 – 5.10
-        base_threshold  = 0.60 - cv_clamped * 0.10   # 0.54 – 0.59
+        base_threshold  = 0.58 - cv_clamped * 0.10   # 0.52 – 0.57
 
         if n == 1:
             return {
@@ -104,7 +104,16 @@ class BiometricCore:
             phase = "Mahalanobis+Adaptive-Full (n={})".format(n)
 
         # Clamp ke batas keamanan minimum
-        speed_gate = float(np.clip(speed_gate, 0.10, 0.50))
+        # Berikan kelonggaran besar saat adaptasi karena "Registration Bias"
+        # (user mengetik lambat saat daftar, tapi cepat saat login)
+        if n < 5:
+            min_speed_gate = 0.35
+        elif n < 10:
+            min_speed_gate = 0.20
+        else:
+            min_speed_gate = 0.10
+            
+        speed_gate = float(np.clip(speed_gate, min_speed_gate, 0.60))
         mahal_gate = float(np.clip(mahal_gate, 1.20, 6.00))
         threshold  = float(np.clip(threshold,  0.55, 0.82))
 

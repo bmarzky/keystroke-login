@@ -72,12 +72,12 @@ if ($user && password_verify($password, $user['password'])) {
     $weights    = $result['weights'] ?? [];
     
     // Default fallback (fase stabil)
-    $wRhythm = isset($weights['w_rhythm']) ? $weights['w_rhythm'] * 100 : 50;
-    $wCorr   = isset($weights['w_corr'])   ? $weights['w_corr'] * 100 : 20;
-    $wSpeed  = isset($weights['w_speed'])  ? $weights['w_speed'] * 100 : 15;
-    $wFlow   = isset($weights['w_flow'])   ? $weights['w_flow'] * 100 : 15;
-    $wRatio  = isset($weights['w_ratio'])  ? $weights['w_ratio'] * 100 : 0;
-    $wStab   = isset($weights['w_stability']) ? $weights['w_stability'] * 100 : 0;
+    $wRhythm = isset($weights['w_rhythm']) ? round($weights['w_rhythm'] * 100) : 40;
+    $wCorr   = isset($weights['w_corr'])   ? round($weights['w_corr'] * 100) : 20;
+    $wSpeed  = isset($weights['w_speed'])  ? round($weights['w_speed'] * 100) : 20;
+    $wFlow   = isset($weights['w_flow'])   ? round($weights['w_flow'] * 100) : 20;
+    $wRatio  = isset($weights['w_ratio'])  ? round($weights['w_ratio'] * 100) : 0;
+    $wStab   = isset($weights['w_stability']) ? round($weights['w_stability'] * 100) : 0;
 
     $fmtComp    = function($v) { return $v !== null ? number_format($v * 100, 1) . '%' : 'N/A'; };
     $scoringBlock =
