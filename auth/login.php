@@ -38,7 +38,7 @@
         <p class="page-note">Belum punya akun? <a href="register.php">Daftar di sini</a></p>
     </div>
 
-<script src="../assets/js/keystroke.js"></script>
+<script src="../assets/js/keystroke.js?v=3"></script>
 <script src="../assets/js/auth-forms.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
 <script src="../assets/tutorial/guide.js"></script>

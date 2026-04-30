@@ -86,8 +86,8 @@ document.addEventListener("DOMContentLoaded", () => {
         // --- EVENT KEYDOWN ---
         passwordInput.addEventListener("keydown", (e) => {
             if (e.repeat || e.key === "Process") return;
-            // if (e.key === "Backspace") { resetData(); return; } 
-            if (e.key === "Backspace") return; // Abaikan backspace tapi jangan hapus data yang sudah ada
+            // Abaikan backspace, Enter, dan Tab agar tidak merusak ritme
+            if (e.key === "Backspace" || e.key === "Enter" || e.key === "Tab") return; 
 
             let now = Date.now();
             if (startTime === null) startTime = now;
@@ -111,7 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // --- EVENT KEYUP ---
         passwordInput.addEventListener("keyup", (e) => {
-            if (e.key === "Backspace") return;
+            if (e.key === "Backspace" || e.key === "Enter" || e.key === "Tab") return;
             let now = Date.now();
             if (pendingKeyDowns[e.key] !== undefined) {
                 let dTime = pendingKeyDowns[e.key];
