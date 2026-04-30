@@ -11,9 +11,7 @@ class BiometricCore:
     def __init__(self, n_features=8):
         self.n_features = n_features
 
-    # ─────────────────────────────────────────────────────
     # Feature Extraction (8-dim statistical vector)
-    # ─────────────────────────────────────────────────────
     def extract(self, data):
         features = []
         for key in ['dwell', 'flight', 'd2d', 'u2u']:
@@ -29,9 +27,7 @@ class BiometricCore:
                 features.append(0.0)
         return [float(f) if np.isfinite(f) else 0.0 for f in features]
 
-    # ─────────────────────────────────────────────────────
     # Warm-Start Progressive Adaptive Gate Computation
-    # ─────────────────────────────────────────────────────
     def _compute_adaptive_gates(self, history, hist_mahal_dists=None):
         """
         Menghitung gate adaptif berbasis statistik history user.
@@ -81,13 +77,18 @@ class BiometricCore:
             
             # --- ADAPTIVE THRESHOLD SCALING ---
             # Jika rata-rata jarak Mahal kecil, artinya user sangat konsisten.
-            # Tingkatkan threshold secara proporsional ke maksimal 0.80
-            consistency_factor = max(0.0, 1.0 - (m_mean / 1.5))
-            hist_threshold = 0.70 + (consistency_factor * 0.10)
+            # Berikan kurva pembelajaran (learning curve) yang lebih lambat untuk
+            # user yang belum terbiasa dengan device baru (Registration Bias).
+            consistency_factor = max(0.0, 1.0 - (m_mean / 2.0))
+            
+            # Base hist_threshold perlahan naik dari 0.60 (n=5) ke 0.70 (n>=10)
+            # Ini mencegah "Threshold Shock" di mana threshold tiba-tiba naik ke 0.70 di login ke-5
+            base_curve = min(0.70, 0.60 + ((n - 5) * 0.02))
+            hist_threshold = base_curve + (consistency_factor * 0.10)
 
         else:
             hist_mahal_gate = base_mahal_gate
-            hist_threshold = 0.70 if n >= 5 else 0.60
+            hist_threshold = 0.60 if n >= 5 else 0.55
 
         # --- Blending (Fase 1: 2-4 sample) ---
         if n < 5:
@@ -107,9 +108,11 @@ class BiometricCore:
         # Berikan kelonggaran besar saat adaptasi karena "Registration Bias"
         # (user mengetik lambat saat daftar, tapi cepat saat login)
         if n < 5:
-            min_speed_gate = 0.35
+            min_speed_gate = 0.40
+        elif n < 8:
+            min_speed_gate = 0.25
         elif n < 10:
-            min_speed_gate = 0.20
+            min_speed_gate = 0.15
         else:
             min_speed_gate = 0.10
             
@@ -124,9 +127,7 @@ class BiometricCore:
             "phase": phase,
         }
 
-    # ─────────────────────────────────────────────────────
     # Main Analysis
-    # ─────────────────────────────────────────────────────
     def analyze(self, json_path):
         try:
             with open(json_path, 'r') as f:
@@ -196,6 +197,9 @@ class BiometricCore:
                 # Masa adaptasi awal: user belum punya ritme stabil.
                 # Fokus pada korelasi kasar dan kurangi hukuman Euclidean.
                 w_rhythm, w_corr, w_speed, w_ratio, w_stability, w_flow = 0.30, 0.40, 0.15, 0.00, 0.00, 0.15
+            elif n_history < 10:
+                # Masa transisi: User mulai terbiasa dengan keyboard, tapi belum konsisten sempurna.
+                w_rhythm, w_corr, w_speed, w_ratio, w_stability, w_flow = 0.35, 0.30, 0.15, 0.00, 0.00, 0.20
             else:
                 # Fase stabil: Kunci pada Rhythm (40%), tapi tingkatkan bobot Speed (20%) dan Flow (20%) 
                 # untuk membedakan Expert Mimic tanpa menghukum pemilik asli saat sedang lelah.
