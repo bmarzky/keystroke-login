@@ -335,7 +335,16 @@ class BiometricCore:
                     method = "Mahalanobis+" + adapt_phase + " (error)"
 
             is_match  = bool(final_score >= threshold)
-            should_up = bool((final_score > 0.75) or (final_score > threshold and n_history < 3))
+            
+            # Anti-Poisoning: Jangan update histori jika ketikan asal-asalan meski lolos (menghindari keracunan data)
+            # Namun, berikan kelonggaran bagi user baru yang sedang masa adaptasi (n < 10)
+            if n_history < 10:
+                update_threshold = threshold + 0.02
+            else:
+                update_threshold = max(0.75, threshold + 0.02)
+                
+            should_up = bool((final_score >= update_threshold) or (final_score >= threshold and n_history < 3))
+            
             reason    = f"Score: {final_score:.2f} | {'ACCEPT' if is_match else 'REJECT'}"
             if mahal_error: reason += f" | Math Error: {mahal_error}"
 
