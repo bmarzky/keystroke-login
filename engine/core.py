@@ -120,6 +120,17 @@ class BiometricCore:
         mahal_gate = float(np.clip(mahal_gate, 1.20, 6.00))
         threshold  = float(np.clip(threshold,  0.55, 0.82))
 
+        # --- Low Entropy (Short Password) Penalty ---
+        # Password pendek ( < 8 karakter ) memiliki sedikit biometrik entropi.
+        # Mudah diretas karena spurious correlation tinggi. Kita harus mengetatkan aturan.
+        pw_len = len(first_dwell)
+        if pw_len < 8:
+            entropy_penalty = (8 - pw_len) * 0.015
+            threshold = float(np.clip(threshold + entropy_penalty, 0.55, 0.88))
+            speed_gate = float(np.clip(speed_gate * 0.85, 0.08, 0.60))
+            mahal_gate = float(np.clip(mahal_gate * 0.85, 1.00, 6.00))
+            phase += " [Low Entropy Lock]"
+
         return {
             "speed_gate": round(speed_gate, 4),
             "mahal_gate": round(mahal_gate, 4),
@@ -204,6 +215,15 @@ class BiometricCore:
                 # Fase stabil: Kunci pada Rhythm (40%), tapi tingkatkan bobot Speed (20%) dan Flow (20%) 
                 # untuk membedakan Expert Mimic tanpa menghukum pemilik asli saat sedang lelah.
                 w_rhythm, w_corr, w_speed, w_ratio, w_stability, w_flow = 0.40, 0.20, 0.20, 0.00, 0.00, 0.20
+
+            # --- Shift Bobot untuk Low Entropy ---
+            # Jika password pendek, korelasi Pearson dan akselerasi (Flow) sangat tidak akurat 
+            # (mudah menyentuh angka 0.9+ hanya karena kebetulan).
+            pw_len = len(input_data.get('dwell', []))
+            if pw_len < 8:
+                w_corr *= 0.5
+                w_flow *= 0.5
+                w_rhythm = 1.0 - (w_corr + w_speed + w_ratio + w_stability + w_flow)
 
             all_scores = []
             comp_rhythm, comp_corr, comp_speed, comp_ratio, comp_stability, comp_flow = [], [], [], [], [], []
