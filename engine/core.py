@@ -92,15 +92,16 @@ class BiometricCore:
 
         if hist_mahal_dists and len(hist_mahal_dists) >= 2:
             m_mean, m_std = np.mean(hist_mahal_dists), np.std(hist_mahal_dists)
-            h_mahal_gate, h_thresh = float(m_mean + 3.0 * m_std), float(min(0.70, 0.60 + ((n - 5) * 0.02)) + (max(0.0, 1.0 - (m_mean / 2.0)) * 0.10))
+            # HARDENING: Gunakan 2.0 STD agar lorong keamanan jauh lebih sempit (Anti-Collision)
+            h_mahal_gate, h_thresh = float(m_mean + 2.0 * m_std), float(min(0.72, 0.62 + ((n - 5) * 0.02)) + (max(0.0, 1.0 - (m_mean / 2.0)) * 0.10))
         else:
-            h_mahal_gate, h_thresh = b_mahal, (0.60 if n >= 5 else 0.55)
+            h_mahal_gate, h_thresh = b_mahal, (0.62 if n >= 5 else 0.55)
 
         alpha = min(1.0, (n - 1) / 4.0) if n < 5 else 1.0
         speed_g, mahal_g, thresh = (1-alpha)*b_speed + alpha*h_speed_gate, (1-alpha)*b_mahal + alpha*h_mahal_gate, (1-alpha)*b_thresh + alpha*h_thresh
         
         min_s, min_m = (0.30, 3.5) if n < 5 else (0.60, 10.0)
-        speed_g, mahal_g, thresh = float(np.clip(speed_g, min_s, 0.60)), float(np.clip(mahal_g, 1.20, 15.0)), float(np.clip(thresh, 0.55, 0.82))
+        speed_g, mahal_g, thresh = float(np.clip(speed_g, min_s, 0.60)), float(np.clip(mahal_g, 1.15, 12.0)), float(np.clip(thresh, 0.55, 0.85))
 
         if len(first_dwell) < 8:
             p = (8 - len(first_dwell)) * 0.015
@@ -263,7 +264,8 @@ class BiometricCore:
             
             # Berikan penalti skor jika ada tombol yang dibuang agar penyusup tidak mudah lolos
             if final_outliers > 0:
-                penalty = min(0.15, (final_outliers / len(in_dwell)) * 0.2)
+                # HARDENING: Penalti lebih agresif (0.5 pengali)
+                penalty = min(0.25, (final_outliers / len(in_dwell)) * 0.5)
                 final_score = max(0.0, final_score - penalty)
 
             if out_p > 0.25: 
