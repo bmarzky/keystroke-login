@@ -9,8 +9,8 @@ warnings.filterwarnings('ignore')
 
 
 class BiometricCore:
-    def __init__(self, n_features=8):
-        # n_features=8 karena kita mengambil Median dan Std Dev dari 4 jenis data (dwell, flight, d2d, u2u)
+    def __init__(self, n_features=16):
+        # n_features=16 karena kita mengambil Median, Std, Ratio-Median, dan Ratio-Std dari 4 jenis data
         self.n_features = n_features
 
 
@@ -29,12 +29,21 @@ class BiometricCore:
                 # Ambil Median untuk stabilitas dan Std Dev untuk konsistensi ritme
                 features.append(float(np.median(clean_arr)))
                 features.append(float(np.std(clean_arr, ddof=1)))
+                
+                # Tambahan fitur Rasio Antar Tombol (Rhythm Ratios) - Unik per orang
+                if len(clean_arr) >= 3:
+                    ratios = clean_arr[:-1] / (clean_arr[1:] + 0.001)
+                    features.append(float(np.median(ratios)))
+                    features.append(float(np.std(ratios, ddof=1)))
+                else:
+                    features.extend([1.0, 0.1])
             elif len(arr) >= 1:
                 # Fallback jika data sangat sedikit
                 features.append(float(min(np.median(arr), 0.20)))
                 features.append(0.01)
+                features.extend([1.0, 0.1])
             else:
-                features.extend([0.0, 0.0])
+                features.extend([0.0, 0.0, 0.0, 0.0])
                 
         return [float(f) if np.isfinite(f) else 0.0 for f in features]
 
@@ -101,12 +110,22 @@ class BiometricCore:
         alpha = min(1.0, (n - 1) / 4.0) if n < 5 else 1.0
         speed_g, mahal_g, thresh = (1-alpha)*b_speed + alpha*h_speed_gate, (1-alpha)*b_mahal + alpha*h_mahal_gate, (1-alpha)*b_thresh + alpha*h_thresh
         
-        min_s, min_m = (0.30, 3.5) if n < 5 else (0.60, 10.0)
-        speed_g, mahal_g, thresh = float(np.clip(speed_g, min_s, 0.60)), float(np.clip(mahal_g, 1.15, 12.0)), float(np.clip(thresh, 0.55, 0.85))
+        # --- EXPERT STRICT HARDENING ---
+        # Jika user sudah expert (n > 10), mereka harusnya sangat konsisten.
+        # Kita perketat Speed Gate (dari 60% ke ~25%) dan Mahal Gate.
+        s_low, s_high = (0.25, 0.60) if n < 5 else (0.15, 0.35) if n > 10 else (0.20, 0.50)
+        m_low = 1.05 if n > 10 else 1.15
+        
+        speed_g = float(np.clip(speed_g, s_low, s_high))
+        mahal_g = float(np.clip(mahal_g, m_low, 12.0))
+        
+        # Threshold climbing: semakin banyak sampel, semakin tinggi standar masuknya
+        t_high = 0.82 if n > 15 else 0.78 if n > 10 else 0.72
+        thresh = float(np.clip(thresh, 0.65, t_high))
 
         if len(first_dwell) < 8:
             p = (8 - len(first_dwell)) * 0.015
-            thresh, speed_g, mahal_g = float(np.clip(thresh + p, 0.55, 0.88)), float(speed_g * 0.85), float(mahal_g * 0.85)
+            thresh, speed_g, mahal_g = float(np.clip(thresh + p, 0.65, 0.88)), float(speed_g * 0.85), float(mahal_g * 0.85)
 
         return {"speed_gate": round(float(speed_g), 4), "mahal_gate": round(float(mahal_g), 4), "threshold": round(float(thresh), 4), "phase": f"Adaptive-{'Blend' if n < 5 else 'Full'} (n={n})"}
 
@@ -283,18 +302,26 @@ class BiometricCore:
             # Jangan update history jika:
             # 1. Sedang pemulihan typo (tidak representatif)
             # 2. Banyak data anomali (Sterile > 15%)
-            # 3. Skor terlalu rendah (untuk user lama)
-            # 4. KHUSUS USER BARU: Jangan simpan jika ada > 2 tombol Sterile (No Garbage Baseline)
+            # 3. KHUSUS USER BARU: Jangan simpan jika ada > 2 tombol Sterile (No Garbage Baseline)
+            # 4. KHUSUS EXPERT: Hanya update jika data sangat meyakinkan (High Integrity)
             
             is_clean_init = True
             if n_h < 5 and final_outliers > 2:
-                is_clean_init = False # Paksa user baru berikan data bersih di awal
+                is_clean_init = False 
+
+            is_high_integrity = True
+            if n_h > 10:
+                # Expert hanya update jika score sangat tinggi dan jarak Mahalanobis rendah
+                # Ini mencegah orang yang 'mirip' (seperti Asir) meracuni database sejarah user
+                if final_score < (threshold + 0.04) or (m_dist and m_dist > 0.85):
+                    is_high_integrity = False
 
             res["should_update_history"] = bool(
                 is_match and 
                 is_clean_init and
+                is_high_integrity and
                 not (is_typo_recovery or out_p > 0.15) and 
-                (final_score >= (max(0.75, threshold + 0.02) if n_h >= 10 else threshold + 0.02) or n_h < 3)
+                (final_score >= (threshold + 0.02) or n_h < 3)
             )
             
             res["adaptive_gates"].update({"dtw_dwell": float(d_dist) if d_dist else None, "dtw_flight": float(f_dist) if f_dist else None, "outlier_count": int(final_outliers), "is_typo": bool(is_typo_recovery)})
