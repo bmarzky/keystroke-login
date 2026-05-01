@@ -96,36 +96,45 @@ class BiometricCore:
                     "threshold": round(float(b_thresh), 4), "phase": "Init [Welcome Buffer]"}
 
         h_speeds = [float(h.get('speed', 0)) for h in history]
-        avg_s = float(np.mean(h_speeds))
+        # Gunakan Median (bukan Mean) untuk menghindari polusi data default/sampah
+        avg_s = float(np.median(h_speeds))
         h_devs = [abs(s - avg_s) / max(avg_s, 1.0) for s in h_speeds]
-        h_speed_gate = float(np.mean(h_devs)) + 3.0 * float(np.std(h_devs) if len(h_devs) > 1 else 0.1)
+        
+        # Human Buffer: Gunakan MAX deviasi sejarah + buffer 1.5x
+        # Ini jauh lebih aman untuk menangkis polusi data awal yang kaku.
+        h_speed_gate = max(float(np.max(h_devs) * 1.5) if len(h_devs) > 0 else 0.35, 0.35)
 
         if hist_mahal_dists and len(hist_mahal_dists) >= 2:
             m_mean, m_std = np.mean(hist_mahal_dists), np.std(hist_mahal_dists)
-            # HARDENING: Gunakan 2.0 STD agar lorong keamanan jauh lebih sempit (Anti-Collision)
-            h_mahal_gate, h_thresh = float(m_mean + 2.0 * m_std), float(min(0.72, 0.62 + ((n - 5) * 0.02)) + (max(0.0, 1.0 - (m_mean / 2.0)) * 0.10))
+            # HARDENING: Gunakan 3.0 STD untuk fase adaptasi agar lebih fleksibel terhadap variasi manusia
+            h_mahal_gate, h_thresh = float(m_mean + 3.0 * m_std), float(min(0.72, 0.62 + ((n - 5) * 0.02)) + (max(0.0, 1.0 - (m_mean / 2.0)) * 0.10))
         else:
             h_mahal_gate, h_thresh = b_mahal, (0.62 if n >= 5 else 0.55)
 
         alpha = min(1.0, (n - 1) / 4.0) if n < 5 else 1.0
         speed_g, mahal_g, thresh = (1-alpha)*b_speed + alpha*h_speed_gate, (1-alpha)*b_mahal + alpha*h_mahal_gate, (1-alpha)*b_thresh + alpha*h_thresh
         
-        # --- EXPERT STRICT HARDENING ---
-        # Jika user sudah expert (n > 10), mereka harusnya sangat konsisten.
-        # Kita perketat Speed Gate (dari 60% ke ~25%) dan Mahal Gate.
-        s_low, s_high = (0.25, 0.60) if n < 5 else (0.15, 0.35) if n > 10 else (0.20, 0.50)
-        m_low = 1.05 if n > 10 else 1.15
+        # --- TRULY ADAPTIVE GATE TUNING (Human-Centric Hardening) ---
+        if n < 5:    s_high, m_low, t_high = 0.75, 12.0, 0.72
+        elif n < 10: s_high, m_low, t_high = 0.65, 10.0, 0.78
+        elif n < 20: s_high, m_low, t_high = 0.55, 8.0, 0.82
+        else:        s_high, m_low, t_high = 0.45, 1.5, 0.88
+        
+        s_low = 0.12 
         
         speed_g = float(np.clip(speed_g, s_low, s_high))
-        mahal_g = float(np.clip(mahal_g, m_low, 12.0))
+        mahal_g = float(np.clip(mahal_g, m_low, 15.0))
         
-        # Threshold climbing: semakin banyak sampel, semakin tinggi standar masuknya
-        t_high = 0.82 if n > 15 else 0.78 if n > 10 else 0.72
-        thresh = float(np.clip(thresh, 0.65, t_high))
+        # Threshold climbing
+        thresh = float(np.clip(thresh, 0.62, t_high))
 
         if len(first_dwell) < 8:
             p = (8 - len(first_dwell)) * 0.015
-            thresh, speed_g, mahal_g = float(np.clip(thresh + p, 0.65, 0.88)), float(speed_g * 0.85), float(mahal_g * 0.85)
+            # Untuk password pendek, kita naikkan threshold (agar lebih teliti) 
+            # tapi kita LONGGARKAN speed gate (karena data sedikit lebih fluktuatif)
+            thresh = float(np.clip(thresh + p, 0.65, 0.88))
+            speed_g = float(speed_g * 1.15) 
+            mahal_g = float(mahal_g * 0.90)
 
         return {"speed_gate": round(float(speed_g), 4), "mahal_gate": round(float(mahal_g), 4), "threshold": round(float(thresh), 4), "phase": f"Adaptive-{'Blend' if n < 5 else 'Full'} (n={n})"}
 
@@ -191,7 +200,8 @@ class BiometricCore:
             res["adaptive_gates"] = gates
             res["method"] = gates["phase"]
 
-            avg_s = float(np.mean([float(h.get('speed', 0)) for h in history]))
+            # Gunakan Median untuk menangkis polusi data awal yang salah (bias)
+            avg_s = float(np.median([float(h.get('speed', 0)) for h in history]))
             if len(history) == 1 and avg_s < 250: avg_s = 350
             speed_dev = float(abs(input_speed - avg_s) / max(avg_s, 1.0))
             res["speed_dev"] = round(speed_dev, 4)
@@ -202,10 +212,17 @@ class BiometricCore:
                 return res
 
             n_h = len(history)
-            if n_h < 5: w = [0.30, 0.40, 0.15, 0.15, 0, 0]
-            elif n_h < 10: w = [0.35, 0.30, 0.15, 0.20, 0, 0]
-            else: w = [0.40, 0.20, 0.20, 0.20, 0, 0]
-            if len(in_dwell) < 8: w[1], w[3] = w[1]*0.5, w[3]*0.5; w[0] = 1.0 - sum(w[1:])
+            if n_h < 5: 
+                w = [0.30, 0.40, 0.15, 0.15, 0.00, 0.00] # Init
+            elif n_h < 10: 
+                w = [0.35, 0.25, 0.15, 0.15, 0.05, 0.05] # Transition
+            else: 
+                w = [0.30, 0.15, 0.15, 0.15, 0.15, 0.10] # Expert (Ratios matter more)
+            
+            if len(in_dwell) < 8: 
+                w[1], w[3] = w[1]*0.5, w[3]*0.5
+                rem = 1.0 - sum(w[1:])
+                w[0] = max(0.1, rem)
             
             res["weights"] = {"w_rhythm": float(w[0]), "w_corr": float(w[1]), "w_speed": float(w[2]), "w_flow": float(w[3]), "w_ratio": float(w[4]), "w_stability": float(w[5])}
 
@@ -244,11 +261,24 @@ class BiometricCore:
                 if outliers > 0 and c_s > 0.90: r_s, c_s = min(1.0, r_s*1.05), min(1.0, c_s*1.05)
                 bs_s = float(baseline.get('speed', 350 if n_h==1 else 0))
                 s_s = float(max(0, 1.0 - (abs(input_speed - bs_s)/max(bs_s, 1.0) / (0.5 + min(0.2, outliers*0.1)))))
+                
                 f_in, f_bs = np.diff(in_flight), np.diff(np.array(b_data['flight']))
                 flen = min(len(f_in), len(f_bs))
                 fl_s = float(max(0.35, np.corrcoef(f_in[:flen], f_bs[:flen])[0,1])) if flen > 3 else 0.5
-                all_scores.append(float(w[0]*r_s + w[1]*c_s + w[2]*s_s + w[3]*fl_s))
-                comp_log.append([r_s, c_s, s_s, fl_s, 0.5, 0.5])
+
+                # Ratio & Stability Scoring (16-Dim Logic)
+                in_feat, bs_feat = np.array(self.extract(input_data)), np.array(self.extract(b_data))
+                
+                # Ratio Score: Bandingkan fitur index 2,3, 6,7, 10,11, 14,15 (Rhythm Ratios)
+                idx_ratios = [2, 3, 6, 7, 10, 11, 14, 15]
+                rat_s = float(max(0, 1.0 - np.mean(np.abs(in_feat[idx_ratios] - bs_feat[idx_ratios]) / (bs_feat[idx_ratios] + 0.1))))
+                
+                # Stability Score: Bandingkan Std Dev features (Index 1, 3, 5, 7, 9, 11, 13, 15)
+                idx_stds = [1, 3, 5, 7, 9, 11, 13, 15]
+                sta_s = float(max(0, 1.0 - np.mean(np.abs(in_feat[idx_stds] - bs_feat[idx_stds]) / (bs_feat[idx_stds] + 0.05))))
+
+                all_scores.append(float(w[0]*r_s + w[1]*c_s + w[2]*s_s + w[3]*fl_s + w[4]*rat_s + w[5]*sta_s))
+                comp_log.append([r_s, c_s, s_s, fl_s, rat_s, sta_s])
                 final_outliers = max(final_outliers, outliers)
 
             if not all_scores:
@@ -265,7 +295,9 @@ class BiometricCore:
             if n_h >= 5:
                 try:
                     X = np.array([self.extract(h) for h in history])
-                    mu, cov = np.mean(X, axis=0), np.cov(X, rowvar=False) + np.eye(self.n_features) * 1e-3
+                    # REGULARIZATION: Gunakan buffer lebih besar untuk user Senior agar tidak sensitif
+                    reg = 0.1 if n_h < 20 else 1e-3
+                    mu, cov = np.mean(X, axis=0), np.cov(X, rowvar=False) + np.eye(self.n_features) * reg
                     diff = np.array(self.extract(input_data)) - mu
                     m_dist = float(round(np.sqrt(max(0, diff.T @ np.linalg.inv(cov) @ diff)), 4))
                     res["mahal_dist"] = m_dist
@@ -325,7 +357,14 @@ class BiometricCore:
             )
             
             res["adaptive_gates"].update({"dtw_dwell": float(d_dist) if d_dist else None, "dtw_flight": float(f_dist) if f_dist else None, "outlier_count": int(final_outliers), "is_typo": bool(is_typo_recovery)})
-            res["components"] = {"rhythm": round(float(comp_log[best_idx][0]), 4), "corr": round(float(comp_log[best_idx][1]), 4), "speed": round(float(comp_log[best_idx][2]), 4), "flow": round(float(comp_log[best_idx][3]), 4), "ratio": 0.5, "stability": 0.5}
+            res["components"] = {
+                "rhythm": round(float(comp_log[best_idx][0]), 4), 
+                "corr": round(float(comp_log[best_idx][1]), 4), 
+                "speed": round(float(comp_log[best_idx][2]), 4), 
+                "flow": round(float(comp_log[best_idx][3]), 4), 
+                "ratio": round(float(comp_log[best_idx][4]), 4), 
+                "stability": round(float(comp_log[best_idx][5]), 4)
+            }
             
             return res
 
