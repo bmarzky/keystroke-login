@@ -39,18 +39,22 @@ class KeystrokeManager {
         
         $pyCore = realpath(__DIR__ . '/core.py');
         $pyExec = $this->getPythonPath();
-        $command = escapeshellarg($pyExec) . ' ' . escapeshellarg($pyCore) . ' ' . escapeshellarg($tmpFile) . " 2>NUL";
         
-        $output = trim(shell_exec($command));
+        # Gunakan format command yang lebih aman untuk Windows (bungkus seluruh string dengan kutip ganda jika perlu)
+        $command = "\"$pyExec\" \"$pyCore\" \"$tmpFile\" 2>&1";
+        
+        $output = shell_exec($command);
+        $output = trim($output ?? '');
         @unlink($tmpFile);
         
         if (empty($output)) {
-            return ['status' => false, 'score' => 0, 'reason' => 'Python Error'];
+            return ['status' => false, 'score' => 0, 'reason' => 'Python Output Empty'];
         }
         
         $result = json_decode($output, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-             return ['status' => false, 'score' => 0, 'reason' => 'Format JSON Salah'];
+             # Jika gagal parse JSON, kemungkinan besar $output berisi pesan error Python yang asli
+             return ['status' => false, 'score' => 0, 'reason' => 'Python Debug: ' . substr($output, 0, 100)];
         }
         
         return [
