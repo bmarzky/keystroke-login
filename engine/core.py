@@ -71,7 +71,6 @@ class BiometricCore:
 
 
 
-    def _compute_adaptive_gates(self, history, hist_mahal_dists=None):
         # Menghitung gerbang (gates) adaptif berdasarkan sejarah ketikan
         n = len(history)
         first_dwell = np.array(history[0].get('dwell', [0.1]), dtype=float)
@@ -79,7 +78,8 @@ class BiometricCore:
         std_d  = float(np.std(first_dwell)) if len(first_dwell) > 1 else mean_d * 0.2
         cv     = np.clip(std_d / mean_d, 0.10, 0.60)
 
-        b_speed, b_mahal, b_thresh = 0.20 + cv * 0.5, 1.5 + cv * 6.0, 0.58 - cv * 0.1
+        # HARDENING: Ambang batas awal lebih tinggi (0.65) agar tidak mudah dibobol
+        b_speed, b_mahal, b_thresh = 0.20 + cv * 0.5, 1.5 + cv * 6.0, 0.65 - cv * 0.1
         
         if n == 1:
             return {"speed_gate": round(float(max(b_speed, 0.5)), 4), "mahal_gate": round(float(max(b_mahal, 5.0)), 4),
@@ -278,7 +278,24 @@ class BiometricCore:
             res["status"] = is_match
             res["score"] = round(float(final_score), 4)
             
-            res["should_update_history"] = bool(is_match and not (is_typo_recovery or out_p > 0.15) and (final_score >= (max(0.75, threshold + 0.02) if n_h >= 10 else threshold + 0.02) or n_h < 3))
+            # --- UPDATE HISTORY LOGIC (Anti-Poisoning) ---
+            # Jangan update history jika:
+            # 1. Sedang pemulihan typo (tidak representatif)
+            # 2. Banyak data anomali (Sterile > 15%)
+            # 3. Skor terlalu rendah (untuk user lama)
+            # 4. KHUSUS USER BARU: Jangan simpan jika ada > 2 tombol Sterile (No Garbage Baseline)
+            
+            is_clean_init = True
+            if n_h < 5 and final_outliers > 2:
+                is_clean_init = False # Paksa user baru berikan data bersih di awal
+
+            res["should_update_history"] = bool(
+                is_match and 
+                is_clean_init and
+                not (is_typo_recovery or out_p > 0.15) and 
+                (final_score >= (max(0.75, threshold + 0.02) if n_h >= 10 else threshold + 0.02) or n_h < 3)
+            )
+            
             res["adaptive_gates"].update({"dtw_dwell": float(d_dist) if d_dist else None, "dtw_flight": float(f_dist) if f_dist else None, "outlier_count": int(final_outliers), "is_typo": bool(is_typo_recovery)})
             res["components"] = {"rhythm": round(float(comp_log[best_idx][0]), 4), "corr": round(float(comp_log[best_idx][1]), 4), "speed": round(float(comp_log[best_idx][2]), 4), "flow": round(float(comp_log[best_idx][3]), 4), "ratio": 0.5, "stability": 0.5}
             
