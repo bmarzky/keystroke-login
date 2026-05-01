@@ -100,11 +100,19 @@ if ($user && password_verify($password, $user['password'])) {
 
     // Adaptive Gates
     $ag          = $result['adaptive_gates'] ?? [];
-    $gatesBlock  =
-        "  --- Adaptive Gates (Per-User) ---\n" .
-        sprintf("  Speed Gate    : %.1f%%\n",   ($ag['speed_gate'] ?? 0.40) * 100) .
-        sprintf("  Mahal. Gate   : %.4f\n",      $ag['mahal_gate'] ?? 3.0) .
-        sprintf("  Threshold     : %.4f\n",      $ag['threshold']  ?? 0.70);
+    $gatesBlock  = "  --- Adaptive Gates (Per-User) ---\n";
+    $gatesBlock .= sprintf("  Speed Gate    : %.1f%%\n", ($ag['speed_gate'] ?? 0.40) * 100);
+    $gatesBlock .= sprintf("  Mahal. Gate   : %.4f\n",    $ag['mahal_gate'] ?? 3.0);
+    $gatesBlock .= sprintf("  Threshold     : %.4f\n",    $ag['threshold']  ?? 0.70);
+
+    if (isset($ag['dtw_dwell']) && $ag['dtw_dwell'] !== null) {
+        $gatesBlock .= sprintf("  DTW Dwell     : %.3f\n", $ag['dtw_dwell']);
+        $gatesBlock .= sprintf("  DTW Flight    : %.3f\n", $ag['dtw_flight']);
+        $gatesBlock .= sprintf("  Typo Recovery : Yes\n");
+    }
+    if (isset($ag['outlier_count']) && $ag['outlier_count'] > 0) {
+        $gatesBlock .= sprintf("  Removed Keys  : %d keys (Sterile)\n", $ag['outlier_count']);
+    }
 
     // 4. Format Log
     $LOG_DIR = __DIR__ . '/../../ml/logs/';
