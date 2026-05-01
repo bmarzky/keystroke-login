@@ -71,6 +71,7 @@ class BiometricCore:
 
 
 
+    def _compute_adaptive_gates(self, history, hist_mahal_dists):
         # Menghitung gerbang (gates) adaptif berdasarkan sejarah ketikan
         n = len(history)
         first_dwell = np.array(history[0].get('dwell', [0.1]), dtype=float)
