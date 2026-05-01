@@ -72,8 +72,13 @@ document.addEventListener("DOMContentLoaded", () => {
             showNotice("Klik kanan dimatikan pada kolom password.");
         });
 
-        // Monitor input ilegal (autofill/bypass)
+        // Monitor input ilegal (autofill/bypass) & Reset saat kosong
         passwordInput.addEventListener("input", (e) => {
+            // Penguatan: Jika user menghapus semua teks, reset rekaman biometrik
+            if (passwordInput.value === "") {
+                resetData();
+            }
+
             if (e.inputType === "insertFromPaste" || e.inputType === "insertFromDrop") {
                 passwordInput.value = "";
                 resetData();
