@@ -256,16 +256,27 @@ class BiometricCore:
                     if m_dist < 1.2: final_score = min(1.0, final_score + 0.07)
                 except: pass
 
-            is_match = bool(final_score >= threshold) or (n_h == 1 and final_score >= 0.25)
-            out_p = float(final_outliers / (len(in_dwell)*2)) if len(in_dwell)>0 else 0.0
-            if out_p > 0.40: is_match, final_score = False, 0.0
+            # --- SECURITY HARDENING (Anti-Impostor) ---
+            # Batasi seberapa banyak data yang boleh "dibuang" (Sterile). 
+            # Jika terlalu banyak anomali (>25%), identitas tidak bisa divalidasi dengan aman.
+            out_p = float(final_outliers / (len(in_dwell)*4)) if len(in_dwell)>0 else 0.0
             
+            # Berikan penalti skor jika ada tombol yang dibuang agar penyusup tidak mudah lolos
+            if final_outliers > 0:
+                penalty = min(0.15, (final_outliers / len(in_dwell)) * 0.2)
+                final_score = max(0.0, final_score - penalty)
+
+            if out_p > 0.25: 
+                is_match, final_score = False, 0.0
+                res["reason"] = f"REJECT | Identitas meragukan (Anomali: {out_p:.1%})"
+            else:
+                is_match = bool(final_score >= threshold) or (n_h == 1 and final_score >= 0.25)
+                res["reason"] = f"Score: {final_score:.2f} | {'ACCEPT' if is_match else 'REJECT'}"
+
             res["status"] = is_match
             res["score"] = round(float(final_score), 4)
-            res["reason"] = f"Score: {final_score:.2f} | {'ACCEPT' if is_match else 'REJECT'}"
-            if out_p > 0.40: res["reason"] = f"Score: {final_score:.2f} | REJECT | Too many outliers ({out_p:.1%})"
             
-            res["should_update_history"] = bool(is_match and not (is_typo_recovery or out_p > 0.25) and (final_score >= (max(0.75, threshold + 0.02) if n_h >= 10 else threshold + 0.02) or n_h < 3))
+            res["should_update_history"] = bool(is_match and not (is_typo_recovery or out_p > 0.15) and (final_score >= (max(0.75, threshold + 0.02) if n_h >= 10 else threshold + 0.02) or n_h < 3))
             res["adaptive_gates"].update({"dtw_dwell": float(d_dist) if d_dist else None, "dtw_flight": float(f_dist) if f_dist else None, "outlier_count": int(final_outliers), "is_typo": bool(is_typo_recovery)})
             res["components"] = {"rhythm": round(float(comp_log[best_idx][0]), 4), "corr": round(float(comp_log[best_idx][1]), 4), "speed": round(float(comp_log[best_idx][2]), 4), "flow": round(float(comp_log[best_idx][3]), 4), "ratio": 0.5, "stability": 0.5}
             
