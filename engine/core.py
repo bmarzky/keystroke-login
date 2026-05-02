@@ -22,22 +22,22 @@ class BiometricCore:
 
 
 
-    def extract(self, data):
-        # Fungsi untuk mengekstrak vektor fitur statistik 8-dimensi
+    def extract(self, data: dict) -> list:
+        """
+        Extracts a 16-dimensional statistical feature vector from raw keystroke data.
+        Features include Median, Std Dev, and Rhythm Ratios for dwell, flight, d2d, and u2u.
+        """
         data = self._ensure_vectors(data)
         features = []
         
         for key in ['dwell', 'flight', 'd2d', 'u2u']:
             arr = np.array(data.get(key, []), dtype=float)
-            # Filter tombol macet atau error (> 0.25 detik) agar tidak merusak rata-rata
             clean_arr = arr[arr < self.CLEAN_THRESHOLD]
             
             if len(clean_arr) >= 2:
-                # Ambil Median untuk stabilitas dan Std Dev untuk konsistensi ritme
                 features.append(float(np.median(clean_arr)))
                 features.append(float(np.std(clean_arr, ddof=1)))
                 
-                # Tambahan fitur Rasio Antar Tombol (Rhythm Ratios) - Unik per orang
                 if len(clean_arr) >= 3:
                     ratios = clean_arr[:-1] / (clean_arr[1:] + 0.001)
                     features.append(float(np.median(ratios)))
@@ -45,7 +45,6 @@ class BiometricCore:
                 else:
                     features.extend([1.0, 0.1])
             elif len(arr) >= 1:
-                # Fallback jika data sangat sedikit
                 features.append(float(min(np.median(arr), 0.20)))
                 features.append(0.01)
                 features.extend([1.0, 0.1])
@@ -56,8 +55,8 @@ class BiometricCore:
 
 
 
-    def _ensure_vectors(self, data):
-        # Memastikan data d2d dan u2u ada melalui perhitungan otomatis
+    def _ensure_vectors(self, data: dict) -> dict:
+        """Ensures that derived vectors (d2d, u2u) are calculated if missing."""
         dwell, flight = data.get('dwell', []), data.get('flight', [])
         
         if not data.get('d2d'):
@@ -70,8 +69,8 @@ class BiometricCore:
 
 
 
-    def _dtw_distance(self, s1, s2):
-        # Algoritma Dynamic Time Warping untuk menghitung kemiripan pola
+    def _dtw_distance(self, s1: np.ndarray, s2: np.ndarray) -> float:
+        """Calculates similarity between two patterns using Dynamic Time Warping."""
         n, m = len(s1), len(s2)
         if n == 0 or m == 0: return 1.0
         
