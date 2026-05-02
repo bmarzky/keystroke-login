@@ -9,6 +9,13 @@ warnings.filterwarnings('ignore')
 
 
 class BiometricCore:
+    # --- CONFIGURATION CONSTANTS ---
+    CLEAN_THRESHOLD = 0.25      # Detik: Tombol yang lebih lambat dari ini dianggap macet/error
+    DEFAULT_SPEED   = 350.0     # CPM: Kecepatan fallback untuk user baru
+    MIN_SAMPLES     = 5         # Minimal sampel untuk mulai menggunakan Mahalanobis
+    MAX_MAHAL_DIST  = 15.0      # Batas maksimal jarak Mahalanobis sebelum reject mutlak
+    ANOMALY_LIMIT   = 0.25      # 25% data anomali akan memicu reject identitas
+    
     def __init__(self, n_features=16):
         # n_features=16 karena kita mengambil Median, Std, Ratio-Median, dan Ratio-Std dari 4 jenis data
         self.n_features = n_features
@@ -23,7 +30,7 @@ class BiometricCore:
         for key in ['dwell', 'flight', 'd2d', 'u2u']:
             arr = np.array(data.get(key, []), dtype=float)
             # Filter tombol macet atau error (> 0.25 detik) agar tidak merusak rata-rata
-            clean_arr = arr[arr < 0.25]
+            clean_arr = arr[arr < self.CLEAN_THRESHOLD]
             
             if len(clean_arr) >= 2:
                 # Ambil Median untuk stabilitas dan Std Dev untuk konsistensi ritme
@@ -176,7 +183,7 @@ class BiometricCore:
                     res["reason"] = "REJECT | Length Mismatch"
                     return res
 
-            c_dw, c_fl = in_dwell[in_dwell < 0.25], in_flight[in_flight < 0.25]
+            c_dw, c_fl = in_dwell[in_dwell < self.CLEAN_THRESHOLD], in_flight[in_flight < self.CLEAN_THRESHOLD]
             input_speed = float(60.0/(np.mean(c_dw)+np.mean(c_fl))) if (len(c_dw)>=3 and len(c_fl)>=3) else float(input_data.get('speed', 0))
             if np.sum(in_dwell) < 0.01: 
                 res["reason"] = "Data tidak valid"
@@ -202,7 +209,7 @@ class BiometricCore:
 
             # Gunakan Median untuk menangkis polusi data awal yang salah (bias)
             avg_s = float(np.median([float(h.get('speed', 0)) for h in history]))
-            if len(history) == 1 and avg_s < 250: avg_s = 350
+            if len(history) == 1 and avg_s < 250: avg_s = self.DEFAULT_SPEED
             speed_dev = float(abs(input_speed - avg_s) / max(avg_s, 1.0))
             res["speed_dev"] = round(speed_dev, 4)
 
@@ -247,7 +254,7 @@ class BiometricCore:
                     ml = min(len(v1), len(v2), len(stats_profile[k]["mean"]) if k in stats_profile else 999)
                     if ml < 3: continue
                     v1, v2 = v1[:ml], v2[:ml]
-                    mask = (np.abs(v1 - stats_profile[k]["mean"][:ml]) > (3.5 * stats_profile[k]["std"][:ml])) | (v1 > 0.25) if (k in stats_profile and n_h>1) else (v1 > 0.25)
+                    mask = (np.abs(v1 - stats_profile[k]["mean"][:ml]) > (3.5 * stats_profile[k]["std"][:ml])) | (v1 > self.CLEAN_THRESHOLD) if (k in stats_profile and n_h>1) else (v1 > self.CLEAN_THRESHOLD)
                     outliers += int(np.sum(mask))
                     v1c, v2c = v1[~mask], v2[~mask]
                     if len(v1c) < 3: v1c, v2c = v1, v2
