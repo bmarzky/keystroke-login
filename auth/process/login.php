@@ -26,6 +26,21 @@ $username = trim($_POST['username']);
 $password = trim($_POST['password']);
 $inputKeystroke = trim($_POST['keystroke']);
 
+// --- VALIDASI DATA INPUT ---
+$keystrokeData = json_decode($inputKeystroke, true);
+if (json_last_error() !== JSON_ERROR_NONE) {
+    redirectWithError("Data biometrik tidak valid (JSON Error)");
+}
+
+// Pastikan field utama ada (dwell, flight)
+if (!isset($keystrokeData['dwell']) || !isset($keystrokeData['flight']) || !is_array($keystrokeData['dwell'])) {
+    redirectWithError("Struktur data biometrik tidak lengkap");
+}
+
+if (count($keystrokeData['dwell']) < 3) {
+    redirectWithError("Data ketikan terlalu pendek, silakan coba lagi");
+}
+
 // 1. Cari User di Database
 $stmt = $conn->prepare("SELECT id, username, password FROM users WHERE username = ?");
 $stmt->bind_param("s", $username);
