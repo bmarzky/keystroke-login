@@ -1,189 +1,265 @@
-/* 
-   Modern Design System 
-   Aesthetics: Premium, Dark Mode, Glassmorphism, Vibrant Accents
-*/
-
-:root {
-    --bg-color: #0f172a;
-    --card-bg: rgba(30, 41, 59, 0.7);
-    --accent-primary: #38bdf8;
-    --accent-secondary: #818cf8;
-    --text-main: #f1f5f9;
-    --text-muted: #94a3b8;
-    --error: #ef4444;
-    --success: #22c55e;
-    --glass-border: rgba(255, 255, 255, 0.1);
-}
-
+﻿/* Global page reset */
 * {
     box-sizing: border-box;
-    transition: all 0.2s ease;
 }
 
+/* Auth pages styling */
 body {
     min-height: 100vh;
     margin: 0;
     display: flex;
     justify-content: center;
     align-items: center;
-    background: radial-gradient(circle at top left, #1e293b, #0f172a);
-    color: var(--text-main);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    overflow-x: hidden;
+    background: #ffffff;
+    color: #000000;
+    font-family: Arial, sans-serif;
 }
 
 .auth-wrapper {
     width: 100%;
-    max-width: 400px;
-    padding: 2.5rem;
-    background: var(--card-bg);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-border);
-    border-radius: 24px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    max-width: 320px;
+    padding: 14px;
     text-align: center;
 }
 
 .auth-title {
-    margin: 0 0 0.5rem;
-    font-size: 2rem;
-    font-weight: 800;
-    background: linear-gradient(to right, var(--accent-primary), var(--accent-secondary));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    margin: 0 0 14px;
+    font-size: 1.8rem;
+    font-weight: 700;
 }
 
-.auth-subtitle {
-    display: block;
-    margin-bottom: 2rem;
-    color: var(--text-muted);
-    font-size: 0.9rem;
-}
-
-.message-container {
-    min-height: 40px;
-    margin-bottom: 1.5rem;
-    border-radius: 12px;
-}
-
-.php-message, #js-error-msg {
-    font-size: 0.85rem;
-    padding: 0.75rem;
-    border-radius: 10px;
-    animation: slideIn 0.3s ease;
-}
-
-.error-box, #js-error-msg:not(:empty) {
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--error);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-}
-
-.success-box {
-    background: rgba(34, 197, 94, 0.1);
-    color: var(--success);
-    border: 1px solid rgba(34, 197, 94, 0.2);
+.auth-form,
+.auth-form * {
+    box-sizing: border-box;
 }
 
 .auth-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100% !important;
 }
 
-.input-group {
-    position: relative;
-    text-align: left;
+.auth-form input {
+    width: 100% !important;
+}
+
+.auth-form input {
+    padding: 10px 8px;
+    border: 1px solid #000000;
+    background: #ffffff;
+    color: #000000;
+    font-size: 0.95rem;
 }
 
 .auth-form input {
     width: 100%;
-    padding: 0.85rem 1rem;
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    color: white;
-    font-size: 1rem;
-    outline: none;
+    padding: 10px 8px;
+    border: 1px solid #000000;
+    background: #ffffff;
+    color: #000000;
+    font-size: 0.95rem;
 }
 
 .auth-form input:focus {
-    border-color: var(--accent-primary);
-    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15);
+    outline: none;
+    border-color: #000000;
 }
 
 .auth-form button {
-    margin-top: 0.5rem;
-    padding: 0.85rem;
-    background: linear-gradient(to right, var(--accent-primary), var(--accent-secondary));
-    border: none;
-    border-radius: 12px;
-    color: white;
-    font-weight: 700;
-    font-size: 1rem;
+    width: auto;
+    min-width: 64px;
+    margin: 0 auto;
+    padding: 8px 10px;
+    border: 1px solid #999999;
+    background: #dddddd;
+    color: #000000;
     cursor: pointer;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    font-size: 0.95rem;
 }
 
 .auth-form button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
-    filter: brightness(1.1);
+    background: #cccccc;
 }
 
-.auth-form button:active {
-    transform: translateY(0);
-}
-
-.page-note {
-    margin-top: 2rem;
-    font-size: 0.9rem;
-    color: var(--text-muted);
-}
-
-.page-note a {
-    color: var(--accent-primary);
-    text-decoration: none;
-    font-weight: 600;
-}
-
-.page-note a:hover {
-    text-decoration: underline;
-}
-
-@keyframes slideIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* Dashboard Specifics */
-.dashboard-page {
-    background: #0f172a;
-}
-
-.dashboard-wrapper {
-    width: 95%;
-    max-width: 1200px;
-    padding: 2rem;
-}
-
-.stat-card {
-    background: var(--card-bg);
-    border: 1px solid var(--glass-border);
-    border-radius: 16px;
-    padding: 1.5rem;
+.message-container {
+    min-height: 24px;
+    margin-bottom: 14px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     text-align: center;
 }
 
-.stat-label {
-    color: var(--text-muted);
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
+.php-message {
+    display: inline-block;
+    white-space: nowrap;
+    color: #d00000;
+    font-size: 0.95rem;
+    font-weight: 400;
 }
 
-.stat-value {
-    font-size: 1.5rem;
-    font-weight: 800;
-    margin-top: 0.5rem;
+.error-box {
+    color: #d00000;
+}
+
+.success-box {
+    color: #008000;
+}
+
+#js-error-msg {
+    color: #d00000;
+    min-height: 18px;
+}
+
+.page-note {
+    margin-top: 16px;
+    font-size: 0.95rem;
+    color: #000000;
+}
+
+.page-note a {
+    color: #0000ee;
+    text-decoration: underline;
+}
+
+/* Dashboard page styling */
+html.dashboard-page,
+body.dashboard-page {
+    min-height: 100vh;
+    margin: 0;
+    background: #ffffff;
+    color: #111;
+    font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+.dashboard-wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    padding: 24px 32px;
+    gap: 18px;
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #c8c8c8;
+    padding-bottom: 10px;
+}
+
+.dashboard-title {
+    margin: 0;
+    font-size: 1.45rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.btn-logout {
+    border: 1px solid #000;
+    background: #fff;
+    color: #000;
+    padding: 10px 22px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 700;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.btn-logout:hover {
+    background: #000;
+    color: #fff;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    border: 1px solid #000;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.stat-item {
+    padding: 16px 14px;
+    text-align: center;
+    border-right: 1px solid #000;
+    background: #fcfcfc;
+}
+
+.stat-item:last-child {
+    border-right: none;
+}
+
+.stat-item small {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #555;
+    margin-bottom: 8px;
+}
+
+.stat-item b {
+    display: block;
+    font-size: 1.15rem;
+    color: #111;
+}
+
+.chart-box {
+    min-height: 300px;
+    border: 1px solid #d8d8d8;
+    border-radius: 14px;
+    padding: 18px;
+    display: flex;
+    align-items: center;
+    background: #fff;
+}
+
+.table-container {
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid #d8d8d8;
+    border-radius: 12px;
+    background: #fff;
+}
+
+.dashboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.dashboard-table th,
+.dashboard-table td {
+    border: 1px solid #d8d8d8;
+    padding: 10px 12px;
+    text-align: center;
+}
+
+.dashboard-table th {
+    background: #f7f7f7;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.label-cell {
+    text-align: left;
+    font-weight: 700;
+    background: #fafafa;
+    position: sticky;
+    left: 0;
+    z-index: 1;
+}
+
+.row-muted {
+    color: #666;
+}
+
+.row-divider {
+    border-top: 2px solid #000;
+}
+
+.hidden-dashboard-data {
+    display: none;
 }
