@@ -94,7 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // Abaikan backspace, Enter, dan Tab agar tidak merusak ritme
             if (e.key === "Backspace" || e.key === "Enter" || e.key === "Tab") return; 
 
-            let now = Date.now();
+            let now = performance.now();
             if (startTime === null) startTime = now;
             pendingKeyDowns[e.key] = now;
             keySequence.push(e.key); // 🔹 Catat tombol yang ditekan
@@ -117,7 +117,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // --- EVENT KEYUP ---
         passwordInput.addEventListener("keyup", (e) => {
             if (e.key === "Backspace" || e.key === "Enter" || e.key === "Tab") return;
-            let now = Date.now();
+            let now = performance.now();
             if (pendingKeyDowns[e.key] !== undefined) {
                 let dTime = pendingKeyDowns[e.key];
                 dwellTimes.push((now - dTime) / 1000);
