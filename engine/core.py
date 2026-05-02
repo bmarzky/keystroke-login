@@ -167,15 +167,26 @@ class BiometricCore:
 
 
 
-    def analyze(self, json_path):
-        # Inisialisasi variabel default
-        res = {
-            "status": False, "score": 0.0, "threshold": 0.70, "reason": "Unknown Error",
-            "method": "Unknown", "n_samples": 0, "speed_dev": 0.0,
+    def _get_default_response(self):
+        return {
+            "status": False, 
+            "score": 0.0, 
+            "threshold": 0.70, 
+            "reason": "Unknown Error",
+            "method": "Unknown", 
+            "n_samples": 0, 
+            "speed_dev": 0.0,
+            "mahal_dist": None,
+            "should_update_history": False,
             "adaptive_gates": {"speed_gate": 0.40, "mahal_gate": 3.0, "threshold": 0.70},
             "components": {"rhythm": 0, "corr": 0, "speed": 0, "flow": 0, "ratio": 0, "stability": 0},
             "weights": {"w_rhythm": 0.4, "w_corr": 0.2, "w_speed": 0.2, "w_flow": 0.2, "w_ratio": 0, "w_stability": 0}
         }
+
+
+
+    def analyze(self, json_path):
+        res = self._get_default_response()
 
         try:
             with open(json_path, 'r') as f: data = json.load(f)
