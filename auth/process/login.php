@@ -129,12 +129,10 @@ if ($user && password_verify($password, $user['password'])) {
         $gatesBlock .= sprintf("  Removed Keys  : %d keys (Sterile)\n", $ag['outlier_count']);
     }
 
-    // 4. Format Log
-    $LOG_DIR = __DIR__ . '/../../ml/logs/';
+    // 4. Finalize & Log
+    require_once __DIR__ . '/../../engine/logger.php';
 
-    $logHeader = sprintf(
-        "[%s]\n" .
-        "  User          : %s (ID: %d)\n" .
+    $logDetails = sprintf(
         "  IP Address    : %s\n" .
         "  User-Agent    : %s\n" .
         "  Method        : %s\n" .
@@ -144,8 +142,6 @@ if ($user && password_verify($password, $user['password'])) {
         "  Speed Dev     : %s\n" .
         "  Mahal. Dist   : %s\n" .
         "  Reason        : %s\n",
-        date('Y-m-d H:i:s'),
-        $username, $user['id'],
         $ipAddr,
         $userAgent,
         $method,
@@ -156,7 +152,6 @@ if ($user && password_verify($password, $user['password'])) {
         $mahalDist,
         $reason
     );
-
 
     if ($isMatch) {
         // Login Sukses
@@ -174,35 +169,17 @@ if ($user && password_verify($password, $user['password'])) {
             $historyUpdated = true;
         }
 
-        $successLog = $logHeader .
-            sprintf("  History Updated: %s\n", $historyUpdated ? 'Ya (anti-poisoning lolos)' : 'Tidak') .
-            $gatesBlock .
-            $scoringBlock .
-            $rawDataBlock .
-            str_repeat("-", 60) . "\n";
+        $logDetails .= "  History Updated: " . ($historyUpdated ? 'Ya' : 'Tidak') . "\n";
+        $logDetails .= $gatesBlock . $scoringBlock . $rawDataBlock;
 
-
-
-
-
-        file_put_contents($LOG_DIR . 'login_success.log', $successLog, FILE_APPEND);
+        Logger::success($username, $logDetails);
 
         header("Location: ../../dashboard/index.php");
         exit();
 
     } else {
-        // Login Gagal Biometrik
-        $failLog = $logHeader .
-            $gatesBlock .
-            $scoringBlock .
-            $rawDataBlock .
-            str_repeat("-", 60) . "\n";
-
-
-
-
-
-        file_put_contents($LOG_DIR . 'login_failed.log', $failLog, FILE_APPEND);
+        $logDetails .= $gatesBlock . $scoringBlock . $rawDataBlock;
+        Logger::failure($username, $logDetails);
 
         redirectWithError("Akses Ditolak: Pola ketikan tidak cocok (Skor: $score)");
     }
