@@ -88,62 +88,82 @@ class BiometricCore:
 
 
     def _compute_adaptive_gates(self, history, hist_mahal_dists):
-        # Menghitung gerbang (gates) adaptif berdasarkan sejarah ketikan
+        # Entry point untuk perhitungan gerbang adaptif
         n = len(history)
+        
+        # 1. Hitung base gates (untuk user baru atau fase awal)
+        base = self._get_base_gates(history)
+        if n == 1:
+            return {**base, "phase": "Init [Welcome Buffer]"}
+
+        # 2. Hitung history gates (berdasarkan performa kumulatif)
+        hist = self._get_history_gates(history, hist_mahal_dists, base)
+        
+        # 3. Interpolasi (Blending) antara base dan history
+        alpha = min(1.0, (n - 1) / 4.0) if n < 5 else 1.0
+        speed_g = (1-alpha)*base["speed_gate"] + alpha*hist["speed_gate"]
+        mahal_g = (1-alpha)*base["mahal_gate"] + alpha*hist["mahal_gate"]
+        thresh  = (1-alpha)*base["threshold"]  + alpha*hist["threshold"]
+        
+        # 4. Terapkan batasan human-centric (Hardening)
+        return self._apply_gate_hardening(n, speed_g, mahal_g, thresh, history[0].get('dwell', []))
+
+
+
+    def _get_base_gates(self, history):
         first_dwell = np.array(history[0].get('dwell', [0.1]), dtype=float)
         mean_d = max(float(np.mean(first_dwell)), 0.001)
         std_d  = float(np.std(first_dwell)) if len(first_dwell) > 1 else mean_d * 0.2
         cv     = np.clip(std_d / mean_d, 0.10, 0.60)
-
-        # HARDENING: Ambang batas awal lebih tinggi (0.65) agar tidak mudah dibobol
-        b_speed, b_mahal, b_thresh = 0.20 + cv * 0.5, 1.5 + cv * 6.0, 0.65 - cv * 0.1
         
-        if n == 1:
-            return {"speed_gate": round(float(max(b_speed, 0.5)), 4), "mahal_gate": round(float(max(b_mahal, 5.0)), 4),
-                    "threshold": round(float(b_thresh), 4), "phase": "Init [Welcome Buffer]"}
+        return {
+            "speed_gate": 0.20 + cv * 0.5,
+            "mahal_gate": 1.5 + cv * 6.0,
+            "threshold": 0.65 - cv * 0.1
+        }
 
+
+
+    def _get_history_gates(self, history, hist_mahal_dists, base):
         h_speeds = [float(h.get('speed', 0)) for h in history]
-        # Gunakan Median (bukan Mean) untuk menghindari polusi data default/sampah
         avg_s = float(np.median(h_speeds))
         h_devs = [abs(s - avg_s) / max(avg_s, 1.0) for s in h_speeds]
         
-        # Human Buffer: Gunakan MAX deviasi sejarah + buffer 1.5x
-        # Ini jauh lebih aman untuk menangkis polusi data awal yang kaku.
         h_speed_gate = max(float(np.max(h_devs) * 1.5) if len(h_devs) > 0 else 0.35, 0.35)
-
+        
         if hist_mahal_dists and len(hist_mahal_dists) >= 2:
             m_mean, m_std = np.mean(hist_mahal_dists), np.std(hist_mahal_dists)
-            # HARDENING: Gunakan 3.0 STD untuk fase adaptasi agar lebih fleksibel terhadap variasi manusia
-            h_mahal_gate, h_thresh = float(m_mean + 3.0 * m_std), float(min(0.72, 0.62 + ((n - 5) * 0.02)) + (max(0.0, 1.0 - (m_mean / 2.0)) * 0.10))
+            h_mahal_gate = float(m_mean + 3.0 * m_std)
+            h_thresh = float(min(0.72, 0.62 + ((len(history) - 5) * 0.02)) + (max(0.0, 1.0 - (m_mean / 2.0)) * 0.10))
         else:
-            h_mahal_gate, h_thresh = b_mahal, (0.62 if n >= 5 else 0.55)
+            h_mahal_gate, h_thresh = base["mahal_gate"], (0.62 if len(history) >= 5 else 0.55)
+            
+        return {"speed_gate": h_speed_gate, "mahal_gate": h_mahal_gate, "threshold": h_thresh}
 
-        alpha = min(1.0, (n - 1) / 4.0) if n < 5 else 1.0
-        speed_g, mahal_g, thresh = (1-alpha)*b_speed + alpha*h_speed_gate, (1-alpha)*b_mahal + alpha*h_mahal_gate, (1-alpha)*b_thresh + alpha*h_thresh
-        
-        # --- TRULY ADAPTIVE GATE TUNING (Human-Centric Hardening) ---
+
+
+    def _apply_gate_hardening(self, n, speed_g, mahal_g, thresh, first_dwell):
         if n < 5:    s_high, m_low, t_high = 0.75, 12.0, 0.72
         elif n < 10: s_high, m_low, t_high = 0.65, 10.0, 0.78
         elif n < 20: s_high, m_low, t_high = 0.55, 8.0, 0.82
         else:        s_high, m_low, t_high = 0.45, 1.5, 0.88
         
-        s_low = 0.12 
-        
-        speed_g = float(np.clip(speed_g, s_low, s_high))
+        speed_g = float(np.clip(speed_g, 0.12, s_high))
         mahal_g = float(np.clip(mahal_g, m_low, 15.0))
-        
-        # Threshold climbing
-        thresh = float(np.clip(thresh, 0.62, t_high))
+        thresh  = float(np.clip(thresh, 0.62, t_high))
 
         if len(first_dwell) < 8:
             p = (8 - len(first_dwell)) * 0.015
-            # Untuk password pendek, kita naikkan threshold (agar lebih teliti) 
-            # tapi kita LONGGARKAN speed gate (karena data sedikit lebih fluktuatif)
             thresh = float(np.clip(thresh + p, 0.65, 0.88))
-            speed_g = float(speed_g * 1.15) 
-            mahal_g = float(mahal_g * 0.90)
+            speed_g *= 1.15 
+            mahal_g *= 0.90
 
-        return {"speed_gate": round(float(speed_g), 4), "mahal_gate": round(float(mahal_g), 4), "threshold": round(float(thresh), 4), "phase": f"Adaptive-{'Blend' if n < 5 else 'Full'} (n={n})"}
+        return {
+            "speed_gate": round(float(speed_g), 4),
+            "mahal_gate": round(float(mahal_g), 4),
+            "threshold": round(float(thresh), 4),
+            "phase": f"Adaptive-{'Blend' if n < 5 else 'Full'} (n={n})"
+        }
 
 
 
