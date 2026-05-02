@@ -96,10 +96,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
             let now = performance.now();
             if (startTime === null) startTime = now;
-            pendingKeyDowns[e.key] = now;
-            keySequence.push(e.key); // 🔹 Catat tombol yang ditekan
 
-            if (lastKeyDownTime !== null) d2dTimes.push((now - lastKeyDownTime) / 1000);
+            // --- ANTI-VANDALISM (SMASHING DETECTION) ---
+            // Jika ada > 5 tombol tertahan secara bersamaan, kemungkinan 'keyboard smashing'
+            if (Object.keys(pendingKeyDowns).length > 5) {
+                resetData();
+                showNotice("Input tidak wajar terdeteksi!");
+                return;
+            }
+
+            pendingKeyDowns[e.key] = now;
+            keySequence.push(e.key); 
+
+            if (lastKeyDownTime !== null) {
+                let diff = (now - lastKeyDownTime) / 1000;
+                // Anti-Bot: Kecepatan ketik tidak mungkin < 5ms secara konsisten
+                if (diff < 0.005 && d2dTimes.length > 5) {
+                    resetData();
+                    showNotice("Terlalu cepat! Gunakan cara manual.");
+                    return;
+                }
+                d2dTimes.push(diff);
+            }
             
             // 🔹 LOGIKA OVERLAP (ROLLOVER):
             // Jika lastKeyUpTime belum ada atau lebih besar dari sekarang (dalam kasus tertentu),
