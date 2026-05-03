@@ -19,39 +19,53 @@ class AIEngine:
         return os.path.join(self.model_dir, f"{user_id}_ocsvm.joblib")
 
     def train(self, user_id, X_train):
-        """Melatih model AI untuk user tertentu menggunakan ID Database."""
+        """Melatih model AI dengan tuning otomatis berdasarkan jumlah data."""
         try:
-            if len(X_train) < 10:
-                return False, "Data tidak cukup (min 10)"
+            n_samples = len(X_train)
+            if n_samples < 15:
+                return False, f"Data minimal 15 (saat ini {n_samples})"
+
+            # ADAPTIVE NU: Dijaga tetap ketat (0.10 - 0.15) untuk keamanan tinggi
+            # Lebih besar nu = lebih ketat batasannya
+            adaptive_nu = float(np.clip(0.18 - (n_samples / 500.0), 0.12, 0.18))
 
             scaler = StandardScaler()
             X_scaled = scaler.fit_transform(X_train)
             
-            # nu=0.08: toleransi 8% outlier saat training untuk model yang lebih luwes
-            model = OneClassSVM(kernel='rbf', gamma='scale', nu=0.08)
+            model = OneClassSVM(kernel='rbf', gamma='scale', nu=adaptive_nu)
             model.fit(X_scaled)
             
-            # Simpan model & scaler dalam satu file
-            joblib.dump({'model': model, 'scaler': scaler}, self._get_model_path(user_id))
-            return True, "Training Sukses"
+            # Simpan model & scaler
+            joblib.dump({
+                'model': model, 
+                'scaler': scaler, 
+                'nu': adaptive_nu,
+                'n_train': n_samples
+            }, self._get_model_path(user_id))
+            
+            return True, f"Training Sukses (nu={adaptive_nu:.3f})"
         except Exception as e:
             return False, f"Training Fail: {str(e)}"
 
     def predict(self, user_id, features):
-        """Memprediksi apakah gaya ketik sesuai dengan profil ID user."""
+        """Prediksi dengan skor kepercayaan (Confidence Score)."""
         model_path = self._get_model_path(user_id)
         if not os.path.exists(model_path):
-            return None, None
+            return None, 0.0
             
         try:
             data = joblib.load(model_path)
             model, scaler = data['model'], data['scaler']
             
             X_test = scaler.transform([features])
-            decision = model.predict(X_test)[0]
-            # score_samples memberikan nilai kemiripan (positif=normal, negatif=aneh)
-            score = model.score_samples(X_test)[0]
+            decision = int(model.predict(X_test)[0])
             
-            return int(decision), float(score)
-        except:
-            return None, None
+            # score_samples: jarak ke hyperplane (makin positif makin yakin 'asli')
+            raw_score = float(model.score_samples(X_test)[0])
+            
+            # Mapping raw_score ke 0-1 (Dipersulit: On the boundary = 0.3 Confidence)
+            confidence = float(1.0 / (1.0 + np.exp(-12 * (raw_score - 0.05)))) 
+            
+            return decision, confidence
+        except Exception as e:
+            return None, 0.0
