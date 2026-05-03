@@ -37,12 +37,13 @@ keystroke-login/
 │   └── database.py            # Logika koneksi Database MySQL menggunakan mysql-connector.
 │
 ├── engine/                    # Otak Biometrik (Fusion Engine & AI)
-│   ├── core.py                # Biometric Engine Utama: Fusion Score & Adaptive Thresholding.
-│   └── ml/                    # Lingkungan Machine Learning (In-Engine)
+│   ├── core.py                # Biometric Engine Utama (Refactored & Localized).
+│   └── ml/                    # Lingkungan Machine Learning
 │       ├── ai_trainer.py      # Script melatih model OCSVM.
 │       ├── ai_engine.py       # Komponen inferensi AI.
-│       ├── models/            # Penyimpanan Model AI (*.joblib) per user.
-│       └── logs/              # Audit trail biometric (Login success/failed).
+│       └── models/            # Penyimpanan Model AI (*.joblib).
+│
+├── logs/                      # [BARU] Audit trail biometric (Login success/failed).
 │
 ├── static/                    # Aset Statis Frontend
 │   ├── css/                   # Desain antarmuka.
@@ -55,7 +56,7 @@ keystroke-login/
 ├── utils/
 │   └── logger.py              # Utility untuk mencatat log biometrik.
 │
-└── scratch/                   # Folder sementara untuk training AI.
+└── scratch/                   # Script pengujian validasi (Intrusion Test, Mass Test).
 ```
 
 
