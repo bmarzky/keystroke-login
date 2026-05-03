@@ -1,0 +1,676 @@
+SUCCESS | User: bima
+  Method        : Adaptive-Blend (n=1)
+  History Count : 1 sampel
+  Score         : 0.8027
+  Threshold     : 0.6338
+  Speed Dev     : 23.4%
+  Mahal. Dist   : N/A
+  AI Score      : N/A
+  Reason        : Score: 0.80 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 12.0000
+  Threshold     : 0.6338
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 77.6%  [Euclidean Distance]
+  Corr.     (20%) : 86.6%  [Pearson Coefficient]
+  Speed     (20%) : 53.2%  [Global CPM]
+  Flow      (20%) : 95.9%  [Acceleration]
+  Ratio     (0%)  : 85.0%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 80.8%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 433.3100 char/s
+  Dwell (10)    : [0.094, 0.132, 0.123, 0.070, 0.082, 0.084, 0.069, 0.067, 0.077, 0.113]
+  Flight (9)   : [0.025, 0.136, 0.002, 0.111, 0.089, 0.135, 0.139, 0.066, 0.102]
+  D2D (9)      : [0.119, 0.111, 0.125, 0.181, 0.171, 0.046, 0.209, 0.133, 0.179]
+  U2U (9)      : [0.157, 0.101, 0.072, 0.193, 0.174, 0.030, 0.207, 0.143, 0.215]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Adaptive-Blend (n=2)
+  History Count : 2 sampel
+  Score         : 0.6876
+  Threshold     : 0.6338
+  Speed Dev     : 24.0%
+  Mahal. Dist   : N/A
+  AI Score      : N/A
+  Reason        : Score: 0.69 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 12.0000
+  Threshold     : 0.6338
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 68.0%  [Euclidean Distance]
+  Corr.     (20%) : 79.9%  [Pearson Coefficient]
+  Speed     (20%) : 52.2%  [Global CPM]
+  Flow      (20%) : 57.1%  [Acceleration]
+  Ratio     (0%)  : 81.7%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 69.2%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 389.2100 char/s
+  Dwell (10)    : [0.106, 0.155, 0.111, 0.067, 0.076, 0.120, 0.060, 0.090, 0.088, 0.108]
+  Flight (9)   : [0.002, 0.035, 0.059, 0.126, 0.074, 0.138, 0.150, 0.059, 0.114]
+  D2D (9)      : [0.108, 0.190, 0.170, 0.192, 0.150, 0.064, 0.210, 0.149, 0.202]
+  U2U (9)      : [0.157, 0.146, 0.126, 0.202, 0.194, 0.004, 0.240, 0.146, 0.222]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Adaptive-Blend (n=3)
+  History Count : 3 sampel
+  Score         : 0.6994
+  Threshold     : 0.6338
+  Speed Dev     : 34.4%
+  Mahal. Dist   : N/A
+  AI Score      : N/A
+  Reason        : Score: 0.70 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 10.0000
+  Threshold     : 0.6338
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 66.3%  [Euclidean Distance]
+  Corr.     (20%) : 79.1%  [Pearson Coefficient]
+  Speed     (20%) : 31.3%  [Global CPM]
+  Flow      (20%) : 91.6%  [Acceleration]
+  Ratio     (0%)  : 82.9%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 66.4%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 371.3800 char/s
+  Dwell (10)    : [0.083, 0.173, 0.111, 0.069, 0.063, 0.094, 0.067, 0.068, 0.126, 0.140]
+  Flight (9)   : [0.038, 0.200, 0.094, 0.169, 0.078, 0.154, 0.150, 0.038, 0.085]
+  D2D (9)      : [0.121, 0.162, 0.205, 0.238, 0.140, 0.077, 0.217, 0.106, 0.211]
+  U2U (9)      : [0.211, 0.100, 0.163, 0.232, 0.172, 0.050, 0.217, 0.164, 0.225]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Adaptive-Blend (n=4)
+  History Count : 4 sampel
+  Score         : 0.8623
+  Threshold     : 0.6338
+  Speed Dev     : 12.5%
+  Mahal. Dist   : N/A
+  AI Score      : N/A
+  Reason        : Score: 0.86 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 10.0000
+  Threshold     : 0.6338
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 78.2%  [Euclidean Distance]
+  Corr.     (20%) : 90.3%  [Pearson Coefficient]
+  Speed     (20%) : 84.9%  [Global CPM]
+  Flow      (20%) : 92.7%  [Acceleration]
+  Ratio     (0%)  : 91.6%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 70.0%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 419.5800 char/s
+  Dwell (10)    : [0.068, 0.143, 0.089, 0.062, 0.063, 0.109, 0.068, 0.071, 0.098, 0.111]
+  Flight (9)   : [0.018, 0.002, 0.050, 0.131, 0.050, 0.141, 0.149, 0.061, 0.106]
+  D2D (9)      : [0.087, 0.145, 0.139, 0.194, 0.112, 0.092, 0.217, 0.132, 0.204]
+  U2U (9)      : [0.161, 0.091, 0.112, 0.194, 0.159, 0.050, 0.220, 0.159, 0.216]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Adaptive-Full (n=5)
+  History Count : 5 sampel
+  Score         : 0.8313
+  Threshold     : 0.6200
+  Speed Dev     : 22.1%
+  Mahal. Dist   : 1.9233
+  AI Score      : N/A
+  Reason        : Score: 0.83 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 6.9179
+  Threshold     : 0.6200
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 74.5%  [Euclidean Distance]
+  Corr.     (20%) : 87.1%  [Pearson Coefficient]
+  Speed     (20%) : 76.1%  [Global CPM]
+  Flow      (20%) : 99.6%  [Acceleration]
+  Ratio     (0%)  : 89.8%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 88.8%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 420.7600 char/s
+  Dwell (10)    : [0.097, 0.146, 0.108, 0.066, 0.075, 0.119, 0.067, 0.063, 0.140, 0.089]
+  Flight (9)   : [0.001, 0.135, 0.052, 0.117, 0.056, 0.133, 0.139, 0.044, 0.102]
+  D2D (9)      : [0.098, 0.135, 0.160, 0.183, 0.131, 0.077, 0.206, 0.107, 0.241]
+  U2U (9)      : [0.147, 0.096, 0.118, 0.192, 0.175, 0.025, 0.202, 0.184, 0.191]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Adaptive-Full (n=6)
+  History Count : 6 sampel
+  Score         : 0.8434
+  Threshold     : 0.6200
+  Speed Dev     : 23.0%
+  Mahal. Dist   : 1.7032
+  AI Score      : N/A
+  Reason        : Score: 0.84 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 7.2582
+  Threshold     : 0.6200
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 82.6%  [Euclidean Distance]
+  Corr.     (20%) : 92.2%  [Pearson Coefficient]
+  Speed     (20%) : 53.8%  [Global CPM]
+  Flow      (20%) : 98.5%  [Acceleration]
+  Ratio     (0%)  : 94.9%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 95.8%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 421.6400 char/s
+  Dwell (10)    : [0.063, 0.143, 0.096, 0.081, 0.083, 0.130, 0.064, 0.063, 0.098, 0.074]
+  Flight (9)   : [0.018, 0.149, 0.046, 0.134, 0.044, 0.130, 0.157, 0.064, 0.122]
+  D2D (9)      : [0.081, 0.131, 0.142, 0.216, 0.127, 0.086, 0.221, 0.127, 0.219]
+  U2U (9)      : [0.161, 0.084, 0.128, 0.217, 0.174, 0.020, 0.219, 0.162, 0.195]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Adaptive-Full (n=7)
+  History Count : 7 sampel
+  Score         : 0.8529
+  Threshold     : 0.6300
+  Speed Dev     : 20.8%
+  Mahal. Dist   : 1.6038
+  AI Score      : N/A
+  Reason        : Score: 0.85 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 7.7218
+  Threshold     : 0.6300
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 84.2%  [Euclidean Distance]
+  Corr.     (20%) : 93.9%  [Pearson Coefficient]
+  Speed     (20%) : 58.1%  [Global CPM]
+  Flow      (20%) : 98.9%  [Acceleration]
+  Ratio     (0%)  : 90.9%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 85.7%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 434.5900 char/s
+  Dwell (10)    : [0.078, 0.158, 0.093, 0.068, 0.053, 0.107, 0.063, 0.067, 0.083, 0.094]
+  Flight (9)   : [0.001, 0.148, 0.028, 0.143, 0.060, 0.140, 0.145, 0.061, 0.117]
+  D2D (9)      : [0.079, 0.147, 0.121, 0.211, 0.113, 0.081, 0.208, 0.128, 0.200]
+  U2U (9)      : [0.160, 0.081, 0.095, 0.197, 0.167, 0.036, 0.213, 0.143, 0.211]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Adaptive-Full (n=8)
+  History Count : 8 sampel
+  Score         : 0.8480
+  Threshold     : 0.6450
+  Speed Dev     : 22.6%
+  Mahal. Dist   : 2.1249
+  AI Score      : N/A
+  Reason        : Score: 0.85 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 7.9764
+  Threshold     : 0.6450
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 77.7%  [Euclidean Distance]
+  Corr.     (20%) : 92.0%  [Pearson Coefficient]
+  Speed     (20%) : 75.6%  [Global CPM]
+  Flow      (20%) : 97.6%  [Acceleration]
+  Ratio     (0%)  : 93.7%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 78.5%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 425.8000 char/s
+  Dwell (10)    : [0.072, 0.170, 0.103, 0.074, 0.065, 0.098, 0.072, 0.068, 0.098, 0.103]
+  Flight (9)   : [0.002, 0.144, 0.050, 0.125, 0.070, 0.151, 0.159, 0.023, 0.104]
+  D2D (9)      : [0.074, 0.142, 0.153, 0.198, 0.134, 0.081, 0.232, 0.091, 0.202]
+  U2U (9)      : [0.172, 0.075, 0.124, 0.189, 0.167, 0.056, 0.227, 0.121, 0.206]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Adaptive-Full (n=9)
+  History Count : 9 sampel
+  Score         : 0.8590
+  Threshold     : 0.6600
+  Speed Dev     : 14.2%
+  Mahal. Dist   : 3.4549
+  AI Score      : N/A
+  Reason        : Score: 0.86 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 8.2512
+  Threshold     : 0.6600
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 78.1%  [Euclidean Distance]
+  Corr.     (20%) : 92.4%  [Pearson Coefficient]
+  Speed     (20%) : 85.9%  [Global CPM]
+  Flow      (20%) : 92.5%  [Acceleration]
+  Ratio     (0%)  : 89.3%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 85.1%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 425.8600 char/s
+  Dwell (10)    : [0.072, 0.141, 0.090, 0.065, 0.074, 0.095, 0.068, 0.071, 0.068, 0.100]
+  Flight (9)   : [0.002, 0.003, 0.042, 0.125, 0.073, 0.138, 0.131, 0.064, 0.156]
+  D2D (9)      : [0.074, 0.144, 0.132, 0.190, 0.147, 0.065, 0.198, 0.135, 0.224]
+  U2U (9)      : [0.143, 0.093, 0.107, 0.198, 0.168, 0.038, 0.202, 0.131, 0.257]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Adaptive-Full (n=10)
+  History Count : 10 sampel
+  Score         : 0.8236
+  Threshold     : 0.6750
+  Speed Dev     : 22.5%
+  Mahal. Dist   : 2.4174
+  AI Score      : N/A
+  Reason        : Score: 0.82 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 8.5038
+  Threshold     : 0.6750
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 72.6%  [Euclidean Distance]
+  Corr.     (20%) : 88.5%  [Pearson Coefficient]
+  Speed     (20%) : 76.9%  [Global CPM]
+  Flow      (20%) : 96.7%  [Acceleration]
+  Ratio     (0%)  : 89.9%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 85.6%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 421.3800 char/s
+  Dwell (10)    : [0.097, 0.127, 0.113, 0.086, 0.077, 0.114, 0.061, 0.073, 0.096, 0.121]
+  Flight (9)   : [0.003, 0.116, 0.041, 0.136, 0.072, 0.131, 0.154, 0.035, 0.090]
+  D2D (9)      : [0.100, 0.113, 0.153, 0.221, 0.149, 0.059, 0.215, 0.108, 0.186]
+  U2U (9)      : [0.130, 0.098, 0.126, 0.212, 0.186, 0.006, 0.227, 0.131, 0.211]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Adaptive-Full (n=11)
+  History Count : 11 sampel
+  Score         : 0.8903
+  Threshold     : 0.6900
+  Speed Dev     : 20.5%
+  Mahal. Dist   : 1.4059
+  AI Score      : N/A
+  Reason        : Score: 0.89 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 8.7376
+  Threshold     : 0.6900
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 85.0%  [Euclidean Distance]
+  Corr.     (20%) : 95.9%  [Pearson Coefficient]
+  Speed     (20%) : 57.4%  [Global CPM]
+  Flow      (20%) : 98.0%  [Acceleration]
+  Ratio     (0%)  : 91.7%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 87.6%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 436.9000 char/s
+  Dwell (10)    : [0.073, 0.141, 0.103, 0.068, 0.072, 0.112, 0.067, 0.073, 0.101, 0.115]
+  Flight (9)   : [0.013, 0.137, 0.030, 0.124, 0.065, 0.149, 0.129, 0.025, 0.107]
+  D2D (9)      : [0.086, 0.124, 0.133, 0.192, 0.137, 0.085, 0.197, 0.098, 0.208]
+  U2U (9)      : [0.154, 0.086, 0.098, 0.196, 0.177, 0.040, 0.202, 0.126, 0.222]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Adaptive-Full (n=12)
+  History Count : 12 sampel
+  Score         : 0.8142
+  Threshold     : 0.7000
+  Speed Dev     : 21.3%
+  Mahal. Dist   : 2.3389
+  AI Score      : N/A
+  Reason        : Score: 0.81 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 8.9949
+  Threshold     : 0.7000
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 82.4%  [Euclidean Distance]
+  Corr.     (20%) : 92.1%  [Pearson Coefficient]
+  Speed     (20%) : 54.0%  [Global CPM]
+  Flow      (20%) : 97.9%  [Acceleration]
+  Ratio     (0%)  : 88.6%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 81.7%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 434.8100 char/s
+  Dwell (10)    : [0.081, 0.145, 0.115, 0.063, 0.073, 0.111, 0.087, 0.077, 0.108, 0.111]
+  Flight (9)   : [0.002, 0.119, 0.003, 0.136, 0.078, 0.134, 0.126, 0.054, 0.095]
+  D2D (9)      : [0.083, 0.117, 0.118, 0.199, 0.151, 0.056, 0.212, 0.131, 0.203]
+  U2U (9)      : [0.147, 0.087, 0.066, 0.209, 0.189, 0.031, 0.202, 0.162, 0.206]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Adaptive-Full (n=13)
+  History Count : 13 sampel
+  Score         : 0.8215
+  Threshold     : 0.7000
+  Speed Dev     : 24.9%
+  Mahal. Dist   : 1.8641
+  AI Score      : N/A
+  Reason        : Score: 0.82 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 9.0301
+  Threshold     : 0.7000
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 82.6%  [Euclidean Distance]
+  Corr.     (20%) : 95.3%  [Pearson Coefficient]
+  Speed     (20%) : 47.2%  [Global CPM]
+  Flow      (20%) : 98.9%  [Acceleration]
+  Ratio     (0%)  : 90.3%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 87.1%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 431.7500 char/s
+  Dwell (10)    : [0.067, 0.180, 0.100, 0.067, 0.067, 0.122, 0.076, 0.068, 0.113, 0.113]
+  Flight (9)   : [0.029, 0.159, 0.023, 0.127, 0.065, 0.147, 0.128, 0.048, 0.085]
+  D2D (9)      : [0.096, 0.130, 0.124, 0.194, 0.132, 0.082, 0.205, 0.116, 0.198]
+  U2U (9)      : [0.209, 0.051, 0.090, 0.194, 0.187, 0.037, 0.196, 0.161, 0.198]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Adaptive-Full (n=14)
+  History Count : 14 sampel
+  Score         : 0.7252
+  Threshold     : 0.7000
+  Speed Dev     : 32.1%
+  Mahal. Dist   : 4.9651
+  AI Score      : N/A
+  Reason        : Score: 0.73 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 9.1529
+  Threshold     : 0.7000
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 79.7%  [Euclidean Distance]
+  Corr.     (20%) : 94.1%  [Pearson Coefficient]
+  Speed     (20%) : 32.9%  [Global CPM]
+  Flow      (20%) : 90.7%  [Acceleration]
+  Ratio     (0%)  : 70.7%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 67.0%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 390.5500 char/s
+  Dwell (10)    : [0.079, 0.159, 0.115, 0.059, 0.076, 0.132, 0.077, 0.080, 0.116, 0.113]
+  Flight (9)   : [0.002, 0.129, 0.002, 0.133, 0.140, 0.240, 0.152, 0.068, 0.098]
+  D2D (9)      : [0.081, 0.127, 0.117, 0.192, 0.216, 0.100, 0.230, 0.148, 0.214]
+  U2U (9)      : [0.161, 0.083, 0.061, 0.209, 0.272, 0.046, 0.233, 0.184, 0.211]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Adaptive-Full (n=15)
+  History Count : 15 sampel
+  Score         : 0.7919
+  Threshold     : 0.7000
+  Speed Dev     : 28.2%
+  Mahal. Dist   : 4.1339
+  AI Score      : N/A
+  Reason        : Score: 0.79 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 9.4190
+  Threshold     : 0.7000
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 76.0%  [Euclidean Distance]
+  Corr.     (20%) : 91.5%  [Pearson Coefficient]
+  Speed     (20%) : 43.5%  [Global CPM]
+  Flow      (20%) : 99.2%  [Acceleration]
+  Ratio     (0%)  : 91.2%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 84.8%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 437.8000 char/s
+  Dwell (10)    : [0.068, 0.159, 0.133, 0.062, 0.068, 0.135, 0.084, 0.076, 0.113, 0.104]
+  Flight (9)   : [0.015, 0.145, 0.082, 0.129, 0.085, 0.140, 0.141, 0.031, 0.098]
+  D2D (9)      : [0.082, 0.130, 0.110, 0.191, 0.153, 0.055, 0.226, 0.107, 0.212]
+  U2U (9)      : [0.174, 0.104, 0.040, 0.197, 0.220, 0.005, 0.217, 0.144, 0.203]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Adaptive-Full (n=16)
+  History Count : 16 sampel
+  Score         : 0.8150
+  Threshold     : 0.7000
+  Speed Dev     : 27.2%
+  Mahal. Dist   : 3.1483
+  AI Score      : N/A
+  Reason        : Score: 0.82 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 9.6252
+  Threshold     : 0.7000
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 84.2%  [Euclidean Distance]
+  Corr.     (20%) : 96.4%  [Pearson Coefficient]
+  Speed     (20%) : 41.7%  [Global CPM]
+  Flow      (20%) : 98.6%  [Acceleration]
+  Ratio     (0%)  : 89.9%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 86.1%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 438.5300 char/s
+  Dwell (10)    : [0.062, 0.167, 0.127, 0.077, 0.072, 0.125, 0.067, 0.073, 0.108, 0.099]
+  Flight (9)   : [0.023, 0.164, 0.085, 0.124, 0.055, 0.142, 0.136, 0.023, 0.108]
+  D2D (9)      : [0.086, 0.140, 0.112, 0.202, 0.127, 0.088, 0.203, 0.096, 0.216]
+  U2U (9)      : [0.190, 0.100, 0.062, 0.197, 0.180, 0.030, 0.209, 0.131, 0.207]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Adaptive-Full (n=17)
+  History Count : 17 sampel
+  Score         : 0.8205
+  Threshold     : 0.7000
+  Speed Dev     : 26.1%
+  Mahal. Dist   : 1.8648
+  AI Score      : N/A
+  Reason        : Score: 0.82 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 9.6146
+  Threshold     : 0.7000
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 84.4%  [Euclidean Distance]
+  Corr.     (20%) : 95.9%  [Pearson Coefficient]
+  Speed     (20%) : 43.6%  [Global CPM]
+  Flow      (20%) : 96.5%  [Acceleration]
+  Ratio     (0%)  : 92.9%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 84.5%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 440.9800 char/s
+  Dwell (10)    : [0.083, 0.167, 0.118, 0.068, 0.068, 0.125, 0.068, 0.075, 0.112, 0.083]
+  Flight (9)   : [0.010, 0.149, 0.078, 0.126, 0.058, 0.142, 0.125, 0.060, 0.098]
+  D2D (9)      : [0.092, 0.139, 0.105, 0.194, 0.126, 0.083, 0.193, 0.135, 0.210]
+  U2U (9)      : [0.176, 0.091, 0.055, 0.194, 0.184, 0.026, 0.200, 0.172, 0.181]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Adaptive-Full (n=18)
+  History Count : 18 sampel
+  Score         : 0.8242
+  Threshold     : 0.7000
+  Speed Dev     : 26.1%
+  Mahal. Dist   : 3.6558
+  AI Score      : N/A
+  Reason        : Score: 0.82 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 9.7293
+  Threshold     : 0.7000
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 87.0%  [Euclidean Distance]
+  Corr.     (20%) : 96.9%  [Pearson Coefficient]
+  Speed     (20%) : 45.7%  [Global CPM]
+  Flow      (20%) : 98.3%  [Acceleration]
+  Ratio     (0%)  : 89.3%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 84.7%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 414.1600 char/s
+  Dwell (10)    : [0.076, 0.145, 0.133, 0.077, 0.067, 0.103, 0.073, 0.066, 0.108, 0.114]
+  Flight (9)   : [0.001, 0.119, 0.002, 0.128, 0.104, 0.169, 0.148, 0.076, 0.094]
+  D2D (9)      : [0.077, 0.118, 0.135, 0.205, 0.171, 0.066, 0.221, 0.142, 0.201]
+  U2U (9)      : [0.146, 0.106, 0.078, 0.195, 0.206, 0.036, 0.214, 0.184, 0.208]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Adaptive-Full (n=19)
+  History Count : 19 sampel
+  Score         : 0.8337
+  Threshold     : 0.7000
+  Speed Dev     : 22.9%
+  Mahal. Dist   : 1.6006
+  AI Score      : N/A
+  Reason        : Score: 0.83 | ACCEPT
+  [PIPELINE] AI Auto-Training Recovery Started (n=20)
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 9.8186
+  Threshold     : 0.7000
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 83.0%  [Euclidean Distance]
+  Corr.     (20%) : 95.7%  [Pearson Coefficient]
+  Speed     (20%) : 52.2%  [Global CPM]
+  Flow      (20%) : 98.5%  [Acceleration]
+  Ratio     (0%)  : 90.6%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 86.9%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 438.9200 char/s
+  Dwell (10)    : [0.077, 0.165, 0.117, 0.063, 0.066, 0.128, 0.078, 0.069, 0.098, 0.099]
+  Flight (9)   : [0.002, 0.134, 0.013, 0.127, 0.079, 0.162, 0.118, 0.039, 0.109]
+  D2D (9)      : [0.079, 0.132, 0.130, 0.189, 0.145, 0.083, 0.196, 0.107, 0.207]
+  U2U (9)      : [0.167, 0.084, 0.076, 0.193, 0.206, 0.033, 0.187, 0.136, 0.208]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Titanium Pro + AI
+  History Count : 20 sampel
+  Score         : 0.7798
+  Threshold     : 0.7000
+  Speed Dev     : 17.6%
+  Mahal. Dist   : 2.4759
+  AI Score      : 0.1867
+  Reason        : Score: 0.78 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 8.4352
+  Threshold     : 0.7000
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 82.1%  [Euclidean Distance]
+  Corr.     (20%) : 94.4%  [Pearson Coefficient]
+  Speed     (20%) : 63.1%  [Global CPM]
+  Flow      (20%) : 96.0%  [Acceleration]
+  Ratio     (0%)  : 91.4%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 86.1%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 456.4800 char/s
+  Dwell (10)    : [0.100, 0.137, 0.116, 0.064, 0.073, 0.103, 0.073, 0.074, 0.092, 0.103]
+  Flight (9)   : [0.002, 0.111, 0.002, 0.123, 0.065, 0.130, 0.132, 0.023, 0.099]
+  D2D (9)      : [0.102, 0.109, 0.118, 0.186, 0.138, 0.065, 0.205, 0.097, 0.191]
+  U2U (9)      : [0.139, 0.088, 0.066, 0.196, 0.168, 0.035, 0.206, 0.115, 0.202]
+------------------------------------------------------------
+SUCCESS | User: bima
+  Method        : Titanium Pro + AI
+  History Count : 21 sampel
+  Score         : 0.7401
+  Threshold     : 0.7000
+  Speed Dev     : 26.0%
+  Mahal. Dist   : 3.6573
+  AI Score      : 0.1649
+  Reason        : Score: 0.74 | ACCEPT
+  History Updated: Ya
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 8.4368
+  Threshold     : 0.7000
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 76.4%  [Euclidean Distance]
+  Corr.     (20%) : 86.9%  [Pearson Coefficient]
+  Speed     (20%) : 44.9%  [Global CPM]
+  Flow      (20%) : 97.3%  [Acceleration]
+  Ratio     (0%)  : 93.1%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 88.5%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 414.4200 char/s
+  Dwell (10)    : [0.083, 0.130, 0.113, 0.091, 0.076, 0.129, 0.057, 0.073, 0.091, 0.113]
+  Flight (9)   : [0.024, 0.142, 0.055, 0.119, 0.056, 0.131, 0.142, 0.056, 0.106]
+  D2D (9)      : [0.107, 0.118, 0.168, 0.210, 0.131, 0.076, 0.199, 0.129, 0.197]
+  U2U (9)      : [0.154, 0.101, 0.146, 0.195, 0.184, 0.004, 0.215, 0.147, 0.219]
+------------------------------------------------------------
+
+
+//failed logs
+
+
+
+FAILURE | User: bima
+  Method        : Adaptive-Blend (n=1)
+  History Count : 1 sampel
+  Score         : 0.5224
+  Threshold     : 0.6338
+  Speed Dev     : 22.2%
+  Mahal. Dist   : N/A
+  AI Score      : N/A
+  Reason        : Skor Fusion Rendah (0.52)
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 12.0000
+  Threshold     : 0.6338
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 44.7%  [Euclidean Distance]
+  Corr.     (20%) : 54.6%  [Pearson Coefficient]
+  Speed     (20%) : 55.6%  [Global CPM]
+  Flow      (20%) : 57.7%  [Acceleration]
+  Ratio     (0%)  : 66.1%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 16.9%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 403.5800 char/s
+  Dwell (10)    : [0.082, 0.231, 0.109, 0.064, 0.062, 0.067, 0.140, 0.063, 0.093, 0.101]
+  Flight (9)   : [0.009, 0.002, 0.007, 0.139, 0.079, 0.147, 0.136, 0.055, 0.115]
+  D2D (9)      : [0.091, 0.234, 0.116, 0.202, 0.141, 0.068, 0.209, 0.117, 0.207]
+  U2U (9)      : [0.240, 0.111, 0.071, 0.201, 0.214, 0.005, 0.199, 0.147, 0.216]
+------------------------------------------------------------
+FAILURE | User: bima
+  Method        : Adaptive-Blend (n=2)
+  History Count : 2 sampel
+  Score         : 0.6337
+  Threshold     : 0.6338
+  Speed Dev     : 22.4%
+  Mahal. Dist   : N/A
+  AI Score      : N/A
+  Reason        : Skor Fusion Rendah (0.63)
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 12.0000
+  Threshold     : 0.6338
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 64.3%  [Euclidean Distance]
+  Corr.     (20%) : 76.4%  [Pearson Coefficient]
+  Speed     (20%) : 55.4%  [Global CPM]
+  Flow      (20%) : 35.0%  [Acceleration]
+  Ratio     (0%)  : 83.3%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 71.7%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 397.5100 char/s
+  Dwell (10)    : [0.100, 0.145, 0.114, 0.062, 0.067, 0.122, 0.084, 0.058, 0.105, 0.107]
+  Flight (9)   : [0.019, 0.002, 0.063, 0.144, 0.069, 0.139, 0.141, 0.048, 0.111]
+  D2D (9)      : [0.119, 0.147, 0.178, 0.206, 0.137, 0.070, 0.225, 0.106, 0.216]
+  U2U (9)      : [0.164, 0.116, 0.125, 0.212, 0.191, 0.031, 0.199, 0.153, 0.218]
+------------------------------------------------------------
+FAILURE | User: bima
+  Method        : Titanium Pro + AI
+  History Count : 21 sampel
+  Score         : 0.7723
+  Threshold     : 0.7000
+  Speed Dev     : 35.9%
+  Mahal. Dist   : 3.0378
+  AI Score      : 0.0332
+  Reason        : Gerbang AI: Gaya Aneh (0.033)
+  --- Adaptive Gates (Per-User) ---
+  Speed Gate    : 40.0%
+  Mahal. Gate   : 8.4368
+  Threshold     : 0.7000
+  --- Scoring Breakdown (Titanium Fusion) ---
+  Rhythm    (40%) : 75.4%  [Euclidean Distance]
+  Corr.     (20%) : 89.4%  [Pearson Coefficient]
+  Speed     (20%) : 42.2%  [Global CPM]
+  Flow      (20%) : 83.1%  [Acceleration]
+  Ratio     (0%)  : 90.8%  [Info Only - Handled by Mahalanobis]
+  Stability (0%)  : 88.1%  [Info Only - Handled by Mahalanobis]
+  --- Raw Keystroke Data ---
+  Speed         : 327.7100 char/s
+  Dwell (10)    : [0.086, 0.148, 0.126, 0.067, 0.074, 0.138, 0.071, 0.076, 0.100, 0.138]
+  Flight (9)   : [0.019, 0.095, 0.099, 0.141, 0.085, 0.217, 0.158, 0.076, 0.141]
+  D2D (9)      : [0.105, 0.243, 0.226, 0.207, 0.159, 0.132, 0.228, 0.151, 0.241]
+  U2U (9)      : [0.167, 0.221, 0.166, 0.215, 0.223, 0.065, 0.233, 0.176, 0.279]
+------------------------------------------------------------
