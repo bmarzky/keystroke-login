@@ -1,12 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
 .env
-config/database.php
-.DS_Store
-node_modules/
-auth/process/biometric_debug.log
+
+# Flask
+instance/
+.webassets-cache
+
+# Biometric & AI
+ml/models/*.joblib
+ml/models/*.pkl
+scratch/
+
+# Logs
+*.log
+ml/logs/*.log
+logs/
+
+# IDE & OS
 .vscode/
 .idea/
-vendor/
-ml/models/*.pkl
-ml/logs/
-*.log
-__pycache__/
+.DS_Store
+Thumbs.db

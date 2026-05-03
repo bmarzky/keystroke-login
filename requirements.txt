@@ -1,0 +1,8 @@
+flask
+flask-session
+mysql-connector-python
+python-dotenv
+bcrypt
+numpy
+scikit-learn
+joblib

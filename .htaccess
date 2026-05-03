@@ -1,11 +1,20 @@
-Options -Indexes
+# This .htaccess is configured to proxy requests to your Flask App
+# running on http://127.0.0.1:8000
 
-# Lindungi file .env
-<Files .env>
-Order allow,deny
-Deny from all
-</Files>
+<IfModule mod_proxy.c>
+    RewriteEngine On
+    
+    # Exclude physical static files if needed
+    # RewriteCond %{REQUEST_FILENAME} !-f
+    
+    # Proxy all requests to the Flask development server
+    RewriteRule ^(.*)$ http://127.0.0.1:8000/$1 [P,L]
+    
+    ProxyPassReverse / http://127.0.0.1:8000/
+</IfModule>
 
-# Lindungi folder ml
-RewriteEngine On
-RewriteRule ^ml/.*$ - [F,L]
+# Security: Deny access to sensitive files directly
+<FilesMatch "^\.env|config\.py|core\.py">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
