@@ -1,420 +1,280 @@
-import sys
-import json
+import sys, json, warnings, os
 import numpy as np
-import warnings
 
-# Menonaktifkan peringatan numpy agar output JSON tetap bersih
+# Fix pathing agar bisa menemukan folder 'ml' saat dijalankan via PHP
+root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if root not in sys.path: sys.path.append(root)
+
+try:
+    from ml.ai_engine import AIEngine
+except ImportError:
+    # Fallback jika dijalankan dari root langsung
+    if os.path.exists('ml/ai_engine.py'):
+        from ml.ai_engine import AIEngine
+    else:
+        raise
+
 warnings.filterwarnings('ignore')
 
-
-
 class BiometricCore:
-    # --- CONFIGURATION CONSTANTS ---
-    CLEAN_THRESHOLD = 0.25      # Detik: Tombol yang lebih lambat dari ini dianggap macet/error
-    DEFAULT_SPEED   = 350.0     # CPM: Kecepatan fallback untuk user baru
-    MIN_SAMPLES     = 5         # Minimal sampel untuk mulai menggunakan Mahalanobis
-    MAX_MAHAL_DIST  = 15.0      # Batas maksimal jarak Mahalanobis sebelum reject mutlak
-    ANOMALY_LIMIT   = 0.25      # 25% data anomali akan memicu reject identitas
+    # --- CONFIGURATION ---
+    CLEAN_THRESHOLD, DEFAULT_SPEED, MIN_SAMPLES = 0.25, 350.0, 5
+    MAX_MAHAL_DIST, ANOMALY_LIMIT = 15.0, 0.25
     
-    def __init__(self, n_features=16):
-        # n_features=16 karena kita mengambil Median, Std, Ratio-Median, dan Ratio-Std dari 4 jenis data
+    def __init__(self, n_features=24):
         self.n_features = n_features
+        self.ai = AIEngine()
 
-
-
-    def extract(self, data: dict) -> list:
-        """
-        Extracts a 16-dimensional statistical feature vector from raw keystroke data.
-        Features include Median, Std Dev, and Rhythm Ratios for dwell, flight, d2d, and u2u.
-        """
+    def extract(self, data: dict, history=None) -> list:
+        """Extracts 24-dim statistical feature vector using vectorized operations."""
         data = self._ensure_vectors(data)
         features = []
         
+        # Adaptive Cleaning
+        limit = self.CLEAN_THRESHOLD
+        if history:
+            all_d = [d for h in history for d in h.get('dwell', [])]
+            if all_d: limit = max(0.25, np.median(all_d) * 2.5)
+        
         for key in ['dwell', 'flight', 'd2d', 'u2u']:
             arr = np.array(data.get(key, []), dtype=float)
-            clean_arr = arr[arr < self.CLEAN_THRESHOLD]
+            clean = arr[arr < limit]
             
-            if len(clean_arr) >= 2:
-                features.append(float(np.median(clean_arr)))
-                features.append(float(np.std(clean_arr, ddof=1)))
-                
-                if len(clean_arr) >= 3:
-                    ratios = clean_arr[:-1] / (clean_arr[1:] + 0.001)
-                    features.append(float(np.median(ratios)))
-                    features.append(float(np.std(ratios, ddof=1)))
-                else:
-                    features.extend([1.0, 0.1])
-            elif len(arr) >= 1:
-                features.append(float(min(np.median(arr), 0.20)))
-                features.append(0.01)
-                features.extend([1.0, 0.1])
+            if len(clean) >= 2:
+                features.extend([float(np.median(clean)), float(np.std(clean, ddof=1))])
+                # Rhythm Ratios
+                r = clean[:-1] / (clean[1:] + 0.001) if len(clean) >= 3 else [1.0, 0.1]
+                features.extend([float(np.median(r)), float(np.std(r, ddof=1)) if len(r)>1 else 0.1])
+                # FFT Signature
+                fft = np.abs(np.fft.fft(clean)) if len(clean) >= 4 else [0, 0, 0]
+                features.extend([float(fft[1]) if len(fft)>1 else 0.0, float(fft[2]) if len(fft)>2 else 0.0])
             else:
-                features.extend([0.0, 0.0, 0.0, 0.0])
+                features.extend([float(min(np.median(arr), 0.20)) if len(arr)>0 else 0.0, 0.01, 1.0, 0.1, 0.0, 0.0])
                 
         return [float(f) if np.isfinite(f) else 0.0 for f in features]
 
-
-
     def _ensure_vectors(self, data: dict) -> dict:
-        """Ensures that derived vectors (d2d, u2u) are calculated if missing."""
-        dwell, flight = data.get('dwell', []), data.get('flight', [])
-        
-        if not data.get('d2d'):
-            data['d2d'] = [float(dwell[i] + flight[i]) for i in range(min(len(dwell), len(flight)))]
-            
-        if not data.get('u2u'):
-            data['u2u'] = [float(flight[i] + dwell[i+1]) for i in range(min(len(dwell)-1, len(flight)))]
-            
+        d, f = data.get('dwell', []), data.get('flight', [])
+        if not data.get('d2d'): data['d2d'] = [float(d[i] + f[i]) for i in range(min(len(d), len(f)))]
+        if not data.get('u2u'): data['u2u'] = [float(f[i] + d[i+1]) for i in range(min(len(d)-1, len(f)))]
         return data
 
-
-
-    def _dtw_distance(self, s1: np.ndarray, s2: np.ndarray) -> float:
-        """Calculates similarity between two patterns using Dynamic Time Warping."""
+    def _dtw_distance(self, s1, s2) -> float:
         n, m = len(s1), len(s2)
         if n == 0 or m == 0: return 1.0
-        
-        dtw = np.full((n + 1, m + 1), np.inf)
-        dtw[0, 0] = 0
-        
+        dtw = np.full((n + 1, m + 1), np.inf); dtw[0, 0] = 0
         for i in range(1, n + 1):
             for j in range(1, m + 1):
-                cost = abs(s1[i-1] - s2[j-1])
-                dtw[i, j] = cost + min(dtw[i-1, j], dtw[i, j-1], dtw[i-1, j-1])
-        
+                dtw[i, j] = abs(s1[i-1] - s2[j-1]) + min(dtw[i-1, j], dtw[i, j-1], dtw[i-1, j-1])
         return float(dtw[n, m] / max(n, m))
 
+    def _calculate_gates(self, n, history, mahal_dists):
+        # 1. Base Logic (Intra-Sample Heuristic)
+        h0_d = np.array(history[0].get('dwell', [0.1]), dtype=float)
+        cv = float(np.clip(np.std(h0_d)/max(np.mean(h0_d),0.001), 0.1, 0.6))
+        g = {"s": 0.2 + cv*0.5, "m": 1.5 + cv*6.0, "t": 0.65 - cv*0.1}
 
+        # 2. Adaptive Logic (History Driven)
+        if n > 1:
+            speeds = [float(h.get('speed', 0)) for h in history]
+            g["s"] = float(max(0.35, (3.0 * np.std(speeds) / max(np.mean(speeds), 1.0))))
+            if mahal_dists and len(mahal_dists) >= 3:
+                m_avg, m_std = float(np.mean(mahal_dists)), float(np.std(mahal_dists))
+                # Melonggarkan gate untuk user baru (n < 20) agar tidak terlalu ketat
+                buffer = 5.0 if n < 20 else 3.5
+                g["m"] = m_avg + 3.5 * m_std + buffer
+                # Threshold lebih stabil untuk user lama
+                g["t"] = float(min(0.70, 0.60 + (n-5)*0.015) + (max(0.0, 1.0 - m_avg/2.0)*0.08))
 
-    def _compute_adaptive_gates(self, history, hist_mahal_dists):
-        # Entry point untuk perhitungan gerbang adaptif
-        n = len(history)
+        # 3. Blending & Hardening
+        alpha = float(1.0 if n >= 5 else min(1.0, (n-1)/4.0))
+        s_final = (1-alpha)*g["s"] + alpha*g["s"] 
+        m_final = (1-alpha)*(1.5 + cv*6.0) + alpha*g["m"]
+        t_final = (1-alpha)*(0.65 - cv*0.1) + alpha*g["t"]
+
+        # Phase Hardening Boundaries
+        limits = [(0.75, 12.0, 0.72), (0.65, 10.0, 0.78), (0.45, 3.5, 0.82), (0.40, 3.5, 0.80)]
+        s_h, m_l, t_h = limits[min(3, 0 if n<3 else 1 if n<5 else 2 if n<10 else 3)]
         
-        # 1. Hitung base gates (untuk user baru atau fase awal)
-        base = self._get_base_gates(history)
-        if n == 1:
-            return {**base, "phase": "Init [Welcome Buffer]"}
+        s_res = float(np.clip(s_final, 0.40, s_h))
+        m_res = float(np.clip(m_final, m_l, 15.0))
+        t_res = float(np.clip(t_final, 0.62, t_h))
 
-        # 2. Hitung history gates (berdasarkan performa kumulatif)
-        hist = self._get_history_gates(history, hist_mahal_dists, base)
-        
-        # 3. Interpolasi (Blending) antara base dan history
-        alpha = min(1.0, (n - 1) / 4.0) if n < 5 else 1.0
-        speed_g = (1-alpha)*base["speed_gate"] + alpha*hist["speed_gate"]
-        mahal_g = (1-alpha)*base["mahal_gate"] + alpha*hist["mahal_gate"]
-        thresh  = (1-alpha)*base["threshold"]  + alpha*hist["threshold"]
-        
-        # 4. Terapkan batasan human-centric (Hardening)
-        return self._apply_gate_hardening(n, speed_g, mahal_g, thresh, history[0].get('dwell', []))
+        # Short Password Penalty
+        # Penalti untuk password pendek agar lebih ketat (disesuaikan agar lebih halus)
+        if len(h0_d) < 8:
+            t_res = float(np.clip(t_res + (8-len(h0_d))*0.010, 0.65, 0.85))
+            s_res, m_res = s_res*1.10, m_res*0.95
 
+        return {"speed_gate": round(s_res,4), "mahal_gate": round(m_res,4), 
+                "threshold": round(t_res,4), "phase": f"Adaptive-{'Blend' if n<5 else 'Full'} (n={n})"}
 
-
-    def _get_base_gates(self, history):
-        first_dwell = np.array(history[0].get('dwell', [0.1]), dtype=float)
-        mean_d = max(float(np.mean(first_dwell)), 0.001)
-        std_d  = float(np.std(first_dwell)) if len(first_dwell) > 1 else mean_d * 0.2
-        cv     = np.clip(std_d / mean_d, 0.10, 0.60)
-        
-        return {
-            "speed_gate": 0.20 + cv * 0.5,
-            "mahal_gate": 1.5 + cv * 6.0,
-            "threshold": 0.65 - cv * 0.1
-        }
-
-
-
-    def _get_history_gates(self, history, hist_mahal_dists, base):
-        h_speeds = [float(h.get('speed', 0)) for h in history]
-        avg_s = float(np.median(h_speeds))
-        h_devs = [abs(s - avg_s) / max(avg_s, 1.0) for s in h_speeds]
-        
-        h_speed_gate = max(float(np.max(h_devs) * 1.5) if len(h_devs) > 0 else 0.35, 0.35)
-        
-        if hist_mahal_dists and len(hist_mahal_dists) >= 2:
-            m_mean, m_std = np.mean(hist_mahal_dists), np.std(hist_mahal_dists)
-            h_mahal_gate = float(m_mean + 3.0 * m_std)
-            h_thresh = float(min(0.72, 0.62 + ((len(history) - 5) * 0.02)) + (max(0.0, 1.0 - (m_mean / 2.0)) * 0.10))
-        else:
-            h_mahal_gate, h_thresh = base["mahal_gate"], (0.62 if len(history) >= 5 else 0.55)
-            
-        return {"speed_gate": h_speed_gate, "mahal_gate": h_mahal_gate, "threshold": h_thresh}
-
-
-
-    def _apply_gate_hardening(self, n, speed_g, mahal_g, thresh, first_dwell):
-        if n < 5:    s_high, m_low, t_high = 0.75, 12.0, 0.72
-        elif n < 10: s_high, m_low, t_high = 0.65, 10.0, 0.78
-        elif n < 20: s_high, m_low, t_high = 0.55, 8.0, 0.82
-        else:        s_high, m_low, t_high = 0.45, 1.5, 0.88
-        
-        speed_g = float(np.clip(speed_g, 0.12, s_high))
-        mahal_g = float(np.clip(mahal_g, m_low, 15.0))
-        thresh  = float(np.clip(thresh, 0.62, t_high))
-
-        if len(first_dwell) < 8:
-            p = (8 - len(first_dwell)) * 0.015
-            thresh = float(np.clip(thresh + p, 0.65, 0.88))
-            speed_g *= 1.15 
-            mahal_g *= 0.90
-
-        return {
-            "speed_gate": round(float(speed_g), 4),
-            "mahal_gate": round(float(mahal_g), 4),
-            "threshold": round(float(thresh), 4),
-            "phase": f"Adaptive-{'Blend' if n < 5 else 'Full'} (n={n})"
-        }
-
-
-
-    def _get_default_response(self):
-        return {
-            "status": False, 
-            "score": 0.0, 
-            "threshold": 0.70, 
-            "reason": "Unknown Error",
-            "method": "Unknown", 
-            "n_samples": 0, 
-            "speed_dev": 0.0,
-            "mahal_dist": None,
-            "should_update_history": False,
-            "adaptive_gates": {"speed_gate": 0.40, "mahal_gate": 3.0, "threshold": 0.70},
-            "components": {"rhythm": 0, "corr": 0, "speed": 0, "flow": 0, "ratio": 0, "stability": 0},
-            "weights": {"w_rhythm": 0.4, "w_corr": 0.2, "w_speed": 0.2, "w_flow": 0.2, "w_ratio": 0, "w_stability": 0}
-        }
-
-
+    def _get_response_template(self, n=0):
+        return {"status": False, "score": 0.0, "threshold": 0.70, "reason": "Unknown", "method": "Unknown",
+                "n_samples": n, "speed_dev": 0.0, "mahal_dist": None, "ocsvm_dist": 0.0, 
+                "should_update_history": False, "adaptive_gates": {}, "components": {}, "weights": {}}
 
     def analyze(self, json_path):
-        res = self._get_default_response()
-
         try:
             with open(json_path, 'r') as f: data = json.load(f)
             input_raw, history = data.get('input', {}), data.get('history', [])
-            if not history: 
-                res["reason"] = "Enroll dulu"
-                return res
-
-            res["n_samples"] = len(history)
-            input_data = self._ensure_vectors(input_raw)
-            in_dwell, in_flight = np.array(input_data.get('dwell', []), dtype=float), np.array(input_data.get('flight', []), dtype=float)
-            threshold, is_typo_recovery, is_messy, d_dist, f_dist = 0.75, False, False, None, None
+            if not history: return {**self._get_response_template(), "reason": "Enroll dulu"}
             
-            exp_len, act_len = len(history[0].get('dwell', [])), len(in_dwell)
-            if act_len != exp_len:
-                if abs(act_len - exp_len) <= 3:
-                    b_dwell, b_flight = np.array(history[0]['dwell']), np.array(history[0]['flight'])
-                    d_dist, f_dist = self._dtw_distance(in_dwell, b_dwell), self._dtw_distance(in_flight, b_flight)
-                    if d_dist < 0.05 and f_dist < 0.07: is_typo_recovery = True
-                    else: 
-                        res["reason"] = f"REJECT | DTW fail (d={d_dist:.3f}, f={f_dist:.3f})"
-                        res["adaptive_gates"].update({"dtw_dwell": float(d_dist), "dtw_flight": float(f_dist)})
-                        return res
-                else: 
-                    res["reason"] = "REJECT | Length Mismatch"
-                    return res
+            res = self._get_response_template(len(history))
+            inp = self._ensure_vectors(input_raw)
+            in_d, in_f = np.array(inp.get('dwell', []), dtype=float), np.array(inp.get('flight', []), dtype=float)
+            
+            # 1. Structural & DTW Typo Recovery
+            h0 = history[0]
+            d_dist, f_dist, is_typo = None, None, False
+            if len(in_d) != len(h0['dwell']):
+                if abs(len(in_d) - len(h0['dwell'])) <= 3:
+                    d_dist, f_dist = self._dtw_distance(in_d, h0['dwell']), self._dtw_distance(in_f, h0['flight'])
+                    if d_dist < 0.05 and f_dist < 0.07: is_typo = True
+                    else: return {**res, "reason": f"REJECT | DTW fail (d={d_dist:.3f})"}
+                else: return {**res, "reason": "REJECT | Length Mismatch"}
 
-            c_dw, c_fl = in_dwell[in_dwell < self.CLEAN_THRESHOLD], in_flight[in_flight < self.CLEAN_THRESHOLD]
-            input_speed = float(60.0/(np.mean(c_dw)+np.mean(c_fl))) if (len(c_dw)>=3 and len(c_fl)>=3) else float(input_data.get('speed', 0))
-            if np.sum(in_dwell) < 0.01: 
-                res["reason"] = "Data tidak valid"
-                return res
-
-            hist_mahal = []
+            # 2. Feature Extraction & Speed Check
+            c_limit = self.CLEAN_THRESHOLD
+            if len(history)>1: c_limit = max(0.25, np.median([d for h in history for d in h.get('dwell',[])]) * 2.5)
+            
+            in_v = in_d[in_d < c_limit]; in_fv = in_f[in_f < c_limit]
+            in_speed = float(60.0/(np.mean(in_v)+np.mean(in_fv))) if len(in_v)>=3 else float(inp.get('speed', 0))
+            
+            # Mahalanobis Internal History Calculation
+            hist_m = []
             if len(history) >= 5:
                 try:
-                    X = np.array([self.extract(h) for h in history])
-                    mu, cov = np.mean(X, axis=0), np.cov(X, rowvar=False) + np.eye(self.n_features) * 1e-3
-                    cinv = np.linalg.inv(cov)
-                    for row in X:
-                        d = row - mu
-                        hist_mahal.append(float(np.sqrt(max(0, d.T @ cinv @ d))))
+                    X_h = np.array([self.extract(h, history) for h in history])
+                    mu_h, cov_h = np.mean(X_h, 0), np.cov(X_h, rowvar=False) + np.eye(self.n_features)*1e-3
+                    cinv_h = np.linalg.inv(cov_h)
+                    for r in X_h: hist_m.append(float(np.sqrt(max(0, (r-mu_h).T @ cinv_h @ (r-mu_h)))))
                 except: pass
 
-            gates = self._compute_adaptive_gates(history, hist_mahal)
-            threshold, speed_gate, mahal_gate = float(gates["threshold"]), float(gates["speed_gate"]), float(gates["mahal_gate"])
+            gates = self._calculate_gates(len(history), history, hist_m)
             
-            res["threshold"] = threshold
-            res["adaptive_gates"] = gates
-            res["method"] = gates["phase"]
+            # Tentukan Nama Method (Tampilkan OCSVM jika aktif)
+            username = input_raw.get('username', 'unknown')
+            user_id = input_raw.get('user_id', username)
+            method_name = gates["phase"]
+            if os.path.exists(self.ai._get_model_path(user_id)):
+                method_name = "Titanium Pro + AI"
+                
+            res.update({"threshold": gates["threshold"], "adaptive_gates": gates, "method": method_name})
+            
+            avg_s = float(np.median([h.get('speed', 0) for h in history]))
+            s_dev = abs(in_speed - avg_s) / max(avg_s, 1.0)
+            res["speed_dev"] = round(s_dev, 4)
+            if s_dev > gates["speed_gate"]: return {**res, "reason": f"Gate: Speed Anomali ({s_dev:.1%})"}
 
-            # Gunakan Median untuk menangkis polusi data awal yang salah (bias)
-            avg_s = float(np.median([float(h.get('speed', 0)) for h in history]))
-            if len(history) == 1 and avg_s < 250: avg_s = self.DEFAULT_SPEED
-            speed_dev = float(abs(input_speed - avg_s) / max(avg_s, 1.0))
-            res["speed_dev"] = round(speed_dev, 4)
-
-            if speed_dev > speed_gate: 
-                res["reason"] = f"Gate: Speed Anomali ({speed_dev:.1%})"
-                res["adaptive_gates"].update({"dtw_dwell": float(d_dist) if d_dist else None, "dtw_flight": float(f_dist) if f_dist else None})
-                return res
-
+            # 3. Titanium Fusion Scoring
             n_h = len(history)
-            if n_h < 5: 
-                w = [0.30, 0.40, 0.15, 0.15, 0.00, 0.00] # Init
-            elif n_h < 10: 
-                w = [0.35, 0.25, 0.15, 0.15, 0.05, 0.05] # Transition
-            else: 
-                w = [0.30, 0.15, 0.15, 0.15, 0.15, 0.10] # Expert (Ratios matter more)
+            w = [0.3, 0.4, 0.15, 0.15, 0, 0] if n_h<5 else [0.35, 0.25, 0.15, 0.15, 0.05, 0.05] if n_h<10 else [0.3, 0.15, 0.15, 0.15, 0.15, 0.1]
+            res["weights"] = {k: v for k, v in zip(["w_rhythm", "w_corr", "w_speed", "w_flow", "w_ratio", "w_stability"], w)}
             
-            if len(in_dwell) < 8: 
-                w[1], w[3] = w[1]*0.5, w[3]*0.5
-                rem = 1.0 - sum(w[1:])
-                w[0] = max(0.1, rem)
+            # Profile & Scoring Loop
+            baselines = history[:3] + history[-7:] if n_h > 10 else history
+            all_s, comp_logs, max_out = [], [], 0
             
-            res["weights"] = {"w_rhythm": float(w[0]), "w_corr": float(w[1]), "w_speed": float(w[2]), "w_flow": float(w[3]), "w_ratio": float(w[4]), "w_stability": float(w[5])}
-
-            stats_profile = {}
-            if n_h > 1:
+            for b in baselines:
+                b = self._ensure_vectors(b); s_r, s_c, out = [], [], 0
                 for k in ['dwell', 'flight', 'd2d', 'u2u']:
-                    arrs = [np.array(b.get(k, []))[:15] for b in (history[:3]+history[-7:] if n_h>10 else history)]
-                    if arrs:
-                        ml = min(len(x) for x in arrs)
-                        mat = np.array([x[:ml] for x in arrs])
-                        stats_profile[k] = {"mean": np.mean(mat, axis=0), "std": np.std(mat, axis=0) + 0.005}
-
-            all_scores, comp_log, final_outliers = [], [], 0
-            baselines = (history[:3]+history[-7:] if n_h>10 else history)
-            
-            for baseline in baselines:
-                b_data = self._ensure_vectors(baseline)
-                scores_r, scores_c, outliers = [], [], 0
-                for k in ['dwell', 'flight', 'd2d', 'u2u']:
-                    v1, v2 = (in_dwell if k=='dwell' else in_flight if k=='flight' else np.array(input_data[k])), np.array(b_data[k])
-                    if n_h == 1: v2[v2 > 0.40] = np.median(v2)
-                    ml = min(len(v1), len(v2), len(stats_profile[k]["mean"]) if k in stats_profile else 999)
-                    if ml < 3: continue
-                    v1, v2 = v1[:ml], v2[:ml]
-                    mask = (np.abs(v1 - stats_profile[k]["mean"][:ml]) > (3.5 * stats_profile[k]["std"][:ml])) | (v1 > self.CLEAN_THRESHOLD) if (k in stats_profile and n_h>1) else (v1 > self.CLEAN_THRESHOLD)
-                    outliers += int(np.sum(mask))
+                    v1, v2 = np.array(inp.get(k,[]), dtype=float), np.array(b.get(k,[]), dtype=float)
+                    ml = min(len(v1), len(v2)); v1, v2 = v1[:ml], v2[:ml]
+                    mask = (v1 > c_limit); out += int(np.sum(mask))
                     v1c, v2c = v1[~mask], v2[~mask]
                     if len(v1c) < 3: v1c, v2c = v1, v2
-                    n1, n2 = v1c/max(np.sum(v1c),0.001), v2c/max(np.sum(v2c),0.001)
-                    scores_r.append(float(max(0, 1.0 - (np.sqrt(np.sum((n1-n2)**2))/0.18))))
-                    c = np.corrcoef(v1c, v2c)[0, 1] if np.std(v1c)>0 and np.std(v2c)>0 else 0.5
-                    scores_c.append(float(max(0, c) if np.isfinite(c) else 0.5))
-
-                if not scores_r: continue
-                r_s, c_s = float(np.mean(scores_r)), float(np.mean(scores_c))
-                if outliers > 0 and c_s > 0.90: r_s, c_s = min(1.0, r_s*1.05), min(1.0, c_s*1.05)
-                bs_s = float(baseline.get('speed', 350 if n_h==1 else 0))
-                s_s = float(max(0, 1.0 - (abs(input_speed - bs_s)/max(bs_s, 1.0) / (0.5 + min(0.2, outliers*0.1)))))
+                    n1, n2 = v1c/max(sum(v1c),0.001), v2c/max(sum(v2c),0.001)
+                    # Longgarkan toleransi ritme (0.18 -> 0.25)
+                    s_r.append(float(max(0, 1.0 - (np.sqrt(np.sum((n1-n2)**2))/0.25))))
+                    c = float(np.corrcoef(v1c, v2c)[0,1]) if np.std(v1c)>0 and np.std(v2c)>0 else 0.5
+                    s_c.append(max(0, c) if np.isfinite(c) else 0.5)
                 
-                f_in, f_bs = np.diff(in_flight), np.diff(np.array(b_data['flight']))
-                flen = min(len(f_in), len(f_bs))
-                fl_s = float(max(0.35, np.corrcoef(f_in[:flen], f_bs[:flen])[0,1])) if flen > 3 else 0.5
-
-                # Ratio & Stability Scoring (16-Dim Logic)
-                in_feat, bs_feat = np.array(self.extract(input_data)), np.array(self.extract(b_data))
+                # Composite
+                r_s, c_s = float(np.mean(s_r)), float(np.mean(s_c))
+                s_s = float(max(0, 1.0 - (abs(in_speed - b.get('speed',350))/max(b.get('speed',350),1) / 0.5)))
+                fl_in, fl_bs = np.diff(in_f), np.diff(np.array(b['flight']))
+                ml_f = min(len(fl_in), len(fl_bs))
+                fl_s = float(max(0.35, np.corrcoef(fl_in[:ml_f], fl_bs[:ml_f])[0,1])) if ml_f>3 else 0.5
                 
-                # Ratio Score: Bandingkan fitur index 2,3, 6,7, 10,11, 14,15 (Rhythm Ratios)
-                idx_ratios = [2, 3, 6, 7, 10, 11, 14, 15]
-                rat_s = float(max(0, 1.0 - np.mean(np.abs(in_feat[idx_ratios] - bs_feat[idx_ratios]) / (bs_feat[idx_ratios] + 0.1))))
+                f_in, f_bs = np.array(self.extract(inp, history)), np.array(self.extract(b, history))
+                rat_s = float(max(0, 1.0 - np.mean(np.abs(f_in[[2,3,6,7,10,11,14,15]]-f_bs[[2,3,6,7,10,11,14,15]])/(f_bs[[2,3,6,7,10,11,14,15]]+0.1))))
+                sta_s = float(max(0, 1.0 - np.mean(np.abs(f_in[[1,3,5,7,9,11,13,15]]-f_bs[[1,3,5,7,9,11,13,15]])/(f_bs[[1,3,5,7,9,11,13,15]]+0.05))))
                 
-                # Stability Score: Bandingkan Std Dev features (Index 1, 3, 5, 7, 9, 11, 13, 15)
-                idx_stds = [1, 3, 5, 7, 9, 11, 13, 15]
-                sta_s = float(max(0, 1.0 - np.mean(np.abs(in_feat[idx_stds] - bs_feat[idx_stds]) / (bs_feat[idx_stds] + 0.05))))
+                all_s.append(w[0]*r_s + w[1]*c_s + w[2]*s_s + w[3]*fl_s + w[4]*rat_s + w[5]*sta_s)
+                comp_logs.append([r_s, c_s, s_s, fl_s, rat_s, sta_s]); max_out = max(max_out, out)
 
-                all_scores.append(float(w[0]*r_s + w[1]*c_s + w[2]*s_s + w[3]*fl_s + w[4]*rat_s + w[5]*sta_s))
-                comp_log.append([r_s, c_s, s_s, fl_s, rat_s, sta_s])
-                final_outliers = max(final_outliers, outliers)
+            # 4. Final Scoring & Decision Engine
+            f_score = float(np.max(all_s)) if all_s else 0.0
+            best = int(np.argmax(all_s)) if all_s else 0
+            
+            # Populasi Data Dasar untuk Log
+            res.update({
+                "score": round(f_score, 4),
+                "components": {k: round(float(v), 4) for k, v in zip(["rhythm", "corr", "speed", "flow", "ratio", "stability"], comp_logs[best])},
+            })
 
-            if not all_scores:
-                res["reason"] = "REJECT | Data tidak cukup untuk penilaian"
-                return res
-
-            best_idx = int(np.argmax(all_scores))
-            final_score = float(all_scores[best_idx])
-            if n_h >= 10:
-                final_score = float((0.8 if final_score > 0.7 else 0.4)*final_score + (0.2 if final_score > 0.7 else 0.6)*np.mean(all_scores))
-                if np.min(all_scores) < 0.5: final_score *= float(max(0.78, np.min(all_scores)/0.5))
-
+            # 5. Diagnostic Metrics Calculation (Mahalanobis & AI)
             m_dist = None
             if n_h >= 5:
                 try:
-                    X = np.array([self.extract(h) for h in history])
-                    # REGULARIZATION: Gunakan buffer lebih besar untuk user Senior agar tidak sensitif
-                    reg = 0.1 if n_h < 20 else 1e-3
-                    mu, cov = np.mean(X, axis=0), np.cov(X, rowvar=False) + np.eye(self.n_features) * reg
-                    diff = np.array(self.extract(input_data)) - mu
-                    m_dist = float(round(np.sqrt(max(0, diff.T @ np.linalg.inv(cov) @ diff)), 4))
-                    res["mahal_dist"] = m_dist
-                    if m_dist > mahal_gate: 
-                        res["reason"] = f"Gate: Mahalanobis Anomali ({m_dist:.4f})"
-                        res["method"] = "Mahalanobis+" + res["method"]
-                        res["adaptive_gates"].update({"dtw_dwell": float(d_dist) if d_dist else None, "dtw_flight": float(f_dist) if f_dist else None, "outlier_count": int(final_outliers)})
-                        return res
-                    if m_dist < 1.2: final_score = min(1.0, final_score + 0.07)
+                    X = np.array([self.extract(h, history) for h in history])
+                    mu, cov = np.mean(X,0), np.cov(X, rowvar=False) + np.eye(self.n_features)*0.01
+                    diff = np.array(self.extract(inp, history)) - mu
+                    m_dist = float(np.sqrt(max(0, diff.T @ np.linalg.inv(cov) @ diff)))
+                    res["mahal_dist"] = round(m_dist, 4)
                 except: pass
 
-            # --- SECURITY HARDENING (Anti-Impostor) ---
-            # Batasi seberapa banyak data yang boleh "dibuang" (Sterile). 
-            # Jika terlalu banyak anomali (>25%), identitas tidak bisa divalidasi dengan aman.
-            out_p = float(final_outliers / (len(in_dwell)*4)) if len(in_dwell)>0 else 0.0
+            ai_dec, ai_score = self.ai.predict(user_id, self.extract(inp, history))
+            res["ai_score"] = round(float(ai_score), 4) if ai_score is not None else None
             
-            # Berikan penalti skor jika ada tombol yang dibuang agar penyusup tidak mudah lolos
-            if final_outliers > 0:
-                # HARDENING: Penalti lebih agresif (0.5 pengali)
-                penalty = min(0.25, (final_outliers / len(in_dwell)) * 0.5)
-                final_score = max(0.0, final_score - penalty)
+            # 6. Security Gates Logic
+            # Gate A: AI Style Detection
+            if ai_dec == -1: 
+                if f_score >= 0.80: # Confidence Bypass
+                    f_score *= 0.92 
+                    res["score"] = round(f_score, 4)
+                    res["ai_status"] = "Bypassed"
+                else:
+                    res.update({"status": False, "reason": f"Gerbang AI: Gaya Aneh ({ai_score:.3f})"})
+                    return res
 
-            if out_p > 0.25: 
-                is_match, final_score = False, 0.0
-                res["reason"] = f"REJECT | Identitas meragukan (Anomali: {out_p:.1%})"
-            else:
-                is_match = bool(final_score >= threshold) or (n_h == 1 and final_score >= 0.25)
-                res["reason"] = f"Score: {final_score:.2f} | {'ACCEPT' if is_match else 'REJECT'}"
+            # Gate B: Mahalanobis (Statistical Outlier)
+            if m_dist is not None:
+                if m_dist > gates["mahal_gate"]:
+                    res.update({"status": False, "reason": f"Gerbang Statistik ({m_dist:.2f})"})
+                    return res
+                # Bonus for statistical consistency
+                if m_dist < 1.5: f_score = min(1.0, f_score + 0.05)
 
-            res["status"] = is_match
-            res["score"] = round(float(final_score), 4)
+            # 7. Final Matching Logic
+            out_p = float(max_out / (len(in_d)*4) if len(in_d)>0 else 0)
+            # Final f_score calculation (Weighted best + mean)
+            if n_h >= 10:
+                f_score = (0.85 * f_score) + (0.15 * float(np.mean(all_s)))
             
-            # --- UPDATE HISTORY LOGIC (Anti-Poisoning) ---
-            # Jangan update history jika:
-            # 1. Sedang pemulihan typo (tidak representatif)
-            # 2. Banyak data anomali (Sterile > 15%)
-            # 3. KHUSUS USER BARU: Jangan simpan jika ada > 2 tombol Sterile (No Garbage Baseline)
-            # 4. KHUSUS EXPERT: Hanya update jika data sangat meyakinkan (High Integrity)
+            is_match = bool(f_score >= gates["threshold"] and out_p <= 0.25)
             
-            is_clean_init = True
-            if n_h < 5 and final_outliers > 2:
-                is_clean_init = False 
+            # Tentukan alasan spesifik jika gagal di tahap akhir
+            reason = f"Score: {f_score:.2f} | ACCEPT" if is_match else "REJECT"
+            if not is_match:
+                if out_p > 0.25:
+                    reason = f"Gerbang Kecepatan ({out_p*100:.1f}%)"
+                else:
+                    reason = f"Skor Fusion Rendah ({f_score:.2f})"
 
-            is_high_integrity = True
-            if n_h > 10:
-                # Expert hanya update jika score sangat tinggi dan jarak Mahalanobis rendah
-                # Ini mencegah orang yang 'mirip' (seperti Asir) meracuni database sejarah user
-                if final_score < (threshold + 0.04) or (m_dist and m_dist > 0.85):
-                    is_high_integrity = False
-
-            res["should_update_history"] = bool(
-                is_match and 
-                is_clean_init and
-                is_high_integrity and
-                not (is_typo_recovery or out_p > 0.15) and 
-                (final_score >= (threshold + 0.02) or n_h < 3)
-            )
-            
-            res["adaptive_gates"].update({"dtw_dwell": float(d_dist) if d_dist else None, "dtw_flight": float(f_dist) if f_dist else None, "outlier_count": int(final_outliers), "is_typo": bool(is_typo_recovery)})
-            res["components"] = {
-                "rhythm": round(float(comp_log[best_idx][0]), 4), 
-                "corr": round(float(comp_log[best_idx][1]), 4), 
-                "speed": round(float(comp_log[best_idx][2]), 4), 
-                "flow": round(float(comp_log[best_idx][3]), 4), 
-                "ratio": round(float(comp_log[best_idx][4]), 4), 
-                "stability": round(float(comp_log[best_idx][5]), 4)
-            }
-            
+            res.update({
+                "status": is_match,
+                "score": round(f_score, 4),
+                "n_samples": n_h,
+                "reason": reason,
+                "should_update_history": bool(is_match and (n_h < 5 or (m_dist and m_dist < 5.0)) and out_p < 0.20)
+            })
             return res
 
-        except Exception as e: 
-            res["reason"] = f"Core Error: {str(e)}"
-            return res
-
-
+        except Exception as e: return {"status": False, "score": 0.0, "reason": f"Core Error: {str(e)}"}
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        try:
-            print(json.dumps(BiometricCore().analyze(sys.argv[1])))
-        except Exception as e:
-            # Fallback jika json.dumps tetap gagal karena ada tipe data non-standar
-            print(json.dumps({"status": False, "score": 0.0, "reason": f"Serialization Error: {str(e)}"}))
+        try: print(json.dumps(BiometricCore().analyze(sys.argv[1])))
+        except: print(json.dumps({"status": False, "score": 0.0, "reason": "Serialization Error"}))

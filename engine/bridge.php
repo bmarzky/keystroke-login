@@ -2,18 +2,21 @@
 
 class KeystrokeManager {
     
-    private function getPythonPath() {
+    public function getPythonPath() {
         $path = trim(shell_exec('where python 2>NUL') ?? '');
         $path = strtok($path, "\n");
         return empty($path) ? 'python' : $path;
     }
 
-    public function verify($historyData, $inputJson) {
+    public function verify($historyData, $inputJson, $username = 'unknown', $userId = null) {
         $input = json_decode($inputJson, true);
 
         if (!isset($input['dwell'], $input['flight'], $input['d2d'], $input['u2u'], $input['speed'])) {
             return ['status' => false, 'score' => 0, 'reason' => 'Fitur tidak lengkap'];
         }
+
+        $input['username'] = $username;
+        $input['user_id'] = $userId ?? $username;
 
         if ($input['speed'] > 1000 || $input['speed'] <= 0) {
             return ['status' => false, 'score' => 0, 'reason' => 'Kecepatan tidak valid'];
@@ -70,6 +73,7 @@ class KeystrokeManager {
            'speed_dev'      => $result['speed_dev']       ?? null,
            'components'     => $result['components']      ?? [],
            'adaptive_gates' => $result['adaptive_gates']  ?? [],
+           'ai_score'      => $result['ai_score']        ?? null,
         ];
 
 

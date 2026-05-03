@@ -49,8 +49,8 @@ $user = $stmt->get_result()->fetch_assoc();
 
 if ($user && password_verify($password, $user['password'])) {
     
-    // 2. Ambil data history untuk verifikasi biometrik
-    $stmt = $conn->prepare("SELECT features FROM keystroke_data WHERE user_id = ? ORDER BY id DESC LIMIT 20");
+    // 2. Ambil seluruh data history untuk verifikasi biometrik yang lebih akurat (Penting untuk OCSVM)
+    $stmt = $conn->prepare("SELECT features FROM keystroke_data WHERE user_id = ? ORDER BY id ASC");
     $stmt->bind_param("i", $user['id']);
     $stmt->execute();
     $historyResult = $stmt->get_result();
@@ -61,7 +61,7 @@ if ($user && password_verify($password, $user['password'])) {
     }
 
     // 3. Verifikasi Biometrik menggunakan OOP Class KeystrokeManager
-    $result = $biomManager->verify($history, $inputKeystroke);
+    $result = $biomManager->verify($history, $inputKeystroke, $username, $user['id']);
     
     $isMatch    = $result['status'];
     $score      = $result['score'];
@@ -129,27 +129,32 @@ if ($user && password_verify($password, $user['password'])) {
         $gatesBlock .= sprintf("  Removed Keys  : %d keys (Sterile)\n", $ag['outlier_count']);
     }
 
-    // 4. Finalize & Log
-    require_once __DIR__ . '/../../engine/logger.php';
+    // 4. Finalize & Log (Integrated Logger)
+    $logDir = __DIR__ . '/../../ml/logs/';
+    if (!is_dir($logDir)) mkdir($logDir, 0777, true);
+
+    $writeLog = function($filename, $header, $content) use ($logDir) {
+        $divider = str_repeat("-", 60) . "\n";
+        $data = "$header\n$content" . (substr($content, -1) !== "\n" ? "\n" : "") . $divider;
+        file_put_contents($logDir . $filename, $data, FILE_APPEND);
+    };
 
     $logDetails = sprintf(
-        "  IP Address    : %s\n" .
-        "  User-Agent    : %s\n" .
         "  Method        : %s\n" .
         "  History Count : %d sampel\n" .
         "  Score         : %.4f\n" .
         "  Threshold     : %.4f\n" .
         "  Speed Dev     : %s\n" .
         "  Mahal. Dist   : %s\n" .
+        "  AI Score      : %s\n" .
         "  Reason        : %s\n",
-        $ipAddr,
-        $userAgent,
         $method,
         $nSamples,
         $score,
         $thresh,
         $speedDev,
         $mahalDist,
+        isset($result['ai_score']) ? number_format($result['ai_score'], 4) : 'N/A',
         $reason
     );
 
@@ -167,19 +172,44 @@ if ($user && password_verify($password, $user['password'])) {
             $stmt->bind_param("is", $user['id'], $inputKeystroke);
             $stmt->execute();
             $historyUpdated = true;
+            $nSamples++; // Increment untuk pengecekan milestone
+        }
+
+        // --- AUTO-RETRAIN PIPELINE (AI ENGINE) ---
+        $modelPath = realpath(__DIR__ . '/../../ml/models/') . "/{$user['id']}_ocsvm.joblib";
+        $isModelMissing = !file_exists($modelPath);
+        $isMilestone = ($nSamples % 20 === 0 && $historyUpdated); // Hanya update rutin jika ada data baru
+
+        if ($nSamples >= 20 && ($isModelMissing || $isMilestone)) {
+            $trainData = ['history' => $history];
+            if ($historyUpdated) {
+                $trainData['history'][] = json_decode($inputKeystroke, true); 
+            }
+            
+            $trainFile = realpath(__DIR__ . '/../../scratch/') . "/training_{$user['id']}.json";
+            file_put_contents($trainFile, json_encode($trainData));
+            
+            $pyExec = $biomManager->getPythonPath();
+            $pyTrain = realpath(__DIR__ . '/../../ml/ai_trainer.py');
+            
+            // Jalankan di background (Windows menggunakan 'start /B')
+            pclose(popen("start /B \"\" \"$pyExec\" \"$pyTrain\" \"{$user['id']}\" \"$trainFile\"", "r"));
+            
+            $msg = $isModelMissing ? "Recovery" : "Update";
+            $logDetails .= "  [PIPELINE] AI Auto-Training $msg Started (n=$nSamples)\n";
         }
 
         $logDetails .= "  History Updated: " . ($historyUpdated ? 'Ya' : 'Tidak') . "\n";
         $logDetails .= $gatesBlock . $scoringBlock . $rawDataBlock;
 
-        Logger::success($username, $logDetails);
+        $writeLog('login_success.log', "SUCCESS | User: $username", $logDetails);
 
         header("Location: ../../dashboard/index.php");
         exit();
 
     } else {
         $logDetails .= $gatesBlock . $scoringBlock . $rawDataBlock;
-        Logger::failure($username, $logDetails);
+        $writeLog('login_failed.log', "FAILURE | User: $username", $logDetails);
 
         redirectWithError("Akses Ditolak: Pola ketikan tidak cocok (Skor: $score)");
     }
