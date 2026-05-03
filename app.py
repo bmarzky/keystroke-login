@@ -80,7 +80,7 @@ def login():
                                  (user['id'], json.dumps(input_keystroke)))
                     conn.commit()
                     
-                    # Auto-Retrain Trigger
+                    # Auto-Retrain Trigger (Updated every 20 samples)
                     n_samples = len(history) + 1
                     if n_samples >= 20 and (n_samples % 20 == 0 or not _model_exists(user['id'])):
                         _trigger_training(user['id'], history_dicts + [input_keystroke])
@@ -203,8 +203,9 @@ def _trigger_training(uid, history):
     with open(train_file, 'w') as f:
         json.dump({'history': history}, f)
     
-    py_train = os.path.join('ml', 'ai_trainer.py')
-    subprocess.Popen(['python', py_train, str(uid), train_file])
+    py_train = os.path.join('engine', 'ml', 'ai_trainer.py')
+    import sys
+    subprocess.Popen([sys.executable, py_train, str(uid), train_file])
 
 if __name__ == '__main__':
     app.run(debug=True, port=8000)
