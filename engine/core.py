@@ -80,11 +80,14 @@ class BiometricCore:
             g["s"] = float(max(0.35, (3.0 * np.std(speeds) / max(np.mean(speeds), 1.0))))
             if mahal_dists and len(mahal_dists) >= 3:
                 m_avg, m_std = float(np.mean(mahal_dists)), float(np.std(mahal_dists))
-                # Melonggarkan gate untuk user baru (n < 20) agar tidak terlalu ketat
-                buffer = 5.0 if n < 20 else 3.5
-                g["m"] = m_avg + 3.5 * m_std + buffer
+                # SMART GUARD: Keseimbangan antara keamanan dan kenyamanan (n >= 20)
+                multiplier = 2.0 if n >= 20 else 3.5
+                buffer = 2.0 if n >= 20 else 5.0
+                g["m"] = m_avg + multiplier * m_std + buffer
                 # Threshold lebih stabil untuk user lama
-                g["t"] = float(min(0.70, 0.60 + (n-5)*0.015) + (max(0.0, 1.0 - m_avg/2.0)*0.08))
+                # Threshold Dasar yang lebih manusiawi (0.70)
+                base_t = 0.70 if n >= 20 else 0.60
+                g["t"] = float(min(base_t, base_t - 0.10 + (n-5)*0.015) + (max(0.0, 1.0 - m_avg/2.0)*0.08))
 
         # 3. Blending & Hardening
         alpha = float(1.0 if n >= 5 else min(1.0, (n-1)/4.0))
@@ -98,20 +101,22 @@ class BiometricCore:
         
         s_res = float(np.clip(s_final, 0.40, s_h))
         m_res = float(np.clip(m_final, m_l, 15.0))
-        t_res = float(np.clip(t_final, 0.62, t_h))
+        t_min = 0.70 if n > 50 else 0.62
+        t_res = float(np.clip(t_final, t_min, t_h))
 
         # Short Password Penalty
         # Penalti untuk password pendek agar lebih ketat (disesuaikan agar lebih halus)
-        if len(h0_d) < 8:
-            t_res = float(np.clip(t_res + (8-len(h0_d))*0.010, 0.65, 0.85))
+        if len(h0_d) < 7:
+            t_res = float(np.clip(t_res + (7-len(h0_d))*0.010, 0.65, 0.85))
             s_res, m_res = s_res*1.10, m_res*0.95
 
+        phase = f"Enrollment Phase (n={n})" if n < 5 else f"Mahalanobis Mode (n={n})"
         return {"speed_gate": round(s_res,4), "mahal_gate": round(m_res,4), 
-                "threshold": round(t_res,4), "phase": f"Adaptive-{'Blend' if n<5 else 'Full'} (n={n})"}
+                "threshold": round(t_res,4), "phase": phase}
 
     def _get_response_template(self, n=0):
-        return {"status": False, "score": 0.0, "threshold": 0.70, "reason": "Unknown", "method": "Unknown",
-                "n_samples": n, "speed_dev": 0.0, "mahal_dist": None, "ocsvm_dist": 0.0, 
+        return {"status": False, "score": 0.0, "threshold": 0.70, "reason": "Unknown", "method": "Titanium Fusion + OCSVM",
+                "n_samples": n, "speed_dev": 0.0, "mahal_dist": None, "ai_score": None, "ai_status": "Standby (Collecting Data)",
                 "should_update_history": False, "adaptive_gates": {}, "components": {}, "weights": {}}
 
     def analyze(self, json_path):
@@ -158,7 +163,7 @@ class BiometricCore:
             user_id = input_raw.get('user_id', username)
             method_name = gates["phase"]
             if os.path.exists(self.ai._get_model_path(user_id)):
-                method_name = "Titanium Pro + AI"
+                method_name = "Mahalanobis + OCSVM"
                 
             res.update({"threshold": gates["threshold"], "adaptive_gates": gates, "method": method_name})
             
@@ -226,18 +231,36 @@ class BiometricCore:
                 except: pass
 
             ai_dec, ai_score = self.ai.predict(user_id, self.extract(inp, history))
-            res["ai_score"] = round(float(ai_score), 4) if ai_score is not None else None
+            if ai_dec is not None:
+                res["ai_score"] = round(float(ai_score), 4)
+            else:
+                res["ai_score"] = None
+                res["ai_status"] = "Standby (Collecting Data)"
             
-            # 6. Security Gates Logic
-            # Gate A: AI Style Detection
-            if ai_dec == -1: 
-                if f_score >= 0.80: # Confidence Bypass
-                    f_score *= 0.92 
-                    res["score"] = round(f_score, 4)
-                    res["ai_status"] = "Bypassed"
+            # 6. Security Gates Logic (Refined Smart Guard)
+            if ai_dec is not None:
+                # Kepercayaan Tinggi (User Asli)
+                if ai_score > 0.60:
+                    res["ai_status"] = "Normal (High Trust)"
+                    # Jalur Hijau: Mode Aman (Threshold 0.70)
+                    if ai_score > 0.90:
+                        gates["threshold"] = float(max(gates["threshold"], 0.70))
+                        f_score = min(1.0, f_score + 0.03) # Bonus dikurangi
+                    elif ai_score > 0.85:
+                        gates["threshold"] = float(max(gates["threshold"], 0.72))
+                        f_score = min(1.0, f_score + 0.02)
+                
+                # Area Abu-abu
+                elif ai_score >= 0.30:
+                    res["ai_status"] = "Caution (Manual Review Pattern)"
+                    gates["threshold"] = float(max(gates["threshold"], 0.75))
+                
+                # Terdeteksi Asing (Penyusup)
                 else:
-                    res.update({"status": False, "reason": f"Gerbang AI: Gaya Aneh ({ai_score:.3f})"})
-                    return res
+                    penalty = float(0.65 if ai_score < 0.15 else 0.80)
+                    f_score *= penalty
+                    gates["threshold"] = float(max(gates["threshold"], 0.78))
+                    res["ai_status"] = f"Anomalous (Standard Raised to 0.78)"
 
             # Gate B: Mahalanobis (Statistical Outlier)
             if m_dist is not None:
