@@ -66,6 +66,6 @@ class AIEngine:
             # Mapping raw_score ke 0-1 (Dipersulit: On the boundary = 0.3 Confidence)
             confidence = float(1.0 / (1.0 + np.exp(-12 * (raw_score - 0.05)))) 
             
-            return decision, confidence
+            return decision, confidence, data.get('n_train', 0)
         except Exception as e:
-            return None, 0.0
+            return None, 0.0, 0
