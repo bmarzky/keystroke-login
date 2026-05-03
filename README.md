@@ -1,90 +1,109 @@
-# Keystroke Biometric Login System (Titanium Edition)
+# Smart Guard: AI-Driven Keystroke Biometric Authentication
 
-Sistem autentikasi login mutakhir yang menggabungkan keamanan password tradisional dengan lapisan biometrik perilaku (*behavioral biometrics*) berbasis pola pengetikan. Sistem ini menggunakan **Titanium Scoring Engine** yang diperkuat oleh algoritma **Mahalanobis Distance** dan Machine Learning (One Class SVM) untuk membedakan pengguna asli dengan penyusup (*imposter*) melalui analisis multidimensi terhadap ritme, kecepatan, stabilitas, dan akselerasi pengetikan.
+Sistem autentikasi biometrik perilaku (*behavioral biometrics*) yang sangat aman dan cerdas, dikembangkan sepenuhnya menggunakan **Python (Flask)**. Sistem ini mengenali pengguna berdasarkan pola unik ketikan jari mereka (ritme, kecepatan, dan tekanan) menggunakan algoritma **Titanium Fusion Engine**.
 
-## Fitur Unggulan
+---
 
-- **Titanium Scoring Engine**: Mesin penilaian komposit yang menggabungkan 6 metrik keamanan utama:
-    - **Rhythm Score (Euclidean)**: Analisis jarak Euclidean pada 4 spektrum data (Dwell, Flight, D2D, U2U).
-    - **Correlation Score (Pearson)**: Mengukur kemiripan bentuk gelombang (*waveform*) pola pengetikan.
-    - **Speed Score**: Validasi kecepatan mengetik global terhadap rata-rata historis.
-    - **Ratio Score (Finger Anatomy)**: Analisis rasio *dwell-to-flight* yang unik untuk setiap struktur tangan.
-    - **Stability Score (Jitter Analysis)**: Mengukur konsistensi varians/getaran pengetikan.
-    - **Flow Score (Transitional Acceleration)**: Analisis korelasi pada percepatan antar tombol (perubahan ritme).
-- **Hybrid AI Layer**:
-    - **Early Stage (Data < 5)**: Menggunakan *Soft Scoring Fusion* yang pemaaf namun tetap aman untuk *cold start*.
-    - **Production Stage (Data ≥ 5)**: Mengaktifkan **Mahalanobis Distance** berbasis *Covariance Matrix* untuk mendeteksi anomali korelasi fitur yang kompleks.
-- **Adaptive Learning (Anchor + Drift)**:
-    - Sistem secara cerdas memilih data "Jangkar" (2 data awal) dan data "Adaptasi" (3 data terbaru) sebagai pembanding.
-    - Menjamin sistem tetap akurat meskipun gaya mengetik pengguna berubah perlahan seiring waktu (*drift adaptation*).
-- **Dynamic Gate System**: Perlindungan *real-time* yang langsung memblokir percobaan login jika deviasi kecepatan melampaui ambang batas keamanan (40%) bahkan sebelum analisis AI dilakukan.
-- **Anti-Poisoning Guard**: Mekanisme perlindungan yang mencegah pembaruan data biometrik jika skor login dianggap "mencurigakan" atau "pas-pasan", guna mencegah penyusup merusak profil asli pengguna.
-- **Auto-Aligning Truncation**: Penanganan otomatis terhadap variasi jumlah tombol (seperti tombol 'Enter' tambahan atau jeda akhir) agar perbandingan data tetap presisi.
+## Fitur Utama
 
-## Prasyarat
+1. **Titanium Fusion Engine**: Mesin skor yang menggabungkan 6 metrik (Rhythm, Correlation, Speed, Flow, Ratio, Stability).
+2. **Mahalanobis Gate**: Gerbang statistik tingkat tinggi untuk memverifikasi kedekatan data terhadap profil historis.
+3. **OCSVM AI Layer**: Deteksi anomali real-time menggunakan model *One-Class Support Vector Machine* untuk keamanan ekstra.
+4. **Adaptive Thresholding**: Ambang batas yang belajar dan beradaptasi secara otomatis mengikuti perkembangan gaya ketik pengguna.
+5. **Secure Core**: Dilengkapi perlindungan terhadap serangan *Replay* dan pengarsipan log teknis yang sangat mendetail.
 
-- **Web Server**: Apache (XAMPP/Laragon) dengan PHP 7.4+
-- **Database**: MySQL 5.7+
-- **Python Runtime**: Python 3.8+
-- **Python Libraries**: `numpy`, `scipy`, `scikit-learn`
-- **Environment**: File `.env` untuk konfigurasi database.
+---
 
-## Instalasi
+## Tech Stack
 
-1. **Clone Repository**:
-   ```bash
-   git clone https://github.com/bmarzky/keystroke-login.git
-   cd keystroke-login
-   ```
+- **Backend**: Python 3.12, Flask Framework
+- **Database**: MySQL (MariaDB)
+- **Machine Learning**: Scikit-learn (OCSVM), Numpy
+- **Keamanan**: Bcrypt Hashing, Session Encryption
+- **Frontend**: Jinja2 Templates, Vanilla CSS & JS
 
-2. **Setup Database**:
-   - Import `database/keystroke.sql` menggunakan phpMyAdmin.
-   - Buat file `.env` di root folder:
-     ```ini
-     DB_HOST=localhost
-     DB_USER=root
-     DB_PASS=
-     DB_NAME=keystroke_db
-     ```
+---
 
-3. **Install Python Dependencies**:
-   ```bash
-   pip install -r ml/requirements.txt
-   ```
-
-## Cara Kerja (Titanium Scoring)
-
-1.  **Capture**: JavaScript (`keystroke.js`) menangkap waktu *Dwell* (tekan-lepas) dan *Flight* (lepas-tekan) secara presisi di sisi klien.
-2.  **Pre-Process**: Data dikirim ke PHP dan diteruskan ke mesin Python (`mahalanobis.py`).
-3.  **Heuristic Fusion**: Sistem menghitung skor dari 6 dimensi biometrik terhadap multi-baseline (Anchor & Drift).
-4.  **AI Blending**: Jika sampel cukup, sistem menggabungkan 80% skor Heuristik dengan 20% skor Mahalanobis AI.
-5.  **Decision**: Jika total skor ≥ Threshold (misal: 0.63-0.70), login diizinkan (**ACCEPT**).
-6.  **Adaptive Update**: Jika skor sangat meyakinkan (> 0.75), profil biometrik pengguna akan diperbarui secara otomatis.
-
-## Struktur Proyek
+## Struktur Proyek (Mendetail)
 
 ```text
 keystroke-login/
-├── assets/             # Frontend assets (CSS, JS)
-├── auth/               # Authentication UI & process
-├── config/             # Database connection & env config
-├── database/           # SQL migration files
-├── engine/             # Biometric Core Logic (PHP & Python)
-│   ├── bridge.php      # PHP-Python Bridge
-│   ├── core.py         # Titanium Scoring Engine
-│   ├── predictor.py    # SVM Prediction script
-│   └── trainer.py      # Background AI training
-├── ml/                 # Machine Learning Artifacts
-│   ├── logs/           # Predicition & system logs
-│   └── models/         # Trained .pkl models
-├── .env                # Environment variables
-├── index.php           # Landing & routing
-└── README.md           # Documentation
+├── app.py                     # Entry point aplikasi: Menangani routing, session, dan flow autentikasi.
+├── .env                       # File konfigurasi sensitif (DB Credentials, Secret Keys).
+├── .htaccess                  # Konfigurasi Apache Reverse Proxy untuk integrasi dengan XAMPP.
+├── requirements.txt           # Daftar dependensi library Python yang diperlukan.
+│
+├── config/
+│   └── database.py            # Logika koneksi Database MySQL menggunakan mysql-connector.
+│
+├── engine/
+│   └── core.py                # Core Biometric Engine: Menghitung Fusion Score, Mahalanobis Distance, 
+│                                dan Adaptive Thresholding.
+│
+├── ml/                        # Lingkungan Machine Learning
+│   ├── ai_trainer.py          # Script untuk melatih model OCSVM berdasarkan data historis pengguna.
+│   ├── ai_engine.py           # Komponen inferensi AI untuk memprediksi anomali ketikan.
+│   ├── models/                # Penyimpanan Model AI (*.joblib) yang unik untuk setiap user.
+│   └── logs/                  # Audit trail biometric:
+│       ├── login_success.log  # Detail teknis login yang diterima (skor fusion, AI status, dll).
+│       └── login_failed.log   # Analisis penyebab login ditolak (skor rendah, AI caution, dll).
+│
+├── static/                    # Aset Statis Frontend
+│   ├── css/                   # Desain antarmuka (Modern & Responsive).
+│   └── js/                    # Keystroke Collector: Menangkap timing dwell & flight time secara real-time.
+│
+├── templates/                 # Template HTML (Jinja2 Engine)
+│   ├── auth/                  # Halaman Login & Registrasi.
+│   └── dashboard/             # Antarmuka setelah user berhasil masuk.
+│
+├── utils/
+│   └── logger.py              # Utility untuk mencatat log biometrik Titanium Fusion yang mendetail.
+│
+└── scratch/                   # Folder sementara untuk proses pengolahan data training AI.
 ```
 
-## Lisensi
-
-Proyek ini menggunakan lisensi **MIT**. Bebas digunakan untuk keperluan edukasi maupun komersial dengan tetap mencantumkan atribusi.
 
 ---
-**Maintained by [bmarzky](https://github.com/bmarzky)**
+
+## Cara Instalasi & Menjalankan
+
+### 1. Prasyarat
+- Pastikan MySQL (XAMPP) sudah berjalan.
+- Buat database bernama `keystroke_db`.
+
+### 2. Instalasi Dependensi
+Jalankan perintah berikut di terminal:
+```powershell
+pip install -r requirements.txt
+```
+
+### 3. Konfigurasi Environment
+Edit file `.env` dan sesuaikan dengan kredensial database Anda:
+```env
+DB_HOST=localhost
+DB_USER=root
+DB_PASS=
+DB_NAME=keystroke_db
+```
+
+### 4. Menjalankan Aplikasi
+Jalankan server Flask:
+```powershell
+python app.py
+```
+Akses sistem melalui browser di: `http://127.0.0.1:8000`
+
+---
+
+## Logika Keamanan
+
+Sistem menggunakan alur verifikasi berlapis:
+1. **Password Match**: Verifikasi password standar (Bcrypt).
+2. **Replay Check**: Memastikan data biometrik bukan hasil *copy-paste*.
+3. **Statistical Gate**: Analisis jarak Mahalanobis.
+4. **AI Decision**: Skor kepercayaan dari model OCSVM.
+5. **Final Decision**: Pengambilan keputusan akhir berdasarkan *Adaptive Threshold*.
+
+---
+
+**Developed with Love for Advanced Cybersecurity Research.**
