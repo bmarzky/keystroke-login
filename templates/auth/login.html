@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Biometric System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='tutorial/guide.css') }}">
+</head>
+<body>
+    <div class="auth-wrapper">
+        <h2 class="auth-title">Login</h2>
+
+        <div class="message-container">
+            {% if error %}
+                <div id="status-msg" class="php-message error-box">{{ error }}</div>
+            {% endif %}
+            {% if success %}
+                <div id="status-msg" class="php-message success-box">{{ success }}</div>
+            {% endif %}
+            <div id="js-error-msg"></div>
+        </div>
+
+        <form id="loginForm" class="auth-form" action="{{ url_for('login') }}" method="POST" autocomplete="off" novalidate>
+            <input type="text" id="username" name="username" placeholder="Username" required autofocus autocomplete="off" minlength="3" maxlength="50">
+            <input type="password" id="password" name="password" placeholder="Password" required autocomplete="current-password">
+            <input type="hidden" name="keystroke" id="keystrokeData">
+
+            <button type="submit">Login</button>
+        </form>
+
+        <p class="page-note">Belum punya akun? <a href="{{ url_for('register') }}">Daftar di sini</a></p>
+    </div>
+
+<script src="{{ url_for('static', filename='js/keystroke.js') }}"></script>
+<script src="{{ url_for('static', filename='js/auth-forms.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
+<script src="{{ url_for('static', filename='tutorial/guide.js') }}"></script>
+</body>
+</html>

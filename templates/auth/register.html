@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Halaman pendaftaran akun dengan Keystroke Dynamics">
+    <title>Register</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='tutorial/guide.css') }}">
+</head>
+<body>
+    <div class="auth-wrapper">
+        <h2 class="auth-title">Register</h2>
+
+        <div class="message-container">
+            {% if error %}
+                <div id="status-msg" class="php-message error-box">{{ error }}</div>
+            {% endif %}
+            {% if success %}
+                <div id="status-msg" class="php-message success-box">{{ success }}</div>
+            {% endif %}
+            <div id="js-error-msg"></div>
+        </div>
+
+        <form id="registerForm" class="auth-form" action="{{ url_for('register') }}" method="POST" autocomplete="off" novalidate>
+            <input type="text" id="username" name="username" placeholder="Username Anda..." required autofocus autocomplete="off">
+            <input type="password" id="password" name="password" placeholder="Password" required autocomplete="new-password">
+            <input type="hidden" name="keystroke" id="keystrokeData">
+
+            <button type="submit">Register</button>
+        </form>
+
+        <p class="page-note">Sudah punya akun? <a href="{{ url_for('login') }}">Login</a></p>
+    </div>
+
+<script src="{{ url_for('static', filename='js/keystroke.js') }}"></script>
+<script src="{{ url_for('static', filename='js/auth-forms.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
+<script src="{{ url_for('static', filename='tutorial/guide.js') }}"></script>
+</body>
+</html>

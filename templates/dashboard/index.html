@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Keystroke Dynamics</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="dashboard-page">
+
+<div class="dashboard-wrapper">
+    <header class="dashboard-header">
+        <h2 class="dashboard-title">Analisis Keystroke: {{ username }}</h2>
+        <form id="logoutForm" action="{{ url_for('logout') }}" method="POST">
+            <button type="submit" class="btn-logout">Logout</button>
+        </form>
+    </header>
+
+    <div class="stats-grid">
+        <div class="stat-item"><small>TOTAL DATA</small><b>{{ total_data }}</b></div>
+        <div class="stat-item"><small>AVG DWELL</small><b>{{ avg_dwell }} ms</b></div>
+        <div class="stat-item"><small>AVG FLIGHT</small><b>{{ avg_flight }} ms</b></div>
+        <div class="stat-item"><small>KECEPATAN</small><b>{{ wpm }} WPM</b></div>
+        <div class="stat-item"><small>STABILITAS</small><b>±{{ stability }}</b></div>
+        <div class="stat-item"><small>LAST LOGIN</small><b>{{ last_login }}</b></div>
+    </div>
+
+    <div class="chart-box">
+        <canvas id="keystrokeChart"></canvas>
+    </div>
+
+    <div id="dashboard-data" class="hidden-dashboard-data" 
+         data-current='{{ current_features | tojson }}' 
+         data-prev='{{ prev_features | tojson }}'></div>
+
+    <div class="table-container">
+        <table class="dashboard-table">
+            <thead>
+                <tr>
+                    <th>Fitur (ms)</th>
+                    {% set max_keys = [current_features.dwell|length, prev_features.dwell|length]|max %}
+                    {% for i in range(1, max_keys + 1) %}
+                        <th>K{{ i }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="label-cell">Dwell (Current)</td>
+                    {% for i in range(max_keys) %}
+                        <td>{{ (current_features.dwell[i] * 1000)|round|int if i < current_features.dwell|length else '-' }}</td>
+                    {% endfor %}
+                </tr>
+                <tr class="row-muted">
+                    <td class="label-cell">Dwell (Prev)</td>
+                    {% for i in range(max_keys) %}
+                        <td>{{ (prev_features.dwell[i] * 1000)|round|int if i < prev_features.dwell|length else '-' }}</td>
+                    {% endfor %}
+                </tr>
+                <tr class="row-divider">
+                    <td class="label-cell">Flight (Current)</td>
+                    {% for i in range(max_keys) %}
+                        <td>{{ (current_features.flight[i] * 1000)|round|int if i < current_features.flight|length else '-' }}</td>
+                    {% endfor %}
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script>
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+        const logoutForm = document.getElementById('logoutForm');
+        if (logoutForm) {
+            logoutForm.submit();
+        }
+    }
+});
+</script>
+</body>
+</html>
