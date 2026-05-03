@@ -1,0 +1,93 @@
+FAILURE | User: haikal
+  User ID       : 291
+  Method        : Mahalanobis + OCSVM
+  History Count : 22 sampel
+  Score         : 0.7021
+  Threshold     : 0.7000
+  Speed Dev     : 28.8%
+  Reason        : Gerbang Statistik (39.94)
+  --- Mahalanobis Gate ---
+  Distance      : 39.9365
+  Current Gate  : 5.6188
+  --- OCSVM Gate ---
+  AI Score      : 0.3543
+  AI Status     : Caution (Manual Review Pattern)
+  --- Adaptive Gate ---
+  Speed Gate    : 40.0%
+  Threshold     : 0.7200
+  --- Titanium Fusion Gate ---
+  Rhythm    (40%) : 68.8%  [Euclidean Distance]
+  Corr.     (20%) : 82.3%  [Pearson Coefficient]
+  Speed     (20%) : 33.0%  [Global CPM]
+  Flow      (20%) : 93.8%  [Acceleration]
+  Ratio     (0%)  : 78.8%
+  Stability (0%)  : 64.2%
+  --- Raw Keystroke Data ---
+  Speed         : 440.4300 char/s
+  Dwell (13)    : [0.077, 0.150, 0.072, 0.082, 0.135, 0.078, 0.047, 0.136, 0.083, 0.064, 0.126, 0.097, 0.108]
+  Flight (12)   : [0.031, 0.113, 0.100, 0.037, 0.115, 0.196, 0.050, 0.144, 0.188, 0.044, 0.002, 0.037]
+  D2D (12)      : [0.108, 0.082, 0.172, 0.119, 0.077, 0.274, 0.097, 0.094, 0.271, 0.108, 0.128, 0.134]
+  U2U (12)      : [0.181, 0.004, 0.181, 0.172, 0.020, 0.243, 0.186, 0.041, 0.252, 0.170, 0.099, 0.145]
+------------------------------------------------------------
+FAILURE | User: haikal
+  User ID       : 291
+  Method        : Mahalanobis + OCSVM
+  History Count : 22 sampel
+  Score         : 0.6749
+  Threshold     : 0.7000
+  Speed Dev     : 25.5%
+  Reason        : Skor Fusion Rendah (0.67)
+  --- Mahalanobis Gate ---
+  Distance      : 2.5830
+  Current Gate  : 5.6188
+  --- OCSVM Gate ---
+  AI Score      : 0.4849
+  AI Status     : Caution (Manual Review Pattern)
+  --- Adaptive Gate ---
+  Speed Gate    : 40.0%
+  Threshold     : 0.7200
+  --- Titanium Fusion Gate ---
+  Rhythm    (40%) : 82.5%  [Euclidean Distance]
+  Corr.     (20%) : 88.3%  [Pearson Coefficient]
+  Speed     (20%) : 50.7%  [Global CPM]
+  Flow      (20%) : 41.6%  [Acceleration]
+  Ratio     (0%)  : 72.2%
+  Stability (0%)  : 55.7%
+  --- Raw Keystroke Data ---
+  Speed         : 365.8200 char/s
+  Dwell (14)    : [0.083, 0.103, 0.053, 0.088, 0.097, 0.051, 0.083, 0.103, 0.093, 0.074, 0.057, 0.074, 0.075, 0.070]
+  Flight (13)   : [0.024, 0.116, 0.106, 0.039, 0.043, 0.203, 0.274, 0.035, 0.131, 0.033, 0.090, 0.119, 0.229]
+  D2D (13)      : [0.107, 0.091, 0.159, 0.127, 0.140, 0.254, 0.071, 0.138, 0.224, 0.108, 0.147, 0.193, 0.304]
+  U2U (13)      : [0.128, 0.041, 0.194, 0.136, 0.094, 0.286, 0.091, 0.129, 0.205, 0.090, 0.163, 0.195, 0.298]
+------------------------------------------------------------
+FAILURE | User: haikal
+  User ID       : 291
+  Method        : Mahalanobis + OCSVM
+  History Count : 23 sampel
+  Score         : 0.7488
+  Threshold     : 0.7000
+  Speed Dev     : 16.4%
+  Reason        : Gerbang Statistik (36.28)
+  --- Mahalanobis Gate ---
+  Distance      : 36.2764
+  Current Gate  : 5.7088
+  --- OCSVM Gate ---
+  AI Score      : 0.3543
+  AI Status     : Caution (Manual Review Pattern)
+  --- Adaptive Gate ---
+  Speed Gate    : 40.0%
+  Threshold     : 0.7200
+  --- Titanium Fusion Gate ---
+  Rhythm    (40%) : 67.5%  [Euclidean Distance]
+  Corr.     (20%) : 85.1%  [Pearson Coefficient]
+  Speed     (20%) : 65.3%  [Global CPM]
+  Flow      (20%) : 95.8%  [Acceleration]
+  Ratio     (0%)  : 72.9%
+  Stability (0%)  : 67.8%
+  --- Raw Keystroke Data ---
+  Speed         : 421.1000 char/s
+  Dwell (13)    : [0.068, 0.148, 0.067, 0.090, 0.144, 0.070, 0.054, 0.143, 0.088, 0.067, 0.107, 0.079, 0.088]
+  Flight (12)   : [0.019, 0.104, 0.095, 0.003, 0.114, 0.421, 0.023, 0.134, 0.140, 0.013, 0.020, 0.033]
+  D2D (12)      : [0.086, 0.085, 0.162, 0.094, 0.111, 0.491, 0.077, 0.111, 0.228, 0.080, 0.127, 0.112]
+  U2U (12)      : [0.167, 0.004, 0.185, 0.147, 0.037, 0.475, 0.167, 0.055, 0.207, 0.120, 0.099, 0.121]
+------------------------------------------------------------
