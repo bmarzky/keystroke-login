@@ -27,8 +27,17 @@ def format_log(uid, result, history, raw_input):
     
     # OCSVM
     log += f"  --- OCSVM Gate ---\n"
-    log += f"  AI Score      : {result.get('ai_score', 'N/A')}\n"
+    ai_score = result.get('ai_score', 'None')
+    if ai_score != "None" and ai_score is not None:
+        a_score = float(ai_score)
+        log += f"  AI Score      : {a_score:.4f}\n"
+    else:
+        log += f"  AI Score      : None\n"
     log += f"  AI Status     : {result.get('ai_status', 'N/A')}\n"
+    
+    n_train = result.get('n_train', 0)
+    if n_train > 0:
+        log += f"  Model Info    : Trained on {n_train} samples\n"
     
     # Adaptive
     log += f"  --- Adaptive Gate ---\n"
