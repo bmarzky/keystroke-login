@@ -20,6 +20,12 @@ if (empty($username) || empty($password) || empty($keystroke) || $decoded === nu
     exit();
 }
 
+// Validasi Panjang Biometrik (Sesuai dengan Login)
+if (count($decoded['dwell']) < 7) {
+    header("Location: ../register.php?error=" . urlencode("Password terlalu pendek untuk biometrik. Gunakan minimal 7 karakter."));
+    exit();
+}
+
 // Cek duplikasi
 $stmt = $conn->prepare("SELECT id FROM users WHERE username = ?");
 $stmt->bind_param("s", $username);

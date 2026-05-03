@@ -37,8 +37,8 @@ if (!isset($keystrokeData['dwell']) || !isset($keystrokeData['flight']) || !is_a
     redirectWithError("Struktur data biometrik tidak lengkap");
 }
 
-if (count($keystrokeData['dwell']) < 3) {
-    redirectWithError("Data ketikan terlalu pendek, silakan coba lagi");
+if (count($keystrokeData['dwell']) < 7) {
+    redirectWithError("Data biometrik terlalu pendek (Min. 7 karakter), silakan gunakan password yang lebih panjang untuk keamanan biometrik.");
 }
 
 // 1. Cari User di Database
@@ -56,8 +56,29 @@ if ($user && password_verify($password, $user['password'])) {
     $historyResult = $stmt->get_result();
 
     $history = [];
+    $isReplay = false;
+    // Gunakan normalisasi JSON untuk perbandingan replay
+    $currentClean = json_encode(json_decode($inputKeystroke, true));
+
     while ($row = $historyResult->fetch_assoc()) {
-        $history[] = $row['features']; 
+        $history[] = $row['features'];
+        // Replay Detection: Bandingkan input sekarang dengan data history
+        if (!$isReplay && json_encode(json_decode($row['features'], true)) === $currentClean) {
+            $isReplay = true;
+        }
+    }
+
+    if ($isReplay) {
+        // Log serangan replay
+        $logDir = __DIR__ . '/../../ml/logs/';
+        if (!is_dir($logDir)) mkdir($logDir, 0777, true);
+        $header = "REPLAY ATTACK | User: $username";
+        $content = "  Detection: 100% Timing Match Found in History\n" .
+                   "  Action   : Blocked Immediately\n" .
+                   "  IP       : " . ($_SERVER['REMOTE_ADDR'] ?? 'N/A') . "\n";
+        file_put_contents($logDir . 'login_failed.log', "------------------------------------------------------------\n$header\n$content", FILE_APPEND);
+
+        redirectWithError("Keamanan: Terdeteksi serangan Replay (Timing Identik). Akses Ditolak.");
     }
 
     // 3. Verifikasi Biometrik menggunakan OOP Class KeystrokeManager
@@ -96,13 +117,13 @@ if ($user && password_verify($password, $user['password'])) {
 
     $fmtComp    = function($v) { return $v !== null ? number_format($v * 100, 1) . '%' : 'N/A'; };
     $scoringBlock =
-        "  --- Scoring Breakdown (Titanium Fusion) ---\n" .
+        "  --- Titanium Fusion Gate ---\n" .
         sprintf("  Rhythm    (%d%%) : %s  [Euclidean Distance]\n",  $wRhythm, $fmtComp($comp['rhythm']    ?? null)) .
         sprintf("  Corr.     (%d%%) : %s  [Pearson Coefficient]\n", $wCorr,   $fmtComp($comp['corr']      ?? null)) .
         sprintf("  Speed     (%d%%) : %s  [Global CPM]\n",          $wSpeed,  $fmtComp($comp['speed']     ?? null)) .
         sprintf("  Flow      (%d%%) : %s  [Acceleration]\n",        $wFlow,   $fmtComp($comp['flow']      ?? null)) .
-        sprintf("  Ratio     (%d%%)  : %s  [Info Only - Handled by Mahalanobis]\n",  $wRatio, $fmtComp($comp['ratio']     ?? null)) .
-        sprintf("  Stability (%d%%)  : %s  [Info Only - Handled by Mahalanobis]\n",  $wStab,  $fmtComp($comp['stability'] ?? null));
+        sprintf("  Ratio     (%d%%)  : %s\n",  $wRatio, $fmtComp($comp['ratio']     ?? null)) .
+        sprintf("  Stability (%d%%)  : %s\n",  $wStab,  $fmtComp($comp['stability'] ?? null));
 
     $rawDataBlock =
         "  --- Raw Keystroke Data ---\n" .
@@ -115,9 +136,8 @@ if ($user && password_verify($password, $user['password'])) {
 
     // Adaptive Gates
     $ag          = $result['adaptive_gates'] ?? [];
-    $gatesBlock  = "  --- Adaptive Gates (Per-User) ---\n";
+    $gatesBlock  = "  --- Adaptive Gate ---\n";
     $gatesBlock .= sprintf("  Speed Gate    : %.1f%%\n", ($ag['speed_gate'] ?? 0.40) * 100);
-    $gatesBlock .= sprintf("  Mahal. Gate   : %.4f\n",    $ag['mahal_gate'] ?? 3.0);
     $gatesBlock .= sprintf("  Threshold     : %.4f\n",    $ag['threshold']  ?? 0.70);
 
     if (isset($ag['dtw_dwell']) && $ag['dtw_dwell'] !== null) {
@@ -129,6 +149,11 @@ if ($user && password_verify($password, $user['password'])) {
         $gatesBlock .= sprintf("  Removed Keys  : %d keys (Sterile)\n", $ag['outlier_count']);
     }
 
+    // Mahalanobis Section
+    $mahalBlock = "  --- Mahalanobis Gate ---\n";
+    $mahalBlock .= sprintf("  Distance      : %s\n", $mahalDist);
+    $mahalBlock .= sprintf("  Current Gate  : %.4f\n", $ag['mahal_gate'] ?? 8.0);
+
     // 4. Finalize & Log (Integrated Logger)
     $logDir = __DIR__ . '/../../ml/logs/';
     if (!is_dir($logDir)) mkdir($logDir, 0777, true);
@@ -139,24 +164,36 @@ if ($user && password_verify($password, $user['password'])) {
         file_put_contents($logDir . $filename, $data, FILE_APPEND);
     };
 
+    // Format AI Section
+    $aiBlock = "";
+    if (isset($result['ai_status'])) {
+        $aiBlock  = "  --- OCSVM Gate ---\n";
+        $aiBlock .= sprintf("  AI Score      : %s\n",   (isset($result['ai_score']) && $result['ai_score'] !== null) ? number_format($result['ai_score'], 4) : 'N/A');
+        $aiBlock .= sprintf("  AI Status     : %s\n",   $result['ai_status']);
+    }
+
     $logDetails = sprintf(
+        "  User ID       : %s\n" .
         "  Method        : %s\n" .
         "  History Count : %d sampel\n" .
         "  Score         : %.4f\n" .
         "  Threshold     : %.4f\n" .
         "  Speed Dev     : %s\n" .
-        "  Mahal. Dist   : %s\n" .
-        "  AI Score      : %s\n" .
         "  Reason        : %s\n",
+        $user['id'],
         $method,
         $nSamples,
         $score,
         $thresh,
         $speedDev,
-        $mahalDist,
-        isset($result['ai_score']) ? number_format($result['ai_score'], 4) : 'N/A',
         $reason
     );
+
+    if ($mahalBlock)  $logDetails .= $mahalBlock;
+    if ($aiBlock)     $logDetails .= $aiBlock;
+    if ($gatesBlock)  $logDetails .= $gatesBlock;
+    if ($scoringBlock) $logDetails .= $scoringBlock;
+    if ($rawDataBlock) $logDetails .= $rawDataBlock;
 
     if ($isMatch) {
         // Login Sukses
@@ -200,7 +237,6 @@ if ($user && password_verify($password, $user['password'])) {
         }
 
         $logDetails .= "  History Updated: " . ($historyUpdated ? 'Ya' : 'Tidak') . "\n";
-        $logDetails .= $gatesBlock . $scoringBlock . $rawDataBlock;
 
         $writeLog('login_success.log', "SUCCESS | User: $username", $logDetails);
 
@@ -208,10 +244,9 @@ if ($user && password_verify($password, $user['password'])) {
         exit();
 
     } else {
-        $logDetails .= $gatesBlock . $scoringBlock . $rawDataBlock;
         $writeLog('login_failed.log', "FAILURE | User: $username", $logDetails);
 
-        redirectWithError("Akses Ditolak: Pola ketikan tidak cocok (Skor: $score)");
+        redirectWithError($reason);
     }
 
 } else {

@@ -74,6 +74,7 @@ class KeystrokeManager {
            'components'     => $result['components']      ?? [],
            'adaptive_gates' => $result['adaptive_gates']  ?? [],
            'ai_score'      => $result['ai_score']        ?? null,
+           'ai_status'     => $result['ai_status']       ?? null,
         ];
 
 
