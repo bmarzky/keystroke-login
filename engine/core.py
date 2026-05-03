@@ -81,34 +81,32 @@ class BiometricCore:
             if mahal_dists and len(mahal_dists) >= 3:
                 m_avg, m_std = float(np.mean(mahal_dists)), float(np.std(mahal_dists))
                 # SMART GUARD: Keseimbangan antara keamanan dan kenyamanan (n >= 20)
-                multiplier = 2.0 if n >= 20 else 3.5
-                buffer = 2.0 if n >= 20 else 5.0
+                multiplier = 1.8 if n >= 20 else 2.8
+                buffer = 1.5 if n >= 20 else 4.0
                 g["m"] = m_avg + multiplier * m_std + buffer
-                # Threshold lebih stabil untuk user lama
-                # Threshold Dasar yang lebih manusiawi (0.70)
-                base_t = 0.70 if n >= 20 else 0.60
-                g["t"] = float(min(base_t, base_t - 0.10 + (n-5)*0.015) + (max(0.0, 1.0 - m_avg/2.0)*0.08))
+                # Hardening: Base threshold disesuaikan agar lebih seimbang (0.68)
+                base_t = 0.68 if n >= 20 else 0.65
+                g["t"] = float(min(base_t, base_t - 0.05 + (n-5)*0.01) + (max(0.0, 1.0 - m_avg/3.0)*0.08))
 
         # 3. Blending & Hardening
         alpha = float(1.0 if n >= 5 else min(1.0, (n-1)/4.0))
         s_final = (1-alpha)*g["s"] + alpha*g["s"] 
         m_final = (1-alpha)*(1.5 + cv*6.0) + alpha*g["m"]
-        t_final = (1-alpha)*(0.65 - cv*0.1) + alpha*g["t"]
+        t_final = (1-alpha)*(0.68 - cv*0.1) + alpha*g["t"]
 
-        # Phase Hardening Boundaries
-        limits = [(0.75, 12.0, 0.72), (0.65, 10.0, 0.78), (0.45, 3.5, 0.82), (0.40, 3.5, 0.80)]
+        # Phase Hardening Boundaries (Tighter)
+        limits = [(0.75, 10.0, 0.74), (0.65, 8.0, 0.78), (0.45, 3.5, 0.82), (0.40, 3.5, 0.80)]
         s_h, m_l, t_h = limits[min(3, 0 if n<3 else 1 if n<5 else 2 if n<10 else 3)]
         
         s_res = float(np.clip(s_final, 0.40, s_h))
-        m_res = float(np.clip(m_final, m_l, 15.0))
-        t_min = 0.70 if n > 50 else 0.62
+        m_res = float(np.clip(m_final, m_l, 12.0))
+        t_min = 0.68 if n > 50 else 0.65
         t_res = float(np.clip(t_final, t_min, t_h))
 
         # Short Password Penalty
-        # Penalti untuk password pendek agar lebih ketat (disesuaikan agar lebih halus)
         if len(h0_d) < 7:
-            t_res = float(np.clip(t_res + (7-len(h0_d))*0.010, 0.65, 0.85))
-            s_res, m_res = s_res*1.10, m_res*0.95
+            t_res = float(np.clip(t_res + (7-len(h0_d))*0.015, 0.70, 0.88))
+            s_res, m_res = s_res*1.15, m_res*0.90
 
         phase = f"Enrollment Phase (n={n})" if n < 5 else f"Mahalanobis Mode (n={n})"
         return {"speed_gate": round(s_res,4), "mahal_gate": round(m_res,4), 
@@ -119,10 +117,10 @@ class BiometricCore:
                 "n_samples": n, "speed_dev": 0.0, "mahal_dist": None, "ai_score": None, "ai_status": "Standby (Collecting Data)",
                 "should_update_history": False, "adaptive_gates": {}, "components": {}, "weights": {}}
 
-    def analyze(self, json_path):
+    def analyze(self, input_data, history, user_id=None):
+        """Analyzes input keystrokes against user history using Titanium Fusion logic."""
         try:
-            with open(json_path, 'r') as f: data = json.load(f)
-            input_raw, history = data.get('input', {}), data.get('history', [])
+            input_raw = input_data
             if not history: return {**self._get_response_template(), "reason": "Enroll dulu"}
             
             res = self._get_response_template(len(history))
@@ -159,8 +157,7 @@ class BiometricCore:
             gates = self._calculate_gates(len(history), history, hist_m)
             
             # Tentukan Nama Method (Tampilkan OCSVM jika aktif)
-            username = input_raw.get('username', 'unknown')
-            user_id = input_raw.get('user_id', username)
+            user_id = user_id if user_id else input_raw.get('user_id', 'unknown')
             method_name = gates["phase"]
             if os.path.exists(self.ai._get_model_path(user_id)):
                 method_name = "Mahalanobis + OCSVM"
@@ -247,20 +244,29 @@ class BiometricCore:
                         gates["threshold"] = float(max(gates["threshold"], 0.70))
                         f_score = min(1.0, f_score + 0.03) # Bonus dikurangi
                     elif ai_score > 0.85:
-                        gates["threshold"] = float(max(gates["threshold"], 0.72))
-                        f_score = min(1.0, f_score + 0.02)
+                        gates["threshold"] = float(max(gates["threshold"], 0.74))
+                        f_score = min(1.0, f_score + 0.01)
                 
                 # Area Abu-abu
                 elif ai_score >= 0.30:
                     res["ai_status"] = "Caution (Manual Review Pattern)"
-                    gates["threshold"] = float(max(gates["threshold"], 0.75))
+                    gates["threshold"] = float(max(gates["threshold"], 0.78))
                 
                 # Terdeteksi Asing (Penyusup)
                 else:
-                    penalty = float(0.65 if ai_score < 0.15 else 0.80)
+                    penalty = float(0.60 if ai_score < 0.15 else 0.75)
                     f_score *= penalty
-                    gates["threshold"] = float(max(gates["threshold"], 0.78))
-                    res["ai_status"] = f"Anomalous (Standard Raised to 0.78)"
+                    gates["threshold"] = float(max(gates["threshold"], 0.82))
+                    res["ai_status"] = f"Anomalous (Standard Raised to 0.82)"
+
+            # 6.5 Consistency Check (Komponen Tunggal yang Sangat Rendah)
+            # Jika ada satu komponen utama < 50%, berikan penalti tambahan
+            comp = res.get("components", {})
+            critical_min = min(comp.values()) if comp else 1.0
+            if critical_min < 0.55:
+                penalty = 0.85 if critical_min < 0.40 else 0.92
+                f_score *= penalty
+                res["reason_debug"] = f"Low Consistency Penalty ({critical_min:.2f})"
 
             # Gate B: Mahalanobis (Statistical Outlier)
             if m_dist is not None:
@@ -299,5 +305,9 @@ class BiometricCore:
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        try: print(json.dumps(BiometricCore().analyze(sys.argv[1])))
-        except: print(json.dumps({"status": False, "score": 0.0, "reason": "Serialization Error"}))
+        try:
+            with open(sys.argv[1], 'r') as f:
+                data = json.load(f)
+            print(json.dumps(BiometricCore().analyze(data.get('input', {}), data.get('history', []))))
+        except Exception as e:
+            print(json.dumps({"status": False, "score": 0.0, "reason": f"CLI Error: {str(e)}"}))
