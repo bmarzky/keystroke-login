@@ -12,13 +12,13 @@ instance/
 .webassets-cache
 
 # Biometric & AI
-ml/models/*.joblib
-ml/models/*.pkl
+engine/ml/models/*.joblib
+engine/ml/models/*.pkl
 scratch/
 
 # Logs
 *.log
-ml/logs/*.log
+engine/ml/logs/*.log
 logs/
 
 # IDE & OS

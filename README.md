@@ -36,30 +36,26 @@ keystroke-login/
 ├── config/
 │   └── database.py            # Logika koneksi Database MySQL menggunakan mysql-connector.
 │
-├── engine/
-│   └── core.py                # Core Biometric Engine: Menghitung Fusion Score, Mahalanobis Distance, 
-│                                dan Adaptive Thresholding.
-│
-├── ml/                        # Lingkungan Machine Learning
-│   ├── ai_trainer.py          # Script untuk melatih model OCSVM berdasarkan data historis pengguna.
-│   ├── ai_engine.py           # Komponen inferensi AI untuk memprediksi anomali ketikan.
-│   ├── models/                # Penyimpanan Model AI (*.joblib) yang unik untuk setiap user.
-│   └── logs/                  # Audit trail biometric:
-│       ├── login_success.log  # Detail teknis login yang diterima (skor fusion, AI status, dll).
-│       └── login_failed.log   # Analisis penyebab login ditolak (skor rendah, AI caution, dll).
+├── engine/                    # Otak Biometrik (Fusion Engine & AI)
+│   ├── core.py                # Biometric Engine Utama: Fusion Score & Adaptive Thresholding.
+│   └── ml/                    # Lingkungan Machine Learning (In-Engine)
+│       ├── ai_trainer.py      # Script melatih model OCSVM.
+│       ├── ai_engine.py       # Komponen inferensi AI.
+│       ├── models/            # Penyimpanan Model AI (*.joblib) per user.
+│       └── logs/              # Audit trail biometric (Login success/failed).
 │
 ├── static/                    # Aset Statis Frontend
-│   ├── css/                   # Desain antarmuka (Modern & Responsive).
-│   └── js/                    # Keystroke Collector: Menangkap timing dwell & flight time secara real-time.
+│   ├── css/                   # Desain antarmuka.
+│   └── js/                    # Keystroke Collector.
 │
-├── templates/                 # Template HTML (Jinja2 Engine)
-│   ├── auth/                  # Halaman Login & Registrasi.
-│   └── dashboard/             # Antarmuka setelah user berhasil masuk.
+├── templates/                 # Template HTML (Jinja2)
+│   ├── auth/                  # Login & Registrasi.
+│   └── dashboard/             # Antarmuka Dashboard.
 │
 ├── utils/
-│   └── logger.py              # Utility untuk mencatat log biometrik Titanium Fusion yang mendetail.
+│   └── logger.py              # Utility untuk mencatat log biometrik.
 │
-└── scratch/                   # Folder sementara untuk proses pengolahan data training AI.
+└── scratch/                   # Folder sementara untuk training AI.
 ```
 
 

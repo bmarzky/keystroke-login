@@ -6,9 +6,9 @@ root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if root not in sys.path: sys.path.append(root)
 
 try:
-    from ml.ai_engine import AIEngine
+    from engine.ml.ai_engine import AIEngine
 except ImportError:
-    # Fallback jika dijalankan dari root langsung
+    # Fallback jika dijalankan dari dalam folder engine
     if os.path.exists('ml/ai_engine.py'):
         from ml.ai_engine import AIEngine
     else:

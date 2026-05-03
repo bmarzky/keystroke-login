@@ -194,7 +194,7 @@ def logout():
     return redirect(url_for('login'))
 
 def _model_exists(uid):
-    return os.path.exists(f"ml/models/{uid}_ocsvm.joblib")
+    return os.path.exists(f"engine/ml/models/{uid}_ocsvm.joblib")
 
 def _trigger_training(uid, history):
     scratch_dir = 'scratch/'
