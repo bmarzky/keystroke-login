@@ -223,10 +223,10 @@ class BiometricCore:
             res["ai_status"] = "Normal (High Trust)"
             if ai_score > 0.90:
                 # Jalur Hijau: Sangat yakin, berikan sedikit bonus
-                threshold = float(max(threshold, 0.65))
+                threshold = float(max(threshold, 0.70))
                 f_score = min(1.0, f_score + 0.03)
             elif ai_score > 0.85:
-                threshold = float(max(threshold, 0.68))
+                threshold = float(max(threshold, 0.74))
                 f_score = min(1.0, f_score + 0.01)
         elif ai_score >= 0.30:
             # Jalur Kuning: Ragu, naikkan standar keamanan
@@ -306,16 +306,16 @@ class BiometricCore:
             if mahal_dists and len(mahal_dists) >= 3:
                 m_avg, m_std = float(np.mean(mahal_dists)), float(np.std(mahal_dists))
                 multiplier = 1.8 if n >= 20 else 2.8
-                buffer = 3.0 if n >= 20 else 4.0
+                buffer = 1.5 if n >= 20 else 4.0
                 g["m"] = m_avg + multiplier * m_std + buffer
-                base_t = 0.65 if n >= 20 else 0.62
+                base_t = 0.68 if n >= 20 else 0.65
                 g["t"] = float(min(base_t, base_t - 0.05 + (n-5)*0.01) + (max(0.0, 1.0 - m_avg/3.0)*0.08))
 
         # 3. Blending (Pencampuran fase transisi)
         alpha = float(1.0 if n >= 5 else min(1.0, (n-1)/4.0))
         s_final = g["s"] 
         m_final = (1-alpha)*(1.5 + cv*6.0) + alpha*g["m"]
-        t_final = (1-alpha)*(0.65 - cv*0.1) + alpha*g["t"]
+        t_final = (1-alpha)*(0.68 - cv*0.1) + alpha*g["t"]
 
         # Batas Pengerasan Fase (Tighter Boundaries)
         limits = [(0.75, 10.0, 0.74), (0.65, 8.0, 0.78), (0.45, 3.5, 0.82), (0.40, 3.5, 0.80)]
@@ -323,7 +323,7 @@ class BiometricCore:
         
         s_res = float(np.clip(s_final, 0.40, s_h))
         m_res = float(np.clip(m_final, m_l, 12.0))
-        t_min = 0.65 if n > 50 else 0.60
+        t_min = 0.68 if n > 50 else 0.65
         t_res = float(np.clip(t_final, t_min, t_h))
 
         # Penalti untuk Password Pendek
