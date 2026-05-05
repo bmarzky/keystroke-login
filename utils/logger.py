@@ -20,6 +20,11 @@ def format_log(uid, result, history, raw_input):
     log += f"  Threshold     : {result.get('threshold', 0):.4f}\n"
     log += f"  Reason        : {result.get('reason', 'N/A')}\n"
     
+    # Tambahkan Info Debug jika ada (Misal: Speed Forgiven)
+    debug_info = result.get('reason_debug')
+    if debug_info:
+        log += f"  Debug Info    : {debug_info}\n"
+    
     # Mahalanobis
     log += f"  --- Mahalanobis Gate ---\n"
     log += f"  Distance      : {result.get('mahal_dist', 'N/A')}\n"
@@ -34,6 +39,9 @@ def format_log(uid, result, history, raw_input):
     else:
         log += f"  AI Score      : None\n"
     log += f"  AI Status     : {result.get('ai_status', 'N/A')}\n"
+    raw_dist = result.get('ai_raw_dist')
+    if raw_dist is not None:
+        log += f"  AI Raw Dist   : {raw_dist:.4f}\n"
     
     n_train = result.get('n_train', 0)
     if n_train > 0:
