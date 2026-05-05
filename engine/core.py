@@ -16,10 +16,7 @@ class BiometricCore:
     
     # --- KONFIGURASI SISTEM ---
     CLEAN_THRESHOLD = 0.25      # Batas durasi dwell normal (0.25 detik)
-    DEFAULT_SPEED = 350.0       # Kecepatan ketikan standar (CPM)
-    MIN_SAMPLES_FOR_AI = 5      # Sampel minimal sebelum AI mulai aktif
     MAX_MAHAL_DIST = 15.0       # Batas maksimal jarak statistik
-    ANOMALY_LIMIT = 0.25        # Batas persentase anomali kecepatan
 
     def __init__(self, n_features: int = 24):
         self.n_features = n_features
@@ -59,8 +56,9 @@ class BiometricCore:
             # 4. Analisis Kecepatan & Konsistensi
             in_speed, s_dev = self._calculate_speed_metrics(inp, history, gates)
             res["speed_dev"] = round(s_dev, 4)
-            if s_dev > gates["speed_gate"]:
-                return {**res, "reason": f"Gate: Speed Anomali ({s_dev:.1%})"}
+            # Kita tidak lagi langsung return di sini. 
+            # Kita simpan statusnya untuk diputuskan di akhir (Finalize).
+            res["is_speed_anomaly"] = s_dev > gates["speed_gate"]
 
             # 5. Skor Titanium Fusion (Perbandingan dengan Riwayat)
             fusion_data = self._compute_fusion_scores(inp, history, in_speed)
@@ -75,9 +73,9 @@ class BiometricCore:
             res["mahal_dist"] = round(m_dist, 4) if m_dist else None
             
             # Prediksi AI (OCSVM)
-            ai_dec, ai_score, n_train = self.ai.predict(uid, self.extract(inp, history))
-            if ai_dec is not None:
-                res.update({"ai_score": round(float(ai_score), 4), "n_train": n_train})
+            ai_status, ai_score, n_train, raw_score = self.ai.predict(uid, self.extract(inp, history))
+            if ai_status is not None:
+                res.update({"ai_score": round(float(ai_score), 4), "n_train": n_train, "ai_raw_dist": round(raw_score, 4)})
                 f_score, gates["threshold"] = self._apply_ai_smart_guard(ai_score, f_score, gates["threshold"], res)
             
             # 7. Pengerasan Konsistensi (Penalti jika ada komponen yang sangat buruk)
@@ -265,16 +263,34 @@ class BiometricCore:
 
     def _finalize_decision(self, res: dict, f_score: float, gates: dict, max_out: int, in_len: int, m_dist: float, all_scores: list) -> dict:
         """Logika pemungutan suara akhir dan agregasi hasil."""
-        # Penghalusan skor untuk profil yang sudah mapan (n >= 10)
+        # 1. Penghalusan skor untuk profil yang sudah mapan (n >= 10)
         if res["n_samples"] >= 10 and all_scores:
             f_score = (0.85 * f_score) + (0.15 * float(np.mean(all_scores)))
 
-        out_p = float(max_out / (in_len * 4) if in_len > 0 else 0)
-        is_match = bool(f_score >= gates["threshold"] and out_p <= 0.25)
+        # 2. Adaptive Speed Forgiver (LOGIKA BARU)
+        # Jika ada anomali kecepatan tapi polanya (Correlation) sangat identik (> 0.90)
+        is_speed_anomaly = res.get("is_speed_anomaly", False)
+        pattern_corr = res.get("components", {}).get("corr", 0.0)
         
-        # Penentuan Alasan
+        if is_speed_anomaly:
+            if pattern_corr > 0.90:
+                # Berikan toleransi: Kurangi skor sedikit (penalti 5%) tapi jangan blokir
+                f_score *= 0.95
+                res["reason_debug"] = f"Speed Anomali Forgiven (Corr: {pattern_corr:.2f})"
+                is_speed_anomaly = False # Matikan flag anomali karena sudah dimaafkan
+            else:
+                # Jika pola juga buruk, tetap anggap anomali
+                f_score *= 0.80
+
+        # 3. Cek Ambang Batas Akhir
+        out_p = float(max_out / (in_len * 4) if in_len > 0 else 0)
+        is_match = bool(f_score >= gates["threshold"] and out_p <= 0.25 and not is_speed_anomaly)
+        
+        # 4. Penentuan Alasan yang informatif
         if is_match:
             reason = f"Score: {f_score:.2f} | ACCEPT"
+        elif is_speed_anomaly:
+            reason = f"Gate: Speed Anomali ({res.get('speed_dev', 0):.1%})"
         elif out_p > 0.25:
             reason = f"Gerbang Kecepatan ({out_p*100:.1f}%)"
         else:
@@ -283,8 +299,8 @@ class BiometricCore:
         res.update({
             "status": is_match,
             "score": round(f_score, 4),
+            "threshold": gates["threshold"],
             "reason": reason,
-            # Mekanisme Anti-Poisoning: Jangan update database jika data terlalu berantakan
             "should_update_history": bool(is_match and (res["n_samples"] < 5 or (m_dist and m_dist < 5.0)) and out_p < 0.20)
         })
         return res
@@ -330,15 +346,14 @@ class BiometricCore:
         t_final = (1-alpha)*(0.68 - cv*0.1) + alpha*g["t"]
 
         # Batas Pengerasan Fase (Tighter Boundaries) - Disesuaikan agar lebih user-friendly
-        # Batas Pengerasan Fase (Tighter Boundaries)
         # n < 3: Sangat longgar | n < 5: Longgar | n < 10: Mulai ketat | n >= 10: Stabil
         limits = [(0.85, 12.0, 0.70), (0.75, 10.0, 0.72), (0.55, 5.0, 0.75), (0.45, 3.5, 0.75)]
         s_h, m_l, t_h = limits[min(3, 0 if n<3 else 1 if n<5 else 2 if n<10 else 3)]
         
-        # S_MIN: User baru butuh ruang napas. Kita beri batas 60% di awal, baru perlahan turun ke 40%
-        s_min = 0.60 if n < 5 else 0.50 if n < 10 else 0.40
+        # S_MIN: User baru butuh ruang napas. Kita beri batas 80% di awal (sangat longgar), baru perlahan turun ke 40%
+        s_min = 0.80 if n < 5 else 0.65 if n < 10 else 0.40
         s_res = float(np.clip(s_final, s_min, s_h))
-        m_res = float(np.clip(m_final, m_l, 15.0))
+        m_res = float(np.clip(m_final, m_l, self.MAX_MAHAL_DIST))
         t_min = 0.68 if n > 50 else 0.65
         t_res = float(np.clip(t_final, t_min, t_h))
 
@@ -400,10 +415,9 @@ class BiometricCore:
         return float(dtw[n, m] / max(n, m))
 
     def _get_response_template(self, n=0):
-        """Template standar untuk respon analisis."""
         return {"status": False, "score": 0.0, "threshold": 0.70, "reason": "Unknown", "method": "Titanium Fusion",
                 "n_samples": n, "speed_dev": 0.0, "mahal_dist": None, "ai_score": None, "ai_status": "Standby",
-                "should_update_history": False, "adaptive_gates": {}, "components": {}, "weights": {}}
+                "should_update_history": False, "adaptive_gates": {}, "components": {}}
 
 # Blok eksekusi CLI (untuk pengujian lewat terminal)
 if __name__ == "__main__":
