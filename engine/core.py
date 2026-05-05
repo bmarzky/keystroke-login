@@ -223,10 +223,10 @@ class BiometricCore:
             res["ai_status"] = "Normal (High Trust)"
             if ai_score > 0.90:
                 # Jalur Hijau: Sangat yakin, berikan sedikit bonus
-                threshold = float(max(threshold, 0.70))
+                threshold = float(max(threshold, 0.68))
                 f_score = min(1.0, f_score + 0.03)
             elif ai_score > 0.85:
-                threshold = float(max(threshold, 0.74))
+                threshold = float(max(threshold, 0.72))
                 f_score = min(1.0, f_score + 0.01)
         elif ai_score >= 0.30:
             # Jalur Kuning: Ragu, naikkan standar keamanan
@@ -244,11 +244,23 @@ class BiometricCore:
     def _apply_consistency_penalty(self, comp: dict, f_score: float, res: dict) -> float:
         """Memberikan penalti jika ada satu komponen biometrik yang sangat buruk."""
         if not comp: return f_score
-        critical_min = min(comp.values())
-        if critical_min < 0.55:
-            penalty = 0.85 if critical_min < 0.40 else 0.92
+        
+        n = res.get("n_samples", 0)
+        # Untuk user baru (n < 10), jangan masukkan 'speed' ke dalam radar penalti karena pasti fluktuatif
+        check_components = {k: v for k, v in comp.items() if (n >= 10 or k != 'speed')}
+        
+        if not check_components: return f_score
+        
+        critical_min = min(check_components.values())
+        if critical_min < 0.50:
+            # Penalti lebih ringan untuk user baru (0.95/0.98) dibanding user lama (0.85/0.92)
+            if n < 10:
+                penalty = 0.95 if critical_min < 0.35 else 0.98
+            else:
+                penalty = 0.85 if critical_min < 0.40 else 0.92
+                
             f_score *= penalty
-            res["reason_debug"] = f"Low Consistency Penalty ({critical_min:.2f})"
+            res["reason_debug"] = f"Consistency Penalty ({critical_min:.2f})"
         return f_score
 
     def _finalize_decision(self, res: dict, f_score: float, gates: dict, max_out: int, in_len: int, m_dist: float, all_scores: list) -> dict:
@@ -308,7 +320,7 @@ class BiometricCore:
                 multiplier = 1.8 if n >= 20 else 2.8
                 buffer = 1.5 if n >= 20 else 4.0
                 g["m"] = m_avg + multiplier * m_std + buffer
-                base_t = 0.68 if n >= 20 else 0.65
+                base_t = 0.65 if n >= 20 else 0.62
                 g["t"] = float(min(base_t, base_t - 0.05 + (n-5)*0.01) + (max(0.0, 1.0 - m_avg/3.0)*0.08))
 
         # 3. Blending (Pencampuran fase transisi)
@@ -317,12 +329,16 @@ class BiometricCore:
         m_final = (1-alpha)*(1.5 + cv*6.0) + alpha*g["m"]
         t_final = (1-alpha)*(0.68 - cv*0.1) + alpha*g["t"]
 
+        # Batas Pengerasan Fase (Tighter Boundaries) - Disesuaikan agar lebih user-friendly
         # Batas Pengerasan Fase (Tighter Boundaries)
-        limits = [(0.75, 10.0, 0.74), (0.65, 8.0, 0.78), (0.45, 3.5, 0.82), (0.40, 3.5, 0.80)]
+        # n < 3: Sangat longgar | n < 5: Longgar | n < 10: Mulai ketat | n >= 10: Stabil
+        limits = [(0.85, 12.0, 0.70), (0.75, 10.0, 0.72), (0.55, 5.0, 0.75), (0.45, 3.5, 0.75)]
         s_h, m_l, t_h = limits[min(3, 0 if n<3 else 1 if n<5 else 2 if n<10 else 3)]
         
-        s_res = float(np.clip(s_final, 0.40, s_h))
-        m_res = float(np.clip(m_final, m_l, 12.0))
+        # S_MIN: User baru butuh ruang napas. Kita beri batas 60% di awal, baru perlahan turun ke 40%
+        s_min = 0.60 if n < 5 else 0.50 if n < 10 else 0.40
+        s_res = float(np.clip(s_final, s_min, s_h))
+        m_res = float(np.clip(m_final, m_l, 15.0))
         t_min = 0.68 if n > 50 else 0.65
         t_res = float(np.clip(t_final, t_min, t_h))
 
