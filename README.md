@@ -9,11 +9,82 @@
 
 ## Arsitektur Keamanan: Titanium Fusion Engine
 
-Sistem ini menggunakan pendekatan **Multi-Layered Defense** yang terintegrasi secara dinamis untuk memastikan keamanan tingkat tinggi:
+Sistem ini menggunakan arsitektur berlapis untuk memastikan alur data yang aman dan terstruktur:
 
-![System Architecture Diagram](./docs/img/system_architecture.png)
+```mermaid
+graph TD
 
-*Diagram di atas menunjukkan alur data dari input ketikan hingga pengambilan keputusan autentikasi oleh Fusion Engine.*
+%% =========================
+%% DASHBOARD ENTRY
+%% =========================
+UI[Dashboard: Keystroke Authentication System]
+
+UI --> IN[Live Input Stream<br/>Keystroke Capture]
+
+%% =========================
+%% DATA PROCESSING PANEL
+%% =========================
+subgraph PANEL1["Data Processing Panel"]
+    IN --> CLEAN[Pre-processing Engine<br/>Validate + Clean Data]
+    CLEAN --> FEATURE[Feature Builder<br/>Dwell Time / Flight Time]
+end
+
+%% =========================
+%% PROFILE PANEL
+%% =========================
+subgraph PANEL2["User Profile Panel"]
+    FEATURE --> PROFILE[User Behavioral Profile]
+    PROFILE --> DB[(Secure Profile Storage)]
+    PROFILE --> ADAPT[Adaptive Learning Engine<br/>Concept Drift Update]
+end
+
+%% =========================
+%% AI & STATISTICAL ENGINE
+%% =========================
+subgraph PANEL3["Authentication Engine"]
+    FEATURE --> STAT[Statistical Engine<br/>Mahalanobis Distance]
+    FEATURE --> ML[AI Engine<br/>One-Class SVM]
+
+    STAT --> DECISION_ENGINE
+    ML --> DECISION_ENGINE
+end
+
+DECISION_ENGINE[Decision Fusion Engine]
+
+%% =========================
+%% ACCESS CONTROL PANEL
+%% =========================
+subgraph PANEL4["Access Control Panel"]
+    DECISION_ENGINE --> RESULT{Authentication Result}
+
+    RESULT -->|Allow| SUCCESS[Access Granted]
+    RESULT -->|Deny| FAIL[Access Denied]
+end
+
+%% =========================
+%% SECURITY & MONITORING
+%% =========================
+subgraph PANEL5["Security & Monitoring Dashboard"]
+    FAIL --> LOG[Security Logs<br/>Anomaly Tracking]
+    SUCCESS --> ADAPT
+
+    LOG --> ANALYSIS[Attack Pattern Analysis]
+end
+
+%% =========================
+%% FEEDBACK LOOP
+%% =========================
+ADAPT --> DB
+
+%% =========================
+%% UI STYLE NOTES
+%% =========================
+style UI fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+style DB fill:#f5f5f5,stroke:#333
+style LOG fill:#ffebee,stroke:#c62828
+style ADAPT fill:#e8f5e9,stroke:#2e7d32
+style RESULT fill:#fff3e0,stroke:#ef6c00
+```
 
 ---
 
