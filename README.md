@@ -9,13 +9,11 @@
 
 ## Arsitektur Keamanan: Titanium Fusion Engine
 
-Sistem ini tidak hanya mengandalkan satu metrik, melainkan menggunakan pendekatan **Multi-Layered Defense** yang disebut **Titanium Fusion**:
+Sistem ini menggunakan pendekatan **Multi-Layered Defense** yang terintegrasi secara dinamis untuk memastikan keamanan tingkat tinggi:
 
-1.  **Structural Gate (DTW Recovery)**: Memvalidasi integritas struktur ketikan. Menggunakan algoritma *Dynamic Time Warping* (DTW) untuk mentoleransi kesalahan ketik ringan (*typos*) tanpa mengorbankan profil biometrik.
-2.  **Statistical Gate (Mahalanobis Distance)**: Menghitung jarak statistik antara input saat ini dengan distribusi historis pengguna. Gerbang ini sangat efektif mendeteksi anomali pada fitur-fitur yang saling berkorelasi.
-3.  **AI Layer (One-Class SVM)**: Menggunakan model *One-Class Support Vector Machine* untuk mendeteksi anomali secara *real-time*. Model ini dilatih secara otomatis setelah pengguna memiliki 20 sampel data.
-4.  **Forgiver Logic (Adaptive Speed)**: Logika cerdas yang mampu membedakan antara "perubahan kecepatan karena faktor manusia" (misal: lelah atau terburu-buru) dengan "upaya impersonasi" berdasarkan konsistensi pola ritme.
-5.  **Dynamic Weighting**: Untuk profil yang sudah mapan (*Mature Profiles*, n ≥ 15), sistem secara otomatis menyesuaikan bobot (weights) pada setiap metrik (Rhythm, Corr, Speed, Flow, Ratio, Stability) berdasarkan komponen mana yang paling stabil pada pengguna tersebut.
+![System Architecture Diagram](./docs/img/system_architecture.png)
+
+*Diagram di atas menunjukkan alur data dari input ketikan hingga pengambilan keputusan autentikasi oleh Fusion Engine.*
 
 ---
 
