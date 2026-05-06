@@ -7,76 +7,11 @@
 
 ---
 
-## Arsitektur Keamanan: Titanium Fusion Engine
+## Arsitektur Keamanan
 
-Sistem ini menggunakan arsitektur berlapis untuk memastikan alur data yang aman dan terstruktur:
+Sistem ini mengadopsi arsitektur keamanan berlapis yang dirancang untuk integritas data tinggi. Alur kerja dimulai dari penangkapan aliran input ketikan pengguna secara *real-time*, yang kemudian diproses oleh *Pre-processing Engine* untuk divalidasi dan dibersihkan dari pencilan (*outliers*). Fitur-fitur biometrik inti seperti *Dwell Time* dan *Flight Time* diekstraksi untuk membangun profil perilaku yang unik bagi setiap pengguna.
 
-```mermaid
-graph TD
-
-%% =========================
-%% DASHBOARD ENTRY
-%% =========================
-UI[Dashboard: Keystroke Authentication System]
-
-UI --> IN[Live Input Stream<br/>Keystroke Capture]
-
-%% =========================
-%% DATA PROCESSING PANEL
-%% =========================
-subgraph PANEL1["Data Processing Panel"]
-    IN --> CLEAN[Pre-processing Engine<br/>Validate + Clean Data]
-    CLEAN --> FEATURE[Feature Builder<br/>Dwell Time / Flight Time]
-end
-
-%% =========================
-%% PROFILE PANEL
-%% =========================
-subgraph PANEL2["User Profile Panel"]
-    FEATURE --> PROFILE[User Behavioral Profile]
-    PROFILE --> DB[(Secure Profile Storage)]
-    PROFILE --> ADAPT[Adaptive Learning Engine<br/>Concept Drift Update]
-end
-
-%% =========================
-%% AI & STATISTICAL ENGINE
-%% =========================
-subgraph PANEL3["Authentication Engine"]
-    FEATURE --> STAT[Statistical Engine<br/>Mahalanobis Distance]
-    FEATURE --> ML[AI Engine<br/>One-Class SVM]
-
-    STAT --> DECISION_ENGINE
-    ML --> DECISION_ENGINE
-end
-
-DECISION_ENGINE[Decision Fusion Engine]
-
-%% =========================
-%% ACCESS CONTROL PANEL
-%% =========================
-subgraph PANEL4["Access Control Panel"]
-    DECISION_ENGINE --> RESULT{Authentication Result}
-
-    RESULT -->|Allow| SUCCESS[Access Granted]
-    RESULT -->|Deny| FAIL[Access Denied]
-end
-
-%% =========================
-%% SECURITY & MONITORING
-%% =========================
-subgraph PANEL5["Security & Monitoring Dashboard"]
-    FAIL --> LOG[Security Logs<br/>Anomaly Tracking]
-    SUCCESS --> ADAPT
-
-    LOG --> ANALYSIS[Attack Pattern Analysis]
-end
-
-%% =========================
-%% FEEDBACK LOOP
-%% =========================
-ADAPT --> DB
-
-```
+Inti dari kecerdasan sistem ini terletak pada mekanisme autentikasi ganda: **Statistical Engine** yang menggunakan perhitungan jarak Mahalanobis dan **AI Engine** berbasis *One-Class Support Vector Machine* (OCSVM). Kedua mesin ini bekerja secara paralel untuk menganalisis kedekatan pola input dengan profil historis. Hasil dari kedua analisis tersebut kemudian disatukan melalui **Decision Fusion Engine** untuk memberikan keputusan akhir apakah akses diberikan atau ditolak. Selain itu, sistem secara cerdas memperbarui profil pengguna melalui *Adaptive Learning Engine* pada setiap login yang berhasil, memastikan sistem tetap akurat meskipun terjadi perubahan gaya ketik pengguna di masa depan (*concept drift*). Seluruh aktivitas dan anomali dicatat secara mendetail dalam log keamanan untuk pemantauan dan analisis pola serangan.
 
 ---
 
