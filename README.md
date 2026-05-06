@@ -93,7 +93,7 @@ Sistem membangun tanda tangan biometrik yang presisi melalui ekstraksi **24 fitu
 *   **Temporal Metrics**:
     *   **Hold Time**: Durasi penekanan tombol dari *keydown* hingga *keyup*. Metrik ini mencerminkan kebiasaan motorik halus pengguna.
     *   **Flight Time**: Jeda waktu transisi antara melepaskan satu tombol dan menekan tombol berikutnya.
-*   **Interval Metrics (Rentang Waktu)**:
+*   **Interval Metrics**:
     *   **Down-to-Down**: Interval waktu dari awal penekanan satu tombol hingga awal penekanan tombol berikutnya.
     *   **Up-to-Up**: Interval waktu dari pelepasan satu tombol hingga pelepasan tombol berikutnya.
 *   **Advanced Behavioral Metrics**:
