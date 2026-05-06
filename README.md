@@ -88,13 +88,17 @@ keystroke-login/
 
 ## Metrik yang Dianalisis
 
-Sistem mengekstraksi 24 fitur unik dari setiap sesi login:
--   **Hold Time (Dwell)**: Durasi penekanan tombol.
--   **Flight Time**: Jeda antar penekanan tombol.
--   **D2D (Down-to-Down)**: Interval dari satu tombol ditekan ke tombol berikutnya.
--   **U2U (Up-to-Up)**: Interval dari satu tombol dilepas ke tombol berikutnya dilepas.
--   **Rhythm Ratio**: Keajegan ritme antar pasangan kunci.
--   **FFT (Fast Fourier Transform)**: Tanda tangan frekuensi dari pola ketikan untuk mendeteksi otomatisasi (bot).
+Sistem membangun tanda tangan biometrik yang presisi melalui ekstraksi **24 fitur unik** yang dikategorikan sebagai berikut:
+
+*   **Temporal Metrics (Waktu Dasar)**:
+    *   **Hold Time (Dwell)**: Durasi penekanan tombol dari *keydown* hingga *keyup*. Metrik ini mencerminkan kebiasaan motorik halus pengguna.
+    *   **Flight Time**: Jeda waktu transisi antara melepaskan satu tombol dan menekan tombol berikutnya.
+*   **Interval Metrics (Rentang Waktu)**:
+    *   **Down-to-Down (D2D)**: Interval waktu dari awal penekanan satu tombol hingga awal penekanan tombol berikutnya.
+    *   **Up-to-Up (U2U)**: Interval waktu dari pelepasan satu tombol hingga pelepasan tombol berikutnya.
+*   **Advanced Behavioral Metrics**:
+    *   **Rhythm Ratio**: Analisis konsistensi perbandingan durasi antar pasangan kunci untuk mengukur stabilitas irama mengetik.
+    *   **Frequency Domain (FFT)**: Menggunakan *Fast Fourier Transform* untuk mengekstraksi tanda tangan frekuensi ketikan, sangat efektif dalam membedakan antara operator manusia dan serangan bot otomatis.
 
 ---
 
