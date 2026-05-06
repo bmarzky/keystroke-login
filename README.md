@@ -76,14 +76,6 @@ end
 %% =========================
 ADAPT --> DB
 
-%% =========================
-%% UI STYLE NOTES
-%% =========================
-style UI fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
-style DB fill:#f5f5f5,stroke:#333
-style LOG fill:#ffebee,stroke:#c62828
-style ADAPT fill:#e8f5e9,stroke:#2e7d32
-style RESULT fill:#fff3e0,stroke:#ef6c00
 ```
 
 ---
