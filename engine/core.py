@@ -194,7 +194,10 @@ class BiometricCore:
             # Flow (Korelasi Flight Jitter)
             fl_in, fl_bs = np.diff(inp['flight']), np.diff(np.array(b['flight']))
             ml_f = min(len(fl_in), len(fl_bs))
-            fl_s = float(max(0.35, np.corrcoef(fl_in[:ml_f], fl_bs[:ml_f])[0,1])) if ml_f>3 else 0.5
+            if ml_f > 3 and np.std(fl_in[:ml_f]) > 1e-6 and np.std(fl_bs[:ml_f]) > 1e-6:
+                fl_s = float(max(0.35, np.corrcoef(fl_in[:ml_f], fl_bs[:ml_f])[0,1]))
+            else:
+                fl_s = 0.55 # Default lebih ramah jika sangat konsisten (zero jitter)
             
             # Perbandingan Fitur Lanjutan (Ratio & Stability)
             f_in, f_bs = np.array(self.extract(inp, history)), np.array(self.extract(b, history))
@@ -226,10 +229,12 @@ class BiometricCore:
             elif ai_score > 0.85:
                 threshold = float(max(threshold, 0.72))
                 f_score = min(1.0, f_score + 0.01)
-        elif ai_score >= 0.30:
-            # Jalur Kuning: Ragu, naikkan standar keamanan
+        elif ai_score >= 0.25:
+            # Jalur Kuning: Ragu, naikkan standar keamanan secara gradual (bukan lonjakan tajam)
             res["ai_status"] = "Caution (Manual Review Pattern)"
-            threshold = float(max(threshold, 0.78))
+            # Gradual increase: 0.65 -> 0.78 based on how low the AI score is
+            boost = (0.60 - ai_score) * 0.35 # Max boost ~0.12
+            threshold = float(max(threshold, min(0.78, threshold + boost)))
         else:
             # Jalur Merah: Terdeteksi anomali (Penyusup), berikan penalti skor & naikkan threshold
             penalty = 0.60 if ai_score < 0.15 else 0.75
@@ -250,12 +255,12 @@ class BiometricCore:
         if not check_components: return f_score
         
         critical_min = min(check_components.values())
-        if critical_min < 0.50:
-            # Penalti lebih ringan untuk user baru (0.95/0.98) dibanding user lama (0.85/0.92)
-            if n < 10:
-                penalty = 0.95 if critical_min < 0.35 else 0.98
+        if critical_min < 0.45: # Dilonggarkan dari 0.50 ke 0.45
+            # Penalti lebih ringan untuk user transisi (n < 40)
+            if n < 40:
+                penalty = 0.96 if critical_min < 0.35 else 0.98
             else:
-                penalty = 0.85 if critical_min < 0.40 else 0.92
+                penalty = 0.88 if critical_min < 0.40 else 0.94
                 
             f_score *= penalty
             res["reason_debug"] = f"Consistency Penalty ({critical_min:.2f})"
@@ -333,10 +338,14 @@ class BiometricCore:
             g["s"] = float(max(0.35, (3.0 * np.std(speeds) / max(np.mean(speeds), 1.0))))
             if mahal_dists and len(mahal_dists) >= 3:
                 m_avg, m_std = float(np.mean(mahal_dists)), float(np.std(mahal_dists))
-                multiplier = 1.8 if n >= 20 else 2.8
-                buffer = 1.5 if n >= 20 else 4.0
+                # Transisi Linear dari Longgar (n=5) ke Ketat (n=50)
+                # multiplier: 2.8 -> 1.8 | buffer: 4.0 -> 1.5
+                progress = np.clip((n - 5) / 45.0, 0.0, 1.0)
+                multiplier = 2.8 - (progress * 1.0)
+                buffer = 4.0 - (progress * 2.5)
+                
                 g["m"] = m_avg + multiplier * m_std + buffer
-                base_t = 0.65 if n >= 20 else 0.62
+                base_t = 0.65 if n >= 30 else 0.62
                 g["t"] = float(min(base_t, base_t - 0.05 + (n-5)*0.01) + (max(0.0, 1.0 - m_avg/3.0)*0.08))
 
         # 3. Blending (Pencampuran fase transisi)
