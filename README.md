@@ -1,10 +1,9 @@
 # Biometric Authentication System Login
 
 [![Version](https://img.shields.io/badge/version-2.5.0--stable-blue.svg)](https://github.com/bmarzky/keystroke-login)
-[![Security](https://img.shields.io/badge/Security-Titanium--Fusion-critical.svg)](#)
 [![Python](https://img.shields.io/badge/Python-3.12-brightgreen.svg)](https://www.python.org/)
 
-Sistem autentikasi biometrik perilaku (*behavioral biometrics*) mutakhir yang mengenali pengguna berdasarkan pola unik ketikan jari mereka. Dikembangkan untuk riset keamanan siber tingkat lanjut, sistem ini menggabungkan analisis statistik multivariat dengan *Machine Learning* untuk menciptakan lapisan pertahanan kedua yang hampir mustahil dipalsukan.
+**Titanium Fusion** adalah sistem autentikasi berbasis *Keystroke Dynamics* yang memverifikasi identitas pengguna melalui pola ritme ketikan yang unik. Sistem ini dirancang sebagai lapisan keamanan kedua (**MFA**) yang menggabungkan analisis statistik multivariat dan *Machine Learning* untuk mendeteksi upaya impersonasi secara *real-time*, memastikan bahwa hanya pemilik akun asli yang dapat mengakses sistem meskipun password telah diketahui oleh pihak lain.
 
 ---
 
@@ -100,8 +99,6 @@ Sistem mengekstraksi 24 fitur unik dari setiap sesi login:
 -   **U2U (Up-to-Up)**: Interval dari satu tombol dilepas ke tombol berikutnya dilepas.
 -   **Rhythm Ratio**: Keajegan ritme antar pasangan kunci.
 -   **FFT (Fast Fourier Transform)**: Tanda tangan frekuensi dari pola ketikan untuk mendeteksi otomatisasi (bot).
-
----
 
 ---
 
