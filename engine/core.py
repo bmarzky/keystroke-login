@@ -395,22 +395,25 @@ class BiometricCore:
         m_final = (1-alpha)*(1.5 + cv*6.0) + alpha*g["m"]
         t_final = (1-alpha)*(0.68 - cv*0.1) + alpha*g["t"]
 
-        # Batas Pengerasan Fase (Tighter Boundaries) - Disesuaikan agar lebih user-friendly
-        # n < 3: Sangat longgar | n < 5: Longgar | n < 10: Mulai ketat | n >= 10: Stabil
-        limits = [(0.85, 12.0, 0.70), (0.75, 10.0, 0.72), (0.55, 5.0, 0.75), (0.45, 3.5, 0.75)]
-        s_h, m_l, t_h = limits[min(3, 0 if n<3 else 1 if n<5 else 2 if n<10 else 3)]
+        # Batas Pengerasan Fase (Tighter Boundaries) - Diperketat untuk mencegah FAR
+        # n < 5: Longgar | n < 20: Transisi | n < 50: Ketat | n >= 100: Sangat Ketat
+        # Format: (speed_limit, mahal_limit, threshold_upper_limit)
+        limits = [(0.85, 12.0, 0.72), (0.75, 10.0, 0.75), (0.50, 4.5, 0.78), (0.40, 3.2, 0.82)]
+        s_h, m_l, t_h = limits[min(3, 0 if n<5 else 1 if n<20 else 2 if n<100 else 3)]
         
-        # S_MIN: User baru butuh ruang napas. Kita beri batas 80% di awal (sangat longgar), baru perlahan turun ke 40%
-        s_min = 0.80 if n < 5 else 0.65 if n < 10 else 0.40
+        # S_MIN & T_MIN: Pengetatan mulai dari n=20
+        s_min = 0.75 if n < 5 else 0.60 if n < 20 else 0.35
         s_res = float(np.clip(s_final, s_min, s_h))
         m_res = float(np.clip(m_final, m_l, self.MAX_MAHAL_DIST))
-        t_min = 0.68 if n > 50 else 0.65
+        
+        # Hardening Threshold Dasar
+        t_min = 0.75 if n > 100 else 0.72 if n > 50 else 0.70 if n > 20 else 0.66
         t_res = float(np.clip(t_final, t_min, t_h))
 
         # Penalti untuk Password Pendek
         if len(h0_d) < 7:
-            t_res = float(np.clip(t_res + (7-len(h0_d))*0.015, 0.70, 0.88))
-            s_res, m_res = s_res*1.15, m_res*0.90
+            t_res = float(np.clip(t_res + (7-len(h0_d))*0.02, 0.72, 0.90))
+            s_res, m_res = s_res*1.20, m_res*0.85
 
         return {"speed_gate": round(s_res,4), "mahal_gate": round(m_res,4), 
                 "threshold": round(t_res,4), "phase": f"Phase {n}" if n<5 else f"Mahalanobis Mode (n={n})"}
