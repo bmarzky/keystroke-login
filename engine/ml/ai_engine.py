@@ -51,7 +51,7 @@ class AIEngine:
         """Prediksi dengan skor kepercayaan (Confidence Score)."""
         model_path = self._get_model_path(user_id)
         if not os.path.exists(model_path):
-            return None, 0.0, 0
+            return None, 0.0, 0, 0.0
             
         try:
             data = joblib.load(model_path)
