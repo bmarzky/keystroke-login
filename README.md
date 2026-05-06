@@ -103,5 +103,13 @@ Sistem mengekstraksi 24 fitur unik dari setiap sesi login:
 
 ---
 
-**Dikembangkan untuk Riset Keamanan Siber Tingkat Lanjut.**
-*Titanium Fusion: Because your password is not just what you know, but how you type it.*
+---
+
+<div align="center">
+
+**Developed for Advanced Cybersecurity Research**  
+*“In the world of Titanium Fusion, your password is no longer just what you know, but the unique rhythm of who you are.”*
+
+[Report Bug](https://github.com/bmarzky/keystroke-login/issues) · [Request Feature](https://github.com/bmarzky/keystroke-login/issues)
+
+</div>
