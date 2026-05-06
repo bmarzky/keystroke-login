@@ -20,15 +20,18 @@ Sistem ini tidak hanya mengandalkan satu metrik, melainkan menggunakan pendekata
 
 ---
 
-## Fitur Utama
+## Fitur Unggulan
 
--   **Adaptive Thresholding**: Ambang batas keamanan yang belajar dan mengeras secara otomatis seiring bertambahnya jumlah sampel (n < 5: Longgar, n > 50: Sangat Ketat).
--   **Replay Attack Protection**: Memblokir upaya login menggunakan data biometrik yang disalin (copy-paste) melalui validasi redundansi data.
--   **Biometric Audit Trail**: Pencatatan log teknis yang sangat detail (Dwell Time, Flight Time, Mahalanobis Distance, AI Confidence Score) untuk kebutuhan forensik dan analisis riset.
--   **Automated AI Training**: Sistem melakukan *background training* model OCSVM setiap kelipatan 20 login sukses untuk memastikan model selalu akurat.
--   **Interactive Dashboard**: Visualisasi performa mengetik, stabilitas, dan perbandingan pola ketikan terakhir.
-
----
+| Komponen | Deskripsi Fungsional |
+| :--- | :--- |
+| **Adaptive Thresholding** | Pengerasan ambang batas keamanan secara dinamis berbasis populasi sampel ($n$). |
+| **Replay Protection** | Deteksi redundansi data untuk menangkal serangan biometrik statis (*copy-paste*). |
+| **Biometric Audit Trail** | Dokumentasi metrik teknis (Mahalanobis & AI Score) untuk kebutuhan forensik. |
+| **AI Auto-Training** | Pelatihan model OCSVM secara otomatis setiap kelipatan 20 data baru. |
+| **Forgiver Logic** | Toleransi cerdas terhadap deviasi kecepatan jika korelasi pola tetap tinggi. |
+| **Multivariate Gating** | Analisis keterkaitan antar fitur menggunakan jarak Mahalanobis yang presisi. |
+| **24D Feature Vector** | Ekstraksi 24 fitur unik termasuk FFT untuk identifikasi tanda tangan frekuensi. |
+| **Secure Core** | Enkripsi sesi dan hashing password standar industri menggunakan Bcrypt. |
 
 ## Tech Stack
 
