@@ -65,7 +65,8 @@ class BiometricCore:
             f_score = fusion_data["best_score"]
             res.update({
                 "score": round(f_score, 4),
-                "components": fusion_data["components"]
+                "components": fusion_data["components"],
+                "weights": fusion_data.get("weights", [])
             })
 
             # 6. Diagnostik Lanjutan (Mahalanobis & AI)
@@ -154,10 +155,48 @@ class BiometricCore:
         n_h = len(history)
         c_limit = self._get_clean_limit(history)
         
-        # Bobot Dinamis berdasarkan jam terbang user (semakin banyak sampel, bobot semakin ketat)
-        if n_h < 5: w = [0.3, 0.4, 0.15, 0.15, 0, 0]
-        elif n_h < 10: w = [0.35, 0.25, 0.15, 0.15, 0.05, 0.05]
-        else: w = [0.3, 0.15, 0.15, 0.15, 0.15, 0.1]
+        # --- LOGIKA DINAMISASI BOBOT (SARAN NO. 3) ---
+        # Jika riwayat sudah cukup (n >= 15), hitung bobot berdasarkan stabilitas profil
+        if n_h >= 15:
+            # Kita hitung variansi internal dari riwayat (3 sampel awal + 7 terbaru)
+            audit_samples = history[:3] + history[-7:]
+            stabilities = []
+            
+            # Ekstrak fitur stabilitas untuk setiap komponen
+            for comp_idx in range(6):
+                # Ambil skor komponen dari audit_samples (dibandingkan dengan sampel pertama)
+                scores = []
+                ref = self._ensure_vectors(audit_samples[0])
+                for s in audit_samples[1:]:
+                    s = self._ensure_vectors(s)
+                    # Simulasi skor sederhana untuk audit stabilitas
+                    if comp_idx == 0: # Rhythm
+                        n1, n2 = np.array(ref['dwell'])/max(sum(ref['dwell']),0.001), np.array(s['dwell'])/max(sum(s['dwell']),0.001)
+                        ml = min(len(n1), len(n2))
+                        scores.append(float(max(0, 1.0 - (np.sqrt(np.sum((n1[:ml]-n2[:ml])**2))/0.25))))
+                    elif comp_idx == 1: # Corr
+                        c = np.corrcoef(ref['dwell'][:min(len(ref['dwell']), len(s['dwell']))], s['dwell'][:min(len(ref['dwell']), len(s['dwell']))])[0,1]
+                        scores.append(max(0, c) if np.isfinite(c) else 0.5)
+                    elif comp_idx == 2: # Speed
+                        scores.append(max(0, 1.0 - (abs(ref.get('speed',350) - s.get('speed',350))/350 / 0.5)))
+                    else: # Lainnya (Flow, Ratio, Stability) - Gunakan nilai default stabilitas moderat
+                        scores.append(0.7)
+                
+                # Hitung Stabilitas (1 / Standar Deviasi). Semakin kecil std, semakin besar stabilitas.
+                std = np.std(scores) if len(scores) > 1 else 0.1
+                stabilities.append(1.0 / (std + 0.05)) # +0.05 sebagai smoothing
+
+            # Normalisasi bobot agar total = 1.0
+            # Kita batasi bobot per komponen (min 0.08, max 0.40) agar tidak ada fitur yang mati total
+            raw_w = np.array(stabilities)
+            w = raw_w / sum(raw_w)
+            w = np.clip(w, 0.08, 0.40)
+            w = w / sum(w) # Re-normalisasi setelah clip
+        else:
+            # Bobot Statis untuk User Baru (Fase Pembangunan Profil)
+            if n_h < 5: w = [0.3, 0.4, 0.15, 0.15, 0, 0]
+            elif n_h < 10: w = [0.35, 0.25, 0.15, 0.15, 0.05, 0.05]
+            else: w = [0.3, 0.15, 0.15, 0.15, 0.15, 0.1]
         
         # Pilih sampel acuan (3 awal + 7 terbaru)
         baselines = history[:3] + history[-7:] if n_h > 10 else history
@@ -204,19 +243,21 @@ class BiometricCore:
             rat_s = float(max(0, 1.0 - np.mean(np.abs(f_in[[2,3,6,7,10,11,14,15]]-f_bs[[2,3,6,7,10,11,14,15]])/(f_bs[[2,3,6,7,10,11,14,15]]+0.1))))
             sta_s = float(max(0, 1.0 - np.mean(np.abs(f_in[[1,3,5,7,9,11,13,15]]-f_bs[[1,3,5,7,9,11,13,15]])/(f_bs[[1,3,5,7,9,11,13,15]]+0.05))))
             
-            # Total Fusi
+            # Total Fusi (Menggunakan Bobot w yang mungkin dinamis)
             score = w[0]*r_s + w[1]*c_s + w[2]*s_s + w[3]*fl_s + w[4]*rat_s + w[5]*sta_s
             all_scores.append(score)
             comp_logs.append([r_s, c_s, s_s, fl_s, rat_s, sta_s])
             max_out = max(max_out, out)
 
         best_idx = int(np.argmax(all_scores))
-        return {
+        res_fusion = {
             "best_score": float(np.max(all_scores)),
             "all_scores": all_scores,
             "components": {k: round(float(v), 4) for k, v in zip(["rhythm", "corr", "speed", "flow", "ratio", "stability"], comp_logs[best_idx])},
+            "weights": [round(float(val), 3) for val in w], # Pastikan w selalu ada
             "max_out": max_out
         }
+        return res_fusion
 
     def _apply_ai_smart_guard(self, ai_score: float, f_score: float, threshold: float, res: dict) -> tuple:
         """Menyesuaikan skor dan ambang batas berdasarkan tingkat kepercayaan OCSVM."""
