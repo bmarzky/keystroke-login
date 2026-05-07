@@ -1,13 +1,28 @@
 import os
+import hashlib
 import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
-import secrets
 
 load_dotenv()
 
+def _derive_secret_key() -> str:
+    """
+    Menghasilkan SECRET_KEY yang deterministik (tidak berubah saat restart).
+    Prioritas: nilai dari .env -> fallback statis berbasis DB_NAME.
+    Tanpa ini, Flask akan generate key acak setiap restart sehingga
+    semua sesi user langsung invalid (ter-logout paksa).
+    """
+    key_from_env = os.getenv('SECRET_KEY', '').strip()
+    if key_from_env:
+        return key_from_env
+    # Fallback: hash stabil dari nama database + salt tetap
+    db_name = os.getenv('DB_NAME', 'keystroke_db')
+    salt = "titanium-fusion-salt-2024"
+    return hashlib.sha256(f"{db_name}:{salt}".encode()).hexdigest()
+
 class Config:
-    SECRET_KEY = os.getenv('SECRET_KEY', secrets.token_hex(24))
+    SECRET_KEY = _derive_secret_key()
     
     # Database Config
     DB_HOST = os.getenv('DB_HOST', 'localhost')
