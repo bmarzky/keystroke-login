@@ -205,7 +205,11 @@ def _trigger_training(uid, history):
     
     py_train = os.path.join('engine', 'ml', 'ai_trainer.py')
     import sys
-    subprocess.Popen([sys.executable, py_train, str(uid), train_file])
+    try:
+        subprocess.Popen([sys.executable, py_train, str(uid), train_file])
+    except Exception as e:
+        # Jangan crash app utama jika training gagal — cukup log ke console
+        print(f"[TRAINING ERROR] Gagal memulai proses training untuk user {uid}: {e}")
 
 if __name__ == '__main__':
     app.run(debug=True, port=8000)
