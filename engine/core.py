@@ -342,12 +342,19 @@ class BiometricCore:
         else:
             reason = f"Skor Fusion Rendah ({f_score:.2f})"
 
+        # should_update_history:
+        # - n < 5  : selalu update (fase pembangunan profil awal)
+        # - n < 20 : update jika m_dist < 7.0 ATAU m_dist tidak tersedia (None)
+        # - n >= 20: update hanya jika m_dist < 7.0 (ketat, model sudah matang)
+        # Catatan: batas dinaikkan dari 5.0 ke 7.0 agar profil user terus berkembang
+        # dan model AI mendapat cukup data untuk retrain di n=40, 60, dst.
+        _m_ok = (m_dist is None and res["n_samples"] < 20) or (m_dist is not None and m_dist < 7.0)
         res.update({
             "status": is_match,
             "score": round(f_score, 4),
             "threshold": gates["threshold"],
             "reason": reason,
-            "should_update_history": bool(is_match and (res["n_samples"] < 5 or (m_dist and m_dist < 5.0)) and out_p < 0.20)
+            "should_update_history": bool(is_match and (res["n_samples"] < 5 or _m_ok) and out_p < 0.20)
         })
         return res
 
