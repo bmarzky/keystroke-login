@@ -90,40 +90,18 @@ const AuthForm = (() => {
     };
 
     const initBiometricProtection = () => {
+        // CATATAN: Listener paste, drop, contextmenu, dan input sudah
+        // ditangani sepenuhnya oleh keystroke.js agar tidak terjadi
+        // double-firing event. File ini hanya menangani UX (pesan & navigasi).
         const passwordInput = getElement('#password');
         const noticeTarget = getElement('#js-error-msg');
 
-        if (!passwordInput) return;
+        if (!passwordInput || !noticeTarget) return;
 
-        const resetText = () => {
-            if (noticeTarget) {
-                noticeTarget.textContent = '';
-            }
-        };
-
-        const blockAutoInput = (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            passwordInput.value = '';
-            resetText();
-            showError('Input otomatis ditolak!');
-        };
-
-        passwordInput.addEventListener('paste', blockAutoInput);
-        passwordInput.addEventListener('drop', blockAutoInput);
-
-        passwordInput.addEventListener('contextmenu', (event) => {
-            event.preventDefault();
-            showError('Klik kanan dimatikan pada kolom password.');
+        // Hanya clear pesan saat user kembali fokus ke kolom password
+        passwordInput.addEventListener('focus', () => {
+            noticeTarget.textContent = '';
         });
-
-        passwordInput.addEventListener('input', (event) => {
-            if (event.inputType === 'insertFromPaste' || event.inputType === 'insertFromDrop') {
-                blockAutoInput(event);
-            }
-        });
-
-        passwordInput.addEventListener('focus', resetText);
     };
 
     const initAutoHide = () => {
