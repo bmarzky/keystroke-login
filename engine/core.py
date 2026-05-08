@@ -154,8 +154,11 @@ class BiometricCore:
         """Menjalankan loop Titanium Fusion membandingkan input dengan riwayat terbaik."""
         n_h = len(history)
         c_limit = self._get_clean_limit(history)
+        # Batas outlier terpisah untuk flight/d2d/u2u:
+        # Flight alami bisa 3-5x lebih panjang dari dwell, jadi
+        # menggunakan c_limit dwell untuk flight akan menghasilkan false-positive.
+        f_limit = self._get_flight_clean_limit(history)
         
-        # --- LOGIKA DINAMISASI BOBOT (SARAN NO. 3) ---
         # Jika riwayat sudah cukup (n >= 15), hitung bobot berdasarkan stabilitas profil
         if n_h >= 15:
             # Kita hitung variansi internal dari riwayat (3 sampel awal + 7 terbaru)
@@ -194,9 +197,11 @@ class BiometricCore:
             w = w / sum(w) # Re-normalisasi setelah clip
         else:
             # Bobot Statis untuk User Baru (Fase Pembangunan Profil)
-            if n_h < 5: w = [0.3, 0.4, 0.15, 0.15, 0, 0]
-            elif n_h < 10: w = [0.35, 0.25, 0.15, 0.15, 0.05, 0.05]
-            else: w = [0.3, 0.15, 0.15, 0.15, 0.15, 0.1]
+            # CATATAN KEAMANAN: Corr (Pearson) adalah diskriminator terkuat per-karakter.
+            # Jangan turunkan bobotnya drastis di fase n=5-14 karena akan memudahkan penyusup.
+            if n_h < 5:  w = [0.30, 0.40, 0.15, 0.15, 0.00, 0.00]
+            elif n_h < 15: w = [0.27, 0.37, 0.15, 0.15, 0.03, 0.03]  # Corr tetap dominan
+            else: w = [0.30, 0.15, 0.15, 0.15, 0.15, 0.10]
         
         # Pilih sampel acuan (3 awal + 7 terbaru)
         baselines = history[:3] + history[-7:] if n_h > 10 else history
@@ -211,8 +216,11 @@ class BiometricCore:
                 ml = min(len(v1), len(v2))
                 v1, v2 = v1[:ml], v2[:ml]
                 
-                # Deteksi Outlier Sesaat
-                mask = (v1 > c_limit)
+                # Deteksi Outlier Sesaat — gunakan batas yang sesuai jenis array.
+                # flight/d2d/u2u secara alami lebih panjang dari dwell,
+                # sehingga perlu batas yang berbeda.
+                arr_limit = c_limit if k == 'dwell' else f_limit
+                mask = (v1 > arr_limit)
                 out += int(np.sum(mask))
                 v1c, v2c = v1[~mask], v2[~mask]
                 if len(v1c) < 3: v1c, v2c = v1, v2
@@ -228,13 +236,20 @@ class BiometricCore:
             # Metrik Gabungan
             r_s, c_s = float(np.mean(s_r)), float(np.mean(s_c))
             # Skor Kecepatan
-            s_s = float(max(0, 1.0 - (abs(in_speed - b.get('speed',350))/max(b.get('speed',350),1) / 0.5)))
+            # Untuk user baru (n < 5), beri lantai minimum 0.30 agar kecepatan
+            # yang sangat berbeda dari referensi 1 sampel tidak menghancurkan skor.
+            raw_s_s = float(max(0, 1.0 - (abs(in_speed - b.get('speed',350))/max(b.get('speed',350),1) / 0.5)))
+            s_s = float(max(0.30, raw_s_s)) if n_h < 5 else raw_s_s
             
             # Flow (Korelasi Flight Jitter)
             fl_in, fl_bs = np.diff(inp['flight']), np.diff(np.array(b['flight']))
             ml_f = min(len(fl_in), len(fl_bs))
             if ml_f > 3 and np.std(fl_in[:ml_f]) > 1e-6 and np.std(fl_bs[:ml_f]) > 1e-6:
-                fl_s = float(max(0.35, np.corrcoef(fl_in[:ml_f], fl_bs[:ml_f])[0,1]))
+                raw_fl = float(np.corrcoef(fl_in[:ml_f], fl_bs[:ml_f])[0,1])
+                # Untuk user baru (n < 5), korelasi jitter flight tidak bisa diandalkan
+                # dengan hanya 1-2 sampel — naikkan lantai dari 0.35 ke 0.45.
+                fl_floor = 0.45 if n_h < 5 else 0.35
+                fl_s = float(max(fl_floor, raw_fl))
             else:
                 fl_s = 0.55 # Default lebih ramah jika sangat konsisten (zero jitter)
             
@@ -290,8 +305,18 @@ class BiometricCore:
         if not comp: return f_score
         
         n = res.get("n_samples", 0)
-        # Untuk user baru (n < 10), jangan masukkan 'speed' ke dalam radar penalti karena pasti fluktuatif
-        check_components = {k: v for k, v in comp.items() if (n >= 10 or k != 'speed')}
+
+        # Untuk user sangat baru (n < 3), tidak ada cukup data untuk baseline yang
+        # stabil — menonaktifkan penalti sepenuhnya mencegah penghukuman tidak adil.
+        if n < 3: return f_score
+
+        # Untuk user baru (n < 10):
+        # - Jangan masukkan 'speed' (fluktuatif alami di fase awal)
+        # - Jangan masukkan 'flow' (korelasi jitter tidak andal dengan < 5 sampel)
+        exclude = set()
+        if n < 10: exclude.add('speed')
+        if n < 10: exclude.add('flow')
+        check_components = {k: v for k, v in comp.items() if k not in exclude}
         
         if not check_components: return f_score
         
@@ -309,11 +334,24 @@ class BiometricCore:
 
     def _finalize_decision(self, res: dict, f_score: float, gates: dict, max_out: int, in_len: int, m_dist: float, all_scores: list) -> dict:
         """Logika pemungutan suara akhir dan agregasi hasil."""
+        n = res.get("n_samples", 0)
+
         # 1. Penghalusan skor untuk profil yang sudah mapan (n >= 10)
-        if res["n_samples"] >= 10 and all_scores:
+        if n >= 10 and all_scores:
             f_score = (0.85 * f_score) + (0.15 * float(np.mean(all_scores)))
 
-        # 2. Adaptive Speed Forgiver (LOGIKA BARU)
+        # 1b. Corr Security Guard (aktif setelah profil mulai terbentuk, n >= 5)
+        # Pearson Correlation adalah sidik jari paling sensitif terhadap pergantian pengetik.
+        # Penyusup cenderung memiliki Corr rendah meski fitur lain (Speed, Flow) tinggi.
+        # Penalti proporsional: corr=0.65 -> 0% | corr=0.53 -> ~12% | corr=0.40 -> ~25%
+        if n >= 5:
+            corr_score = res.get("components", {}).get("corr", 1.0)
+            if corr_score < 0.65:
+                drop = min(0.25, 0.65 - corr_score)  # Dibatasi max 25% drop
+                f_score *= (1.0 - drop)
+                res.setdefault("reason_debug", f"Corr Guard ({corr_score:.1%})")
+
+        # 2. Adaptive Speed Forgiver
         # Jika ada anomali kecepatan tapi polanya (Correlation) sangat identik (> 0.90)
         is_speed_anomaly = res.get("is_speed_anomaly", False)
         pattern_corr = res.get("components", {}).get("corr", 0.0)
@@ -330,15 +368,21 @@ class BiometricCore:
 
         # 3. Cek Ambang Batas Akhir
         out_p = float(max_out / (in_len * 4) if in_len > 0 else 0)
-        is_match = bool(f_score >= gates["threshold"] and out_p <= 0.25 and not is_speed_anomaly)
+
+        # Toleransi outlier lebih longgar untuk user baru (n < 10):
+        # Baseline (c_limit) belum stabil dengan 1-2 sampel, sehingga keystroke
+        # yang sedikit lebih lambat/cepat dari biasa bisa terkena false-positive.
+        out_p_limit = 0.40 if n < 10 else 0.25
+
+        is_match = bool(f_score >= gates["threshold"] and out_p <= out_p_limit and not is_speed_anomaly)
         
         # 4. Penentuan Alasan yang informatif
         if is_match:
             reason = f"Score: {f_score:.2f} | ACCEPT"
         elif is_speed_anomaly:
             reason = f"Gate: Speed Anomali ({res.get('speed_dev', 0):.1%})"
-        elif out_p > 0.25:
-            reason = f"Gerbang Kecepatan ({out_p*100:.1f}%)"
+        elif out_p > out_p_limit:
+            reason = f"Outlier Rate Tinggi ({out_p*100:.1f}% > {out_p_limit*100:.0f}%)"
         else:
             reason = f"Skor Fusion Rendah ({f_score:.2f})"
 
@@ -348,13 +392,13 @@ class BiometricCore:
         # - n >= 20: update hanya jika m_dist < 7.0 (ketat, model sudah matang)
         # Catatan: batas dinaikkan dari 5.0 ke 7.0 agar profil user terus berkembang
         # dan model AI mendapat cukup data untuk retrain di n=40, 60, dst.
-        _m_ok = (m_dist is None and res["n_samples"] < 20) or (m_dist is not None and m_dist < 7.0)
+        _m_ok = (m_dist is None and n < 20) or (m_dist is not None and m_dist < 7.0)
         res.update({
             "status": is_match,
             "score": round(f_score, 4),
             "threshold": gates["threshold"],
             "reason": reason,
-            "should_update_history": bool(is_match and (res["n_samples"] < 5 or _m_ok) and out_p < 0.20)
+            "should_update_history": bool(is_match and (n < 5 or _m_ok) and out_p < 0.20)
         })
         return res
 
@@ -457,6 +501,17 @@ class BiometricCore:
         if not history: return self.CLEAN_THRESHOLD
         all_d = [d for h in history for d in h.get('dwell', [])]
         return max(0.25, np.median(all_d) * 2.5) if all_d else self.CLEAN_THRESHOLD
+
+    def _get_flight_clean_limit(self, history: list) -> float:
+        """Mendapatkan batas pembersihan khusus untuk array flight/d2d/u2u.
+        Flight time secara alami 3-5x lebih panjang dari dwell (jeda antar-tombol),
+        sehingga membutuhkan batas yang jauh lebih longgar dari c_limit berbasis dwell.
+        """
+        if not history: return 0.80
+        all_f = [f for h in history for f in h.get('flight', [])]
+        # Gunakan 3.5x median flight, dengan lantai keras 0.80 detik.
+        # Ini memastikan jeda alami seperti 0.58 detik tidak terhitung sebagai outlier.
+        return max(0.80, np.median(all_f) * 3.5) if all_f else 0.80
 
     def _get_method_name(self, uid: str, phase: str) -> str:
         """Menentukan nama metode yang ditampilkan di log."""
