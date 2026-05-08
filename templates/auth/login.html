@@ -24,7 +24,12 @@
 
         <form id="loginForm" class="auth-form" action="{{ url_for('login') }}" method="POST" autocomplete="off" novalidate>
             <input type="text" id="username" name="username" placeholder="Username" required autofocus autocomplete="off" minlength="3" maxlength="50">
-            <input type="password" id="password" name="password" placeholder="Password" required autocomplete="current-password">
+            <div class="password-field">
+                <input type="password" id="password" name="password" placeholder="Password" required autocomplete="current-password">
+                <span class="toggle-password" id="toggle-password">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                </span>
+            </div>
             <input type="hidden" name="keystroke" id="keystrokeData">
 
             <button type="submit">Login</button>

@@ -1,4 +1,4 @@
-﻿/* Global page reset */
+/* Global page reset */
 * {
     box-sizing: border-box;
 }
@@ -64,6 +64,34 @@ body {
 .auth-form input:focus {
     outline: none;
     border-color: #000000;
+}
+
+.password-field {
+    position: relative;
+    width: 100%;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    padding: 5px;
+    user-select: none;
+}
+
+.toggle-password:hover {
+    color: #000;
+}
+
+.toggle-password svg {
+    width: 18px;
+    height: 18px;
 }
 
 .auth-form button {
