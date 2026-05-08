@@ -48,15 +48,21 @@ keystroke-login/
 │
 ├── src/                       # Source Code (Pusat Logika)
 │   ├── engine/                # Inti Kecerdasan Biometrik
-│   │   ├── core.py            # Titanium Fusion Engine (Logic Utama)
-│   │   └── ml/                # AI Environment (OCSVM, Training)
+│   │   ├── extractors/        # Ekstraktor Fitur & Validasi Struktural
+│   │   │   └── features.py    # Kalkulasi Dwell, Flight, FFT, Tukey's IQR
+│   │   ├── gates/             # Gerbang Perlindungan Statistik
+│   │   │   └── statistics.py  # Mahalanobis Distance & Regularisasi Tikhonov
+│   │   ├── ml/                # AI Environment (Anomaly Detection)
+│   │   │   ├── ai_engine.py   # Model OCSVM & Kalibrasi Sigmoid Adaptif
+│   │   │   └── ai_trainer.py  # Subprocess Skrip Pelatihan Otomatis
+│   │   └── core.py            # Titanium Fusion Engine (Facade Orkestrator Utama)
 │   │
 │   ├── models/                # Data Layer (Akses Database)
 │   │   ├── user_model.py      # CRUD untuk tabel pengguna
 │   │   └── keystroke_model.py # CRUD untuk data biometrik
 │   │
 │   ├── services/              # Logic Layer (Aturan Bisnis)
-│   │   ├── biometric_service.py # Verifikasi, Replay Detection & Orkestrasi
+│   │   ├── biometric_service.py # Verifikasi, Replay Detection & Database Bridge
 │   │   └── stats_service.py   # Kalkulasi metrik dashboard (WPM, Stability)
 │   │
 │   ├── config/                # Konfigurasi Teknis
@@ -65,12 +71,13 @@ keystroke-login/
 │   ├── utils/                 # Utility Helpers
 │   │   └── logger.py          # Logger forensik biometrik
 │   │
-│   └── database/              # Skema SQL & Inisialisasi DB
+│   └── database/              # Penyimpanan data mentah & skema
+│       └── data/              # File log ketikan pengguna (.log)
 │
 ├── static/                    # Frontend Assets (Collector & UI)
 ├── templates/                 # Jinja2 Layouts (Auth & Dashboard)
 ├── logs/                      # Audit Trail (Forensik Biometrik)
-└── scratch/                   # Tools Riset (Validation & Training scripts)
+└── scratch/                   # Direktori File Model AI & Script Uji Coba (Test)
 ```
 
 ---
