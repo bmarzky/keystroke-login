@@ -42,23 +42,34 @@ Inti dari kecerdasan sistem ini terletak pada mekanisme autentikasi ganda: **Sta
 
 ```text
 keystroke-login/
-├── app.py                     # Entry point: Flow autentikasi & Session management
+├── app.py                     # Entry point: Flask App initialization & Routing
 ├── requirements.txt           # Dependensi library (Flask, Sklearn, Numpy, etc.)
 ├── .env                       # Konfigurasi database & Secret keys
 │
-├── engine/                    # Inti Kecerdasan Biometrik
-│   ├── core.py                # Titanium Fusion Engine (Logic Utama)
-│   └── ml/                    # AI Environment
-│       ├── ai_engine.py       # Inferensi OCSVM
-│       ├── ai_trainer.py      # Background trainer model AI
-│       └── models/            # Storage model *.joblib per user
-│
-├── logs/                      # Audit Trail (Forensik Biometrik)
-│   ├── login_success.log      # Detil data biometrik yang diterima
-│   └── login_failed.log       # Alasan penolakan (Speed, Mahal, or Score)
+├── src/                       # Source Code (Pusat Logika)
+│   ├── engine/                # Inti Kecerdasan Biometrik
+│   │   ├── core.py            # Titanium Fusion Engine (Logic Utama)
+│   │   └── ml/                # AI Environment (OCSVM, Training)
+│   │
+│   ├── models/                # Data Layer (Akses Database)
+│   │   ├── user_model.py      # CRUD untuk tabel pengguna
+│   │   └── keystroke_model.py # CRUD untuk data biometrik
+│   │
+│   ├── services/              # Logic Layer (Aturan Bisnis)
+│   │   ├── biometric_service.py # Verifikasi, Replay Detection & Orkestrasi
+│   │   └── stats_service.py   # Kalkulasi metrik dashboard (WPM, Stability)
+│   │
+│   ├── config/                # Konfigurasi Teknis
+│   │   └── database.py        # Koneksi Database & Secret Management
+│   │
+│   ├── utils/                 # Utility Helpers
+│   │   └── logger.py          # Logger forensik biometrik
+│   │
+│   └── database/              # Skema SQL & Inisialisasi DB
 │
 ├── static/                    # Frontend Assets (Collector & UI)
 ├── templates/                 # Jinja2 Layouts (Auth & Dashboard)
+├── logs/                      # Audit Trail (Forensik Biometrik)
 └── scratch/                   # Tools Riset (Validation & Training scripts)
 ```
 
