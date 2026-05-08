@@ -144,8 +144,11 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+import glob
+
 def _model_exists(uid):
-    return os.path.exists(f"src/engine/ml/models/{uid}_ocsvm.joblib")
+    pattern = os.path.join("src", "engine", "ml", "models", f"{uid}_ocsvm_v*.joblib")
+    return len(glob.glob(pattern)) > 0
 
 def _trigger_training(uid, history):
     scratch_dir = 'scratch/'

@@ -40,12 +40,12 @@ def train_user_model(user_id, data_path=None):
 
     try:
         # 2. Extract & Clean
-        X = np.array([core.extract(h, history) for h in history])
+        X = np.array([core.extractor.extract(h, history) for h in history])
         
-        # Outlier Filter (Hapus data yang terlalu berantakan)
-        mu, cov = np.mean(X, 0), np.cov(X, rowvar=False) + np.eye(X.shape[1])*1e-3
-        cinv = np.linalg.inv(cov)
-        dists = [np.sqrt((r-mu).T @ cinv @ (r-mu)) for r in X]
+        # Outlier Filter (Hapus data yang terlalu berantakan) menggunakan Shrinkage & pinv
+        mu, cov = np.mean(X, 0), np.cov(X, rowvar=False) + np.eye(X.shape[1])*1e-4
+        pinv_cov = np.linalg.pinv(cov)
+        dists = [np.sqrt(max(0, (r-mu).T @ pinv_cov @ (r-mu))) for r in X]
         
         clean_X = X[np.array(dists) < 10.0]
 

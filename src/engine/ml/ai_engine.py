@@ -1,71 +1,93 @@
-import os, joblib
+import os, joblib, glob, time
 import numpy as np
 from sklearn.svm import OneClassSVM
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import RobustScaler
 
 class AIEngine:
     def __init__(self, model_dir=None):
-        if model_dir is None:
-            # Set default path ke folder 'ml/models'
-            self.model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
-        else:
-            self.model_dir = model_dir
-            
-        if not os.path.exists(self.model_dir):
-            os.makedirs(self.model_dir)
+        self.model_dir = model_dir or os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
+        os.makedirs(self.model_dir, exist_ok=True)
 
-    def _get_model_path(self, user_id):
-        # Gunakan ID Database untuk nama model agar lebih privat dan konsisten
-        return os.path.join(self.model_dir, f"{user_id}_ocsvm.joblib")
+    def _get_model_pattern(self, user_id):
+        return os.path.join(self.model_dir, f"{user_id}_ocsvm_v*.joblib")
+
+    def _get_latest_model_path(self, user_id):
+        models = glob.glob(self._get_model_pattern(user_id))
+        if not models:
+            return None
+        return sorted(models)[-1]
 
     def train(self, user_id, X_train):
-        """Melatih model AI dengan tuning otomatis berdasarkan jumlah data."""
         try:
             n_samples = len(X_train)
             if n_samples < 15:
                 return False, f"Data minimal 15 (saat ini {n_samples})"
 
-            # ADAPTIVE NU: Dijaga tetap ketat (0.10 - 0.15) untuk keamanan tinggi
-            # Lebih besar nu = lebih ketat batasannya
             adaptive_nu = float(np.clip(0.18 - (n_samples / 500.0), 0.12, 0.18))
-
-            scaler = StandardScaler()
+            
+            # Gunakan RobustScaler (kebal terhadap ketikan outlier / distraksi)
+            scaler = RobustScaler()
             X_scaled = scaler.fit_transform(X_train)
             
             model = OneClassSVM(kernel='rbf', gamma='scale', nu=adaptive_nu)
             model.fit(X_scaled)
             
-            # Simpan model & scaler
+            # Kalibrasi Confidence Berbasis Distribusi Pelatihan (Bukan Magic Number)
+            train_scores = model.decision_function(X_scaled)
+            score_std = np.std(train_scores) if np.std(train_scores) > 0 else 1.0
+            calib_alpha = min(8.0, 2.0 / score_std) # Sigmoid adaptif dibatasi max 8.0 agar tidak terlampau tajam
+            
+            # Lifecycle & Versioning
+            version = len(glob.glob(self._get_model_pattern(user_id))) + 1
+            timestamp = int(time.time())
+            save_path = os.path.join(self.model_dir, f"{user_id}_ocsvm_v{version}_{timestamp}.joblib")
+            
             joblib.dump({
                 'model': model, 
                 'scaler': scaler, 
+                'calib_alpha': calib_alpha,
                 'nu': adaptive_nu,
-                'n_train': n_samples
-            }, self._get_model_path(user_id))
+                'n_train': n_samples,
+                'version': version,
+                'timestamp': timestamp
+            }, save_path)
             
-            return True, f"Training Sukses (nu={adaptive_nu:.3f})"
+            self._cleanup_old_models(user_id, keep=3) # Simpan 3 versi terakhir untuk Rollback
+            return True, f"Training Sukses v{version} (nu={adaptive_nu:.3f})"
         except Exception as e:
             return False, f"Training Fail: {str(e)}"
 
     def predict(self, user_id, features):
-        """Prediksi dengan skor kepercayaan (Confidence Score)."""
-        model_path = self._get_model_path(user_id)
-        if not os.path.exists(model_path):
+        model_path = self._get_latest_model_path(user_id)
+        if not model_path:
             return None, 0.0, 0, 0.0
             
         try:
             data = joblib.load(model_path)
             model, scaler = data['model'], data['scaler']
+            calib_alpha = data.get('calib_alpha', 12.0)
             
             X_test = scaler.transform([features])
             decision = int(model.predict(X_test)[0])
+            raw_score = float(model.decision_function(X_test)[0])
             
-            # score_samples: jarak ke hyperplane (makin positif makin yakin 'asli')
-            raw_score = float(model.score_samples(X_test)[0])
-            
-            # Mapping raw_score ke 0-1 (Dipersulit: On the boundary = 0.3 Confidence)
-            confidence = float(1.0 / (1.0 + np.exp(-12 * (raw_score - 0.05)))) 
+            # Dynamic Confidence Calibration
+            # Fungsi mapping halus yang menyesuaikan diri dengan karakter distribusi jarak tiap user
+            confidence = float(1.0 / (1.0 + np.exp(-calib_alpha * raw_score))) 
             
             return decision, confidence, data.get('n_train', 0), raw_score
         except Exception as e:
             return None, 0.0, 0, 0.0
+
+    def rollback(self, user_id):
+        """Fitur untuk mengembalikan model ke versi sebelumnya jika tiba-tiba sistem memburuk"""
+        models = sorted(glob.glob(self._get_model_pattern(user_id)))
+        if len(models) < 2:
+            return False, "Tidak ada histori untuk rollback."
+        os.remove(models[-1])
+        return True, f"Rollback sukses. Menggunakan {os.path.basename(models[-2])}"
+
+    def _cleanup_old_models(self, user_id, keep=3):
+        models = sorted(glob.glob(self._get_model_pattern(user_id)))
+        for old_model in models[:-keep]:
+            os.remove(old_model)
