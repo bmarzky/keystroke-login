@@ -4,9 +4,12 @@ import bcrypt
 import numpy as np
 
 # Load internal modules
-from engine.core import BiometricCore
-from config.database import Config, get_db_connection
-from utils.logger import log_access, format_log
+from src.engine.core import BiometricCore
+from src.config.database import Config, get_db_connection
+from src.utils.logger import log_access, format_log
+from src.services.stats_service import calculate_dashboard_stats
+from src.services.biometric_service import verify_biometric
+from src.models import user_model, keystroke_model
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -38,35 +41,14 @@ def login():
         except json.JSONDecodeError:
             return render_template('auth/login.html', error="Data biometrik tidak valid")
 
-        conn = get_db_connection()
-        if not conn:
-            return render_template('auth/login.html', error="Database connection error")
-        
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id, username, password FROM users WHERE username = %s", (username,))
-        user = cursor.fetchone()
+        user = user_model.get_user_by_username(username)
 
         if user and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
             # 1. Fetch History
-            cursor.execute("SELECT features FROM keystroke_data WHERE user_id = %s ORDER BY id ASC", (user['id'],))
-            history_rows = cursor.fetchall()
-            history = [row['features'] for row in history_rows]
+            history = keystroke_model.get_history_by_user_id(user['id'])
 
-            # 2. Replay Detection
-            is_replay = False
-            current_norm = json.dumps(input_keystroke, sort_keys=True)
-            for h_str in history:
-                if json.dumps(json.loads(h_str), sort_keys=True) == current_norm:
-                    is_replay = True
-                    break
-            
-            if is_replay:
-                log_access('login_failed.log', f"REPLAY ATTACK | User: {username}", "Blocked replay attempt")
-                return render_template('auth/login.html', error="Keamanan: Terdeteksi serangan Replay.")
-
-            # 3. Biometric Verification
-            history_dicts = [json.loads(h) for h in history]
-            result = biom_core.analyze(input_keystroke, history_dicts, user['id'])
+            # 2. Biometric Verification (Includes Replay Check)
+            result = verify_biometric(biom_core, user['id'], username, input_keystroke, history)
 
             if result['status']:
                 # Login Success
@@ -76,24 +58,20 @@ def login():
 
                 # Update History if required
                 if result.get('should_update_history'):
-                    cursor.execute("INSERT INTO keystroke_data (user_id, features) VALUES (%s, %s)", 
-                                 (user['id'], json.dumps(input_keystroke)))
-                    conn.commit()
+                    keystroke_model.add_keystroke_data(user['id'], json.dumps(input_keystroke))
                     
                     # Auto-Retrain Trigger (Updated every 20 samples)
                     n_samples = len(history) + 1
                     if n_samples >= 20 and (n_samples % 20 == 0 or not _model_exists(user['id'])):
+                        history_dicts = [json.loads(h) for h in history]
                         _trigger_training(user['id'], history_dicts + [input_keystroke])
 
                 log_access('login_success.log', f"SUCCESS | User: {username}", format_log(user['id'], result, history, input_keystroke))
-                conn.close()
                 return redirect(url_for('dashboard'))
             else:
                 log_access('login_failed.log', f"FAILURE | User: {username}", format_log(user['id'], result, history, input_keystroke))
-                conn.close()
                 return render_template('auth/login.html', error=result['reason'])
         
-        conn.close()
         return render_template('auth/login.html', error="Username atau password salah")
 
     return render_template('auth/login.html')
@@ -115,25 +93,17 @@ def register():
         except:
             return render_template('auth/register.html', error="Data biometrik tidak valid")
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
-        if cursor.fetchone():
-            conn.close()
+        user = user_model.get_user_by_username(username)
+        if user:
             return render_template('auth/register.html', error="Username sudah terdaftar")
 
         hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         
         try:
-            cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, hashed))
-            uid = cursor.lastrowid
-            cursor.execute("INSERT INTO keystroke_data (user_id, features) VALUES (%s, %s)", (uid, keystroke_json))
-            conn.commit()
-            conn.close()
+            uid = user_model.create_user(username, hashed)
+            keystroke_model.add_keystroke_data(uid, keystroke_json)
             return render_template('auth/login.html', success="Registrasi berhasil! Silakan login.")
         except Exception as e:
-            conn.rollback()
-            conn.close()
             return render_template('auth/register.html', error=f"Error: {str(e)}")
 
     return render_template('auth/register.html')
@@ -144,39 +114,20 @@ def dashboard():
         return redirect(url_for('login'))
     
     uid = session['user_id']
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    
-    cursor.execute("SELECT COUNT(*) as total FROM keystroke_data WHERE user_id = %s", (uid,))
-    total_data = cursor.fetchone()['total']
-    
-    cursor.execute("SELECT features FROM keystroke_data WHERE user_id = %s ORDER BY id DESC LIMIT 2", (uid,))
-    rows = cursor.fetchall()
+    total_data, rows = keystroke_model.get_dashboard_data(uid)
     
     all_features = [json.loads(r['features']) for r in rows]
     current = all_features[0] if len(all_features) > 0 else {'dwell': [], 'flight': []}
     prev = all_features[1] if len(all_features) > 1 else {'dwell': [], 'flight': []}
     
-    # Stats calculation
-    avg_dwell = 0
-    avg_flight = 0
-    wpm = 0
-    stability = 0
+    # Stats calculation using Service
+    stats = calculate_dashboard_stats(current)
     
-    if current['dwell']:
-        cnt_d = len(current['dwell'])
-        sum_d = sum(current['dwell'])
-        sum_f = sum(current.get('flight', []))
-        avg_dwell = sum_d / cnt_d
-        avg_flight = sum_f / len(current['flight']) if current.get('flight') else 0
-        
-        total_time = sum_d + sum_f
-        if total_time > 0:
-            wpm = (cnt_d / 5) / (total_time / 60)
-        
-        stability = np.std(current['dwell'])
+    avg_dwell = stats['avg_dwell']
+    avg_flight = stats['avg_flight']
+    wpm = stats['wpm']
+    stability = stats['stability']
 
-    conn.close()
     return render_template('dashboard/index.html', 
                          username=session['username'],
                          total_data=total_data,
@@ -194,7 +145,7 @@ def logout():
     return redirect(url_for('login'))
 
 def _model_exists(uid):
-    return os.path.exists(f"engine/ml/models/{uid}_ocsvm.joblib")
+    return os.path.exists(f"src/engine/ml/models/{uid}_ocsvm.joblib")
 
 def _trigger_training(uid, history):
     scratch_dir = 'scratch/'
@@ -203,7 +154,7 @@ def _trigger_training(uid, history):
     with open(train_file, 'w') as f:
         json.dump({'history': history}, f)
     
-    py_train = os.path.join('engine', 'ml', 'ai_trainer.py')
+    py_train = os.path.join('src', 'engine', 'ml', 'ai_trainer.py')
     import sys
     try:
         subprocess.Popen([sys.executable, py_train, str(uid), train_file])
