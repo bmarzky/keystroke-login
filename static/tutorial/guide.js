@@ -48,7 +48,7 @@ const runTutorial = () => {
                 element: '#password',
                 popover: {
                     title: 'Kolom Password',
-                    description: 'Ketik kata sandi Kamu seperti biasa. <br><br>Sistem akan mengenali <b>"Gaya Unik Mengetikmu"</b>, yaitu seberapa lama Kamu menekan tombol dan seberapa cepat jemarimu berpindah antar tombol. <br><br><b>Tips:</b> Ketik password Kamu dalam satu aliran. Sebisa mungkin hindari menghapus (<b>Backspace</b>) agar pola ketikanmu terekam sempurna.',
+                    description: 'Ketik kata sandi Kamu seperti biasa. <br><br>Sistem akan mengenali <b>"Gaya Unik Mengetikmu"</b>, yaitu seberapa lama Kamu menekan tombol dan seberapa cepat jemarimu berpindah antar tombol. <br><br><b>Tips:</b> Ketik password Kamu dalam satu aliran. Jika salah lalu menghapus (<b>Backspace</b>), hapus hingga text pada kolom password menjadi kosong agar pola ketikanmu terekam sempurna.',
                     side: "bottom",
                     align: 'start'
                 }

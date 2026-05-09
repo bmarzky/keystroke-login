@@ -3,7 +3,7 @@
 [![Version](https://img.shields.io/badge/version-2.5.0--stable-blue.svg)](https://github.com/bmarzky/keystroke-login)
 [![Python](https://img.shields.io/badge/Python-3.12-brightgreen.svg)](https://www.python.org/)
 
-**Biometric Authentication System Login** adalah sistem autentikasi berbasis *Keystroke Dynamics* yang memverifikasi identitas pengguna melalui pola ritme ketikan yang unik. Sistem ini dirancang sebagai lapisan keamanan kedua (**MFA**) yang menggabungkan analisis statistik multivariat dan *Machine Learning* untuk mendeteksi upaya impersonasi secara *real-time*, memastikan bahwa hanya pemilik akun asli yang dapat mengakses sistem meskipun password telah diketahui oleh pihak lain.
+**Biometric Authentication System Login** adalah sistem autentikasi berbasis *Keystroke Dynamics* yang memverifikasi identitas pengguna melalui pola ritme ketikan yang unik. Sistem ini dirancang sebagai lapisan keamanan kedua (**MFA**) dengan antarmuka **Cybersecurity Monochrome** yang profesional, menggabungkan analisis statistik multivariat dan *Machine Learning* untuk mendeteksi upaya impersonasi secara *real-time*.
 
 ---
 
@@ -20,12 +20,14 @@ Inti dari kecerdasan sistem ini terletak pada mekanisme autentikasi ganda: **Sta
 | Komponen | Deskripsi Fungsional |
 | :--- | :--- |
 | **Adaptive Thresholding** | Pengerasan ambang batas keamanan secara dinamis berbasis populasi sampel ($n$). |
+| **Interactive Onboarding** | Panduan langkah-demi-langkah (Driver.js) untuk memastikan kualitas data biometrik. |
 | **Replay Protection** | Deteksi redundansi data untuk menangkal serangan biometrik statis (*copy-paste*). |
 | **Biometric Audit Trail** | Dokumentasi metrik teknis (Mahalanobis & AI Score) untuk kebutuhan forensik. |
 | **AI Auto-Training** | Pelatihan model OCSVM secara otomatis setiap kelipatan 20 data baru. |
 | **Forgiver Logic** | Toleransi cerdas terhadap deviasi kecepatan jika korelasi pola tetap tinggi. |
 | **Multivariate Gating** | Analisis keterkaitan antar fitur menggunakan jarak Mahalanobis yang presisi. |
 | **24D Feature Vector** | Ekstraksi 24 fitur unik termasuk FFT untuk identifikasi tanda tangan frekuensi. |
+| **Cyber-Tech UI** | Desain monokromatis dengan tipografi *JetBrains Mono* untuk estetika keamanan tinggi. |
 | **Secure Core** | Enkripsi sesi dan hashing password standar industri menggunakan Bcrypt. |
 
 ## Tech Stack
@@ -33,8 +35,9 @@ Inti dari kecerdasan sistem ini terletak pada mekanisme autentikasi ganda: **Sta
 -   **Backend Core**: Python 3.12 (Flask Framework)
 -   **Intelligence Unit**: Scikit-Learn (OCSVM), NumPy (Linear Algebra), Joblib
 -   **Data Storage**: MySQL / MariaDB
+-   **Onboarding**: Driver.js (Interactive Tutorial Engine)
 -   **Security**: Bcrypt (Password Hashing), Session Encryption, .env Configuration
--   **Frontend**: HTML5, Vanilla CSS (Glassmorphism UI), Javascript (Keystroke Collector)
+-   **Frontend**: HTML5, Vanilla CSS (Monochrome Design), Google Fonts (JetBrains Mono), Javascript (Keystroke Collector)
 
 ---
 

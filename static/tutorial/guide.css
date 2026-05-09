@@ -1,10 +1,22 @@
-.driver-popover-description {
-    text-align: justify;
-    line-height: 1.5; 
+.driver-popover.driverjs-theme {
+    font-family: 'JetBrains Mono', monospace !important;
 }
 
 .driver-popover-title {
+    font-family: 'JetBrains Mono', monospace !important;
     font-weight: bold;
+    color: #000;
+}
+
+.driver-popover-description {
+    font-family: 'JetBrains Mono', monospace !important;
+    text-align: justify;
+    line-height: 1.5; 
     color: #333;
+}
+
+.driver-popover-btn {
+    font-family: 'JetBrains Mono', monospace !important;
+    text-shadow: none !important;
 }
 
