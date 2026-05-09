@@ -70,6 +70,8 @@ def format_log(uid, result, history, raw_input):
     log += f"  Speed         : {raw_input.get('speed', 0):.4f} char/s\n"
     log += f"  Dwell         : {raw_input.get('dwell', [])}\n"
     log += f"  Flight        : {raw_input.get('flight', [])}\n"
+    log += f"  Trigraph      : {raw_input.get('trigraph', [])}\n"
+    log += f"  Jitter        : {raw_input.get('jitter', 0.0):.6f}\n"
     
     log += f"  History Updated: {'Ya' if result.get('should_update_history') else 'Tidak'}\n"
     

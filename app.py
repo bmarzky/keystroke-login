@@ -60,9 +60,16 @@ def login():
                 if result.get('should_update_history'):
                     keystroke_model.add_keystroke_data(user['id'], json.dumps(input_keystroke))
                     
-                    # Auto-Retrain Trigger (Updated every 20 samples)
+                    # Auto-Retrain & Incremental Learning Trigger
                     n_samples = len(history) + 1
-                    if n_samples >= 20 and (n_samples % 20 == 0 or not _model_exists(user['id'])):
+                    # Trigger training if:
+                    # 1. Reach 20 samples (initial)
+                    # 2. Every 20 samples (batch)
+                    # 3. High quality sample (score > 0.90) - Incremental Fine-tuning
+                    # 4. Model missing
+                    should_train = (n_samples >= 20 and (n_samples % 20 == 0 or result.get('score', 0) > 0.90)) or not _model_exists(user['id'])
+                    
+                    if should_train and n_samples >= 15:
                         history_dicts = [json.loads(h) for h in history]
                         _trigger_training(user['id'], history_dicts + [input_keystroke])
 
@@ -145,25 +152,48 @@ def logout():
     return redirect(url_for('login'))
 
 import glob
+import threading
+import queue
+
+from src.engine.ml.ai_trainer import train_user_model_in_memory
+
+# In-Memory Queue untuk Background Training
+training_queue = queue.Queue()
+
+def background_trainer_worker():
+    """Worker thread memproses antrean training satu per satu. 
+    Menghindari OOM (Out of Memory) dan Race Condition."""
+    while True:
+        try:
+            task = training_queue.get()
+            if task is None: break
+            
+            uid, history = task
+            print(f"[AI WORKER] Memulai training background User {uid} (N={len(history)})...")
+            
+            # Panggil proses training langsung di memory, tanpa Disk I/O
+            success, msg = train_user_model_in_memory(uid, history)
+            print(f"[AI WORKER] User {uid} selesai: {success} | {msg}")
+            
+        except Exception as e:
+            print(f"[AI WORKER ERROR] {e}")
+        finally:
+            training_queue.task_done()
+
+# Start Daemon Thread
+trainer_thread = threading.Thread(target=background_trainer_worker, daemon=True)
+trainer_thread.start()
 
 def _model_exists(uid):
     pattern = os.path.join("src", "engine", "ml", "models", f"{uid}_ocsvm_v*.joblib")
     return len(glob.glob(pattern)) > 0
 
 def _trigger_training(uid, history):
-    scratch_dir = 'scratch/'
-    if not os.path.exists(scratch_dir): os.makedirs(scratch_dir)
-    train_file = os.path.join(scratch_dir, f"training_{uid}.json")
-    with open(train_file, 'w') as f:
-        json.dump({'history': history}, f)
-    
-    py_train = os.path.join('src', 'engine', 'ml', 'ai_trainer.py')
-    import sys
+    """Memasukkan request training ke antrean memory tanpa bloking."""
     try:
-        subprocess.Popen([sys.executable, py_train, str(uid), train_file])
-    except Exception as e:
-        # Jangan crash app utama jika training gagal — cukup log ke console
-        print(f"[TRAINING ERROR] Gagal memulai proses training untuk user {uid}: {e}")
+        training_queue.put_nowait((uid, history))
+    except queue.Full:
+        print(f"[TRAINING SKIP] Antrean kepenuhan untuk user {uid}.")
 
 if __name__ == '__main__':
     app.run(debug=True, port=8000)
