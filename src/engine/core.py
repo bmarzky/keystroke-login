@@ -158,8 +158,15 @@ class BiometricCore:
                 fl_s = 0.55
             
             f_in, f_bs = np.array(self.extractor.extract(inp, history)), np.array(self.extractor.extract(b, history))
-            rat_s = float(max(0, 1.0 - np.mean(np.abs(f_in[[2,3,6,7,10,11,14,15]]-f_bs[[2,3,6,7,10,11,14,15]])/(f_bs[[2,3,6,7,10,11,14,15]]+0.1))))
-            sta_s = float(max(0, 1.0 - np.mean(np.abs(f_in[[1,3,5,7,9,11,13,15]]-f_bs[[1,3,5,7,9,11,13,15]])/(f_bs[[1,3,5,7,9,11,13,15]]+0.05))))
+            
+            # Perbaikan Indeks Fitur:
+            # Ratios (median_r): 2, 8, 14, 20
+            rat_idx = [2, 8, 14, 20]
+            # Stability (std_clean, std_r): 1, 3, 7, 9, 13, 15, 19, 21
+            sta_idx = [1, 3, 7, 9, 13, 15, 19, 21]
+            
+            rat_s = float(max(0, 1.0 - np.mean(np.abs(f_in[rat_idx]-f_bs[rat_idx])/(f_bs[rat_idx]+0.1))))
+            sta_s = float(max(0, 1.0 - np.mean(np.abs(f_in[sta_idx]-f_bs[sta_idx])/(f_bs[sta_idx]+0.05))))
             
             score = w[0]*r_s + w[1]*c_s + w[2]*s_s + w[3]*fl_s + w[4]*rat_s + w[5]*sta_s
             all_scores.append(score)
@@ -179,10 +186,10 @@ class BiometricCore:
         if ai_score > 0.60:
             res["ai_status"] = "Normal (High Trust)"
             if ai_score > 0.90:
-                threshold = float(max(threshold, 0.68))
+                threshold = float(min(threshold, 0.68)) # Relax threshold jika AI sangat yakin
                 f_score = min(1.0, f_score + 0.03)
             elif ai_score > 0.85:
-                threshold = float(max(threshold, 0.72))
+                threshold = float(min(threshold, 0.72))
                 f_score = min(1.0, f_score + 0.01)
         elif ai_score >= 0.25:
             res["ai_status"] = "Caution (Manual Review Pattern)"
@@ -208,7 +215,15 @@ class BiometricCore:
         
         critical_min = min(check_components.values())
         if critical_min < 0.45:
-            penalty = 0.96 if critical_min < 0.35 else 0.98 if n < 40 else 0.88 if critical_min < 0.40 else 0.94
+            if critical_min < 0.30:
+                penalty = 0.85 if n >= 40 else 0.90
+            elif critical_min < 0.35:
+                penalty = 0.90 if n >= 40 else 0.94
+            elif critical_min < 0.40:
+                penalty = 0.94 if n >= 40 else 0.96
+            else:
+                penalty = 0.96 if n >= 40 else 0.98
+                
             f_score *= penalty
             res["reason_debug"] = f"Consistency Penalty ({critical_min:.2f})"
         return f_score
