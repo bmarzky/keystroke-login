@@ -2,11 +2,15 @@ let dwellTimes = [];
 let flightTimes = [];
 let d2dTimes = [];
 let u2uTimes = [];
-let keySequence = []; // 🔹 BARU: Menyimpan urutan tombol yang diketik
+let trigraphs = []; // 🔹 BARU: Tri-graph rhythm (n1 to n3)
+let keySequence = [];
 let pendingKeyDowns = {};
 let lastKeyDownTime = null;
 let lastKeyUpTime = null;
 let startTime = null;
+
+// Keystroke Buffer untuk Tri-graph
+let keyTimeBuffer = []; 
 
 window.getKeystrokeData = function () {
     const passwordInput = document.getElementById('password');
@@ -18,12 +22,24 @@ window.getKeystrokeData = function () {
         speedCPM = totalTimeSec > 0 ? (totalChar / totalTimeSec) * 60 : 0;
     }
 
+    // Hitung Jitter (Variasi Mikro)
+    let jitter = 0;
+    if (dwellTimes.length > 1) {
+        let diffs = [];
+        for (let i = 1; i < dwellTimes.length; i++) {
+            diffs.push(Math.abs(dwellTimes[i] - dwellTimes[i-1]));
+        }
+        jitter = diffs.reduce((a, b) => a + b, 0) / diffs.length;
+    }
+
     return JSON.stringify({
         dwell: dwellTimes,
         flight: flightTimes,
         d2d: d2dTimes,
         u2u: u2uTimes,
-        keys: keySequence, // 🔹 BARU: Kirim urutan tombol
+        trigraph: trigraphs, // 🔹 KIRIM: Tri-graph
+        jitter: parseFloat(jitter.toFixed(6)), // 🔹 KIRIM: Jitter detection
+        keys: keySequence,
         speed: parseFloat(speedCPM.toFixed(2))
     });
 };
@@ -37,112 +53,116 @@ document.addEventListener("DOMContentLoaded", () => {
         flightTimes = [];
         d2dTimes = [];
         u2uTimes = [];
-        keySequence = []; // 🔹 Reset urutan
+        trigraphs = [];
+        keySequence = [];
         pendingKeyDowns = {};
         lastKeyDownTime = null;
         lastKeyUpTime = null;
         startTime = null;
+        keyTimeBuffer = [];
     };
 
-    // Fungsi untuk menampilkan pesan error di halaman (pengganti alert)
     const showNotice = (msg) => {
         if (jsErrorDisplay) {
             jsErrorDisplay.innerText = msg;
-            // Hilangkan pesan otomatis setelah 3 detik
             setTimeout(() => { jsErrorDisplay.innerText = ""; }, 3000);
         }
     };
 
     if (passwordInput) {
-        // --- PROTEKSI COPY-PASTE & DROP ---
-        const blockAction = (e) => {
+        passwordInput.addEventListener("paste", (e) => {
             e.preventDefault();
-            e.stopPropagation();
-            passwordInput.value = ""; // Kosongkan input
+            passwordInput.value = "";
             resetData();
             showNotice("Copy-paste dilarang!");
-        };
-
-        passwordInput.addEventListener("paste", blockAction);
-        passwordInput.addEventListener("drop", blockAction);
-
-        // Blokir klik kanan dengan pesan
-        passwordInput.addEventListener("contextmenu", (e) => {
-            e.preventDefault();
-            showNotice("Klik kanan dimatikan pada kolom password.");
         });
 
-        // Monitor input ilegal (autofill/bypass) & Reset saat kosong
-        passwordInput.addEventListener("input", (e) => {
-            // Penguatan: Jika user menghapus semua teks, reset rekaman biometrik
-            if (passwordInput.value === "") {
-                resetData();
-            }
+        passwordInput.addEventListener("drop", (e) => {
+            e.preventDefault();
+            passwordInput.value = "";
+            resetData();
+            showNotice("Input otomatis dilarang!");
+        });
 
-            if (e.inputType === "insertFromPaste" || e.inputType === "insertFromDrop") {
-                passwordInput.value = "";
-                resetData();
-                showNotice("Input otomatis ditolak!");
-            }
+        passwordInput.addEventListener("contextmenu", (e) => e.preventDefault());
+
+        passwordInput.addEventListener("input", (e) => {
+            if (passwordInput.value === "") resetData();
         });
 
         passwordInput.addEventListener("focus", resetData);
 
-        // --- EVENT KEYDOWN ---
-        passwordInput.addEventListener("keydown", (e) => {
-            if (e.repeat || e.key === "Process") return;
-            // Abaikan backspace, Enter, dan Tab agar tidak merusak ritme
-            if (e.key === "Backspace" || e.key === "Enter" || e.key === "Tab") return; 
+        const IGNORE_KEYS = new Set([
+            "Shift", "Control", "Alt", "Meta", "CapsLock", "Tab", "Enter", "Backspace", "Escape",
+            "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"
+        ]);
 
+        const MAX_DWELL = 2.0; 
+        const MIN_DWELL = 0.010; // 10ms (Lebih ketat untuk noise hardware)
+
+        passwordInput.addEventListener("keydown", (e) => {
+            if (e.repeat || IGNORE_KEYS.has(e.key)) return;
+
+            // --- NETWORK LATENCY COMPENSATION ---
+            // Menggunakan performance.now() untuk akurasi sub-millisecond
             let now = performance.now();
             if (startTime === null) startTime = now;
 
-            // --- ANTI-VANDALISM (SMASHING DETECTION) ---
-            // Jika ada > 5 tombol tertahan secara bersamaan, kemungkinan 'keyboard smashing'
-            if (Object.keys(pendingKeyDowns).length > 5) {
+            if (Object.keys(pendingKeyDowns).length > 8) {
                 resetData();
-                showNotice("Input tidak wajar terdeteksi!");
+                showNotice("Input terlalu cepat/tidak wajar!");
                 return;
             }
 
-            pendingKeyDowns[e.key] = now;
-            keySequence.push(e.key); 
+            pendingKeyDowns[e.code] = now;
+            keySequence.push(e.key);
+            keyTimeBuffer.push(now);
+
+            // Hitung Tri-graph (n to n+2)
+            if (keyTimeBuffer.length >= 3) {
+                let tri = (now - keyTimeBuffer[keyTimeBuffer.length - 3]) / 1000;
+                trigraphs.push(parseFloat(tri.toFixed(4)));
+            }
 
             if (lastKeyDownTime !== null) {
-                let diff = (now - lastKeyDownTime) / 1000;
-                // Anti-Bot: Kecepatan ketik tidak mungkin < 5ms secara konsisten
-                if (diff < 0.005 && d2dTimes.length > 5) {
-                    resetData();
-                    showNotice("Terlalu cepat! Gunakan cara manual.");
-                    return;
-                }
-                d2dTimes.push(diff);
+                let d2d = (now - lastKeyDownTime) / 1000;
+                if (d2d > 0.005) d2dTimes.push(parseFloat(d2d.toFixed(4)));
             }
             
-            // 🔹 LOGIKA OVERLAP (ROLLOVER):
-            // Jika lastKeyUpTime belum ada atau lebih besar dari sekarang (dalam kasus tertentu),
-            // tetap hitung selisihnya. Nilai negatif = Overlap.
             if (lastKeyUpTime !== null) {
-                flightTimes.push((now - lastKeyUpTime) / 1000);
-            } else if (startTime !== now) {
-                // Kasus tombol pertama belum dilepas tapi tombol kedua sudah masuk
-                flightTimes.push(0); // Inisialisasi awal jika perlu
+                let flight = (now - lastKeyUpTime) / 1000;
+                flightTimes.push(parseFloat(flight.toFixed(4)));
             }
             
             lastKeyDownTime = now;
         });
 
-        // --- EVENT KEYUP ---
         passwordInput.addEventListener("keyup", (e) => {
-            if (e.key === "Backspace" || e.key === "Enter" || e.key === "Tab") return;
+            if (IGNORE_KEYS.has(e.key)) return;
+            
             let now = performance.now();
-            if (pendingKeyDowns[e.key] !== undefined) {
-                let dTime = pendingKeyDowns[e.key];
-                dwellTimes.push((now - dTime) / 1000);
-                delete pendingKeyDowns[e.key];
+            if (pendingKeyDowns[e.code] !== undefined) {
+                let dTime = pendingKeyDowns[e.code];
+                let dwell = (now - dTime) / 1000;
+                
+                if (dwell > MAX_DWELL) {
+                    resetData();
+                    showNotice("Sensor lag terdeteksi. Ulangi.");
+                    passwordInput.value = "";
+                    return;
+                }
+                
+                if (dwell >= MIN_DWELL) {
+                    dwellTimes.push(parseFloat(dwell.toFixed(4)));
+                    if (lastKeyUpTime !== null) {
+                        let u2u = (now - lastKeyUpTime) / 1000;
+                        u2uTimes.push(parseFloat(u2u.toFixed(4)));
+                    }
+                    lastKeyUpTime = now;
+                }
+                
+                delete pendingKeyDowns[e.code];
             }
-            if (lastKeyUpTime !== null) u2uTimes.push((now - lastKeyUpTime) / 1000);
-            lastKeyUpTime = now;
         });
     }
-});
+});
