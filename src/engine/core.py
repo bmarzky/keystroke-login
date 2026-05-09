@@ -78,7 +78,7 @@ class BiometricCore:
                     f_score = min(1.0, f_score + 0.05)
 
             # 8. Pengambilan Keputusan Akhir
-            return self._finalize_decision(res, f_score, gates_info, fusion_data["max_out"], len(in_d), m_dist, fusion_data["all_scores"])
+            return self._finalize_decision(inp, res, f_score, gates_info, fusion_data["max_out"], len(in_d), m_dist, fusion_data["all_scores"])
 
         except Exception as e:
             return {"status": False, "score": 0.0, "reason": f"Core Error: {str(e)}"}
@@ -116,8 +116,8 @@ class BiometricCore:
             w = np.clip(w, 0.08, 0.40)
             w = w / sum(w)
         else:
-            if n_h < 5:  w = [0.30, 0.40, 0.15, 0.15, 0.00, 0.00]
-            elif n_h < 15: w = [0.27, 0.37, 0.15, 0.15, 0.03, 0.03]
+            if n_h < 5:  w = [0.40, 0.30, 0.15, 0.15, 0.00, 0.00]
+            elif n_h < 15: w = [0.35, 0.30, 0.15, 0.15, 0.03, 0.02]
             else: w = [0.30, 0.15, 0.15, 0.15, 0.15, 0.10]
         
         baselines = history[:3] + history[-7:] if n_h > 10 else history
@@ -145,32 +145,37 @@ class BiometricCore:
                 s_c.append(max(0, c) if np.isfinite(c) else 0.5)
             
             r_s, c_s = float(np.mean(s_r)), float(np.mean(s_c))
-            raw_s_s = float(max(0, 1.0 - (abs(in_speed - b.get('speed',350))/max(b.get('speed',350),1) / 0.5)))
-            s_s = float(max(0.30, raw_s_s)) if n_h < 5 else raw_s_s
+            s_s = float(max(0, 1.0 - (abs(in_speed - b.get('speed',350))/max(b.get('speed',350),1) / 0.5)))
             
             fl_in, fl_bs = np.diff(inp['flight']), np.diff(np.array(b['flight']))
             ml_f = min(len(fl_in), len(fl_bs))
             if ml_f > 3 and np.std(fl_in[:ml_f]) > 1e-6 and np.std(fl_bs[:ml_f]) > 1e-6:
-                raw_fl = float(np.corrcoef(fl_in[:ml_f], fl_bs[:ml_f])[0,1])
-                fl_floor = 0.45 if n_h < 5 else 0.35
-                fl_s = float(max(fl_floor, raw_fl))
+                fl_s = float(np.corrcoef(fl_in[:ml_f], fl_bs[:ml_f])[0,1])
             else:
                 fl_s = 0.55
             
             f_in, f_bs = np.array(self.extractor.extract(inp, history)), np.array(self.extractor.extract(b, history))
             
-            # Perbaikan Indeks Fitur:
-            # Ratios (median_r): 2, 8, 14, 20
-            rat_idx = [2, 8, 14, 20]
-            # Stability (std_clean, std_r): 1, 3, 7, 9, 13, 15, 19, 21
-            sta_idx = [1, 3, 7, 9, 13, 15, 19, 21]
+            # Perbaikan Indeks Fitur (Dimensi Baru: 16):
+            # Ratios (median_r): 2, 5, 8, 11
+            rat_idx = [2, 5, 8, 11]
+            # Stability (std_clean): 1, 4, 7, 10
+            sta_idx = [1, 4, 7, 10]
             
             rat_s = float(max(0, 1.0 - np.mean(np.abs(f_in[rat_idx]-f_bs[rat_idx])/(f_bs[rat_idx]+0.1))))
             sta_s = float(max(0, 1.0 - np.mean(np.abs(f_in[sta_idx]-f_bs[sta_idx])/(f_bs[sta_idx]+0.05))))
             
-            score = w[0]*r_s + w[1]*c_s + w[2]*s_s + w[3]*fl_s + w[4]*rat_s + w[5]*sta_s
+            # Tri-graph consistency
+            t_in, t_bs = np.array(inp.get('trigraph', []), dtype=float), np.array(b.get('trigraph', []), dtype=float)
+            ml_t = min(len(t_in), len(t_bs))
+            if ml_t >= 2:
+                tri_s = float(max(0, 1.0 - (np.linalg.norm(t_in[:ml_t] - t_bs[:ml_t]) / 0.5)))
+            else:
+                tri_s = 0.6
+            
+            score = w[0]*r_s + w[1]*c_s + w[2]*s_s + w[3]*fl_s + (w[4]*0.7*rat_s + w[4]*0.3*tri_s) + w[5]*sta_s
             all_scores.append(score)
-            comp_logs.append([r_s, c_s, s_s, fl_s, rat_s, sta_s])
+            comp_logs.append([r_s, c_s, s_s, fl_s, (0.7*rat_s + 0.3*tri_s), sta_s])
             max_out = max(max_out, out)
 
         best_idx = int(np.argmax(all_scores))
@@ -206,15 +211,13 @@ class BiometricCore:
     def _apply_consistency_penalty(self, comp: dict, f_score: float, res: dict) -> float:
         if not comp: return f_score
         n = res.get("n_samples", 0)
-        if n < 3: return f_score
+        if n < 2: return f_score
 
-        exclude = set()
-        if n < 10: exclude.add('speed'); exclude.add('flow')
-        check_components = {k: v for k, v in comp.items() if k not in exclude}
+        check_components = comp
         if not check_components: return f_score
         
         critical_min = min(check_components.values())
-        if critical_min < 0.45:
+        if critical_min < 0.50:
             if critical_min < 0.30:
                 penalty = 0.85 if n >= 40 else 0.90
             elif critical_min < 0.35:
@@ -228,13 +231,13 @@ class BiometricCore:
             res["reason_debug"] = f"Consistency Penalty ({critical_min:.2f})"
         return f_score
 
-    def _finalize_decision(self, res: dict, f_score: float, gates: dict, max_out: int, in_len: int, m_dist: float, all_scores: list) -> dict:
+    def _finalize_decision(self, inp: dict, res: dict, f_score: float, gates: dict, max_out: int, in_len: int, m_dist: float, all_scores: list) -> dict:
         n = res.get("n_samples", 0)
 
         if n >= 10 and all_scores:
             f_score = (0.85 * f_score) + (0.15 * float(np.mean(all_scores)))
 
-        if n >= 5:
+        if n >= 3:
             corr_score = res.get("components", {}).get("corr", 1.0)
             if corr_score < 0.65:
                 drop = min(0.25, 0.65 - corr_score)
@@ -244,6 +247,14 @@ class BiometricCore:
         is_speed_anomaly = res.get("is_speed_anomaly", False)
         pattern_corr = res.get("components", {}).get("corr", 0.0)
         
+        # --- REPLAY ATTACK DETECTION (JITTER) ---
+        in_jitter = float(inp.get('jitter', 0.1))
+        is_replay = False
+        if in_jitter < 0.0001: # Terlalu stabil (Robotic)
+            is_replay = True
+            f_score *= 0.5
+            res["reason_debug"] = f"Replay Detected (Jitter: {in_jitter:.6f})"
+
         if is_speed_anomaly:
             if pattern_corr > 0.90:
                 f_score *= 0.95
@@ -255,9 +266,10 @@ class BiometricCore:
         out_p = float(max_out / (in_len * 4) if in_len > 0 else 0)
         out_p_limit = 0.40 if n < 10 else 0.25
 
-        is_match = bool(f_score >= gates["threshold"] and out_p <= out_p_limit and not is_speed_anomaly)
+        is_match = bool(f_score >= gates["threshold"] and out_p <= out_p_limit and not is_speed_anomaly and not is_replay)
         
         if is_match: reason = f"Score: {f_score:.2f} | ACCEPT"
+        elif is_replay: reason = f"SECURITY ALERT: Replay Attack Detected"
         elif is_speed_anomaly: reason = f"Gate: Speed Anomali ({res.get('speed_dev', 0):.1%})"
         elif out_p > out_p_limit: reason = f"Outlier Rate Tinggi ({out_p*100:.1f}% > {out_p_limit*100:.0f}%)"
         else: reason = f"Skor Fusion Rendah ({f_score:.2f})"

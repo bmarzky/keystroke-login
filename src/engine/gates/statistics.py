@@ -8,7 +8,7 @@ class StatisticalGates:
 
     def __init__(self, feature_extractor: FeatureExtractor):
         self.extractor = feature_extractor
-        self.n_features = 24
+        self.n_features = 16
 
     def get_clean_limit(self, history: list) -> float:
         """Menggunakan Tukey's IQR Method (Statistik Robust) untuk Filter Outlier Dwell."""
@@ -99,7 +99,14 @@ class StatisticalGates:
         s_res = float(np.clip(s_final, s_min, s_h))
         m_res = float(np.clip(m_final, m_l, self.MAX_MAHAL_DIST))
         
-        t_min = 0.75 if n > 100 else 0.72 if n > 50 else 0.70 if n > 20 else 0.66
+        # Threshold should be much stricter when samples are few to avoid False Acceptance
+        if n < 5:
+            t_min = 0.74
+        elif n < 10:
+            t_min = 0.72
+        else:
+            t_min = 0.75 if n > 100 else 0.72 if n > 50 else 0.70
+            
         t_res = float(np.clip(t_final, t_min, t_h))
 
         if len(h0_d) < 7:
