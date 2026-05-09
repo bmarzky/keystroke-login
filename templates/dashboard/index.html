@@ -8,65 +8,69 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="dashboard-page">
+ 
+{% set total_val = total_data|default(0) %}
+{% set stability_val = stability|default(0)|float %}
+{% set ai_status = "READY" if [total_val, 15]|max == total_val else "COLLECTING DATA" %}
+{% set security_label = "HIGH" if [stability_val, 60]|min == stability_val else ("MEDIUM" if [stability_val, 100]|min == stability_val else "LOW") %}
+
+{# Color Logic #}
+{% set security_color = '#008000' if security_label == 'HIGH' else ('#FF8C00' if security_label == 'MEDIUM' else '#FF0000') %}
+{% set ai_color = '#000' if ai_status == 'READY' else '#666' %}
 
 <div class="dashboard-wrapper">
     <header class="dashboard-header">
-        <h2 class="dashboard-title">Analisis Keystroke: {{ username }}</h2>
+        <h2 class="dashboard-title">Security Intelligence: {{ username }}</h2>
         <form id="logoutForm" action="{{ url_for('logout') }}" method="POST">
             <button type="submit" class="btn-logout">Logout</button>
         </form>
     </header>
-
+ 
     <div class="stats-grid">
-        <div class="stat-item"><small>TOTAL DATA</small><b>{{ total_data }}</b></div>
-        <div class="stat-item"><small>AVG DWELL</small><b>{{ avg_dwell }} ms</b></div>
-        <div class="stat-item"><small>AVG FLIGHT</small><b>{{ avg_flight }} ms</b></div>
-        <div class="stat-item"><small>KECEPATAN</small><b>{{ wpm }} WPM</b></div>
-        <div class="stat-item"><small>STABILITAS</small><b>±{{ stability }}</b></div>
-        <div class="stat-item"><small>LAST LOGIN</small><b>{{ last_login }}</b></div>
+        <div class="stat-item">
+            <small>ACCOUNT SECURITY</small>
+            <b style="color: {{ security_color }}">
+                {{ security_label }}
+            </b>
+        </div>
+        <div class="stat-item">
+            <small>AI ENGINE STATUS</small>
+            <b style="color: {{ ai_color }}">
+                {{ ai_status }}
+            </b>
+        </div>
+        <div class="stat-item">
+            <small>TYPING SPEED</small>
+            <b>{{ wpm }} WPM</b>
+        </div>
+        <div class="stat-item">
+            <small>SAMPEL KETIKAN</small>
+            <b>{{ total_data }}</b>
+        </div>
+        <div class="stat-item">
+            <small>KONSISTENSI</small>
+            <b>{{ "Sangat Stabil" if [stability_val, 45]|min == stability_val else ("Stabil" if [stability_val, 90]|min == stability_val else "Cukup") }}</b>
+        </div>
+        <div class="stat-item">
+            <small>LAST ACCESS</small>
+            <b>{{ last_login }}</b>
+        </div>
     </div>
 
     <div class="chart-box">
-        <canvas id="keystrokeChart"></canvas>
+        <h3 style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.1em; flex-shrink: 0; width: 100%;">
+            Biometric Pattern Analysis (Current vs History)
+        </h3>
+        <div class="chart-container" style="position: relative; flex: 1; width: 100%; min-height: 0;">
+            <canvas id="keystrokeChart"></canvas>
+        </div>
     </div>
 
     <div id="dashboard-data" class="hidden-dashboard-data" 
          data-current='{{ current_features | tojson }}' 
          data-prev='{{ prev_features | tojson }}'></div>
 
-    <div class="table-container">
-        <table class="dashboard-table">
-            <thead>
-                <tr>
-                    <th>Fitur (ms)</th>
-                    {% set max_keys = [current_features.dwell|length, prev_features.dwell|length]|max %}
-                    {% for i in range(1, max_keys + 1) %}
-                        <th>K{{ i }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td class="label-cell">Dwell (Current)</td>
-                    {% for i in range(max_keys) %}
-                        <td>{{ (current_features.dwell[i] * 1000)|round|int if i < current_features.dwell|length else '-' }}</td>
-                    {% endfor %}
-                </tr>
-                <tr class="row-muted">
-                    <td class="label-cell">Dwell (Prev)</td>
-                    {% for i in range(max_keys) %}
-                        <td>{{ (prev_features.dwell[i] * 1000)|round|int if i < prev_features.dwell|length else '-' }}</td>
-                    {% endfor %}
-                </tr>
-                <tr class="row-divider">
-                    <td class="label-cell">Flight (Current)</td>
-                    {% for i in range(max_keys) %}
-                        <td>{{ (current_features.flight[i] * 1000)|round|int if i < current_features.flight|length else '-' }}</td>
-                    {% endfor %}
-                </tr>
-            </tbody>
-        </table>
-    </div>
+    <!-- Raw Data Table Removed for Cleaner UI -->
 </div>
 
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
