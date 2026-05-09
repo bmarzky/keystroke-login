@@ -6,14 +6,27 @@ class FeatureExtractor:
     CLEAN_THRESHOLD = 0.25
 
     def ensure_vectors(self, data: dict) -> dict:
-        """Memastikan data memiliki vektor D2D (Down-to-Down) dan U2U (Up-to-Up)."""
+        """Memastikan data memiliki vektor D2D, U2U, dan Trigraph."""
         d, f = data.get('dwell', []), data.get('flight', [])
-        if not data.get('d2d'): data['d2d'] = [float(d[i] + f[i]) for i in range(min(len(d), len(f)))]
-        if not data.get('u2u'): data['u2u'] = [float(f[i] + d[i+1]) for i in range(min(len(d)-1, len(f)))]
+        
+        # Calculate D2D and U2U if missing
+        if not data.get('d2d'): 
+            data['d2d'] = [float(d[i] + f[i]) for i in range(min(len(d), len(f)))]
+        if not data.get('u2u'): 
+            data['u2u'] = [float(f[i] + d[i+1]) for i in range(min(len(d)-1, len(f)))]
+            
+        # Calculate Trigraph (n to n+2) if missing - based on D2D sum
+        if not data.get('trigraph'):
+            d2d = data.get('d2d', [])
+            if len(d2d) >= 2:
+                data['trigraph'] = [float(d2d[i] + d2d[i+1]) for i in range(len(d2d)-1)]
+            else:
+                data['trigraph'] = []
+                
         return data
 
     def extract(self, data: dict, history=None) -> list:
-        """Ekstraksi vektor fitur 24-dimensi menggunakan operasi vektor NumPy."""
+        """Ekstraksi vektor fitur 16-dimensi (Refined) menggunakan operasi vektor NumPy."""
         data = self.ensure_vectors(data)
         features = []
         
@@ -25,20 +38,31 @@ class FeatureExtractor:
                 Q1, Q3 = np.percentile(all_d, 25), np.percentile(all_d, 75)
                 limit = float(max(0.25, Q3 + 1.5 * (Q3 - Q1)))
         
+        # 1. Base Features (Dwell, Flight, D2D, U2U) - 12 features
         for key in ['dwell', 'flight', 'd2d', 'u2u']:
             arr = np.array(data.get(key, []), dtype=float)
-            clean = arr[arr < limit] # Hanya ambil data yang masuk akal
+            clean = arr[arr < limit]
             
             if len(clean) >= 2:
                 features.extend([float(np.median(clean)), float(np.std(clean, ddof=1))])
                 # Rasio Ritme
-                r = clean[:-1] / (clean[1:] + 0.001) if len(clean) >= 3 else [1.0, 0.1]
-                features.extend([float(np.median(r)), float(np.std(r, ddof=1)) if len(r)>1 else 0.1])
-                # Tanda Tangan Frekuensi (FFT)
-                fft = np.abs(np.fft.fft(clean)) if len(clean) >= 4 else [0, 0, 0]
-                features.extend([float(fft[1]) if len(fft)>1 else 0.0, float(fft[2]) if len(fft)>2 else 0.0])
+                r = clean[:-1] / (clean[1:] + 0.001) if len(clean) >= 3 else [1.0]
+                features.append(float(np.median(r)))
             else:
-                features.extend([float(min(np.median(arr), 0.20)) if len(arr)>0 else 0.0, 0.01, 1.0, 0.1, 0.0, 0.0])
+                features.extend([float(min(np.median(arr), 0.20)) if len(arr)>0 else 0.05, 0.01, 1.0])
+
+        # 2. Tri-graph Features (Baru) - 2 features
+        tri = np.array(data.get('trigraph', []), dtype=float)
+        if len(tri) >= 2:
+            features.extend([float(np.median(tri)), float(np.std(tri, ddof=1))])
+        else:
+            features.extend([0.4, 0.05])
+
+        # 3. Jitter Feature (Baru) - 1 feature
+        features.append(float(data.get('jitter', 0.0)))
+
+        # 4. Speed (CPM) - 1 feature
+        features.append(float(data.get('speed', 0.0)) / 600.0) # Normalize
                 
         return [float(f) if np.isfinite(f) else 0.0 for f in features]
 
