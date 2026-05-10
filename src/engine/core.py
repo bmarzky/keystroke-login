@@ -78,7 +78,7 @@ class BiometricCore:
                     f_score = min(1.0, f_score + 0.05)
 
             # 8. Pengambilan Keputusan Akhir
-            return self._finalize_decision(inp, res, f_score, gates_info, fusion_data["max_out"], len(in_d), m_dist, fusion_data["all_scores"])
+            return self._finalize_decision(inp, res, f_score, gates_info, fusion_data["max_out"], len(in_d), m_dist, fusion_data["all_scores"], history)
 
         except Exception as e:
             return {"status": False, "score": 0.0, "reason": f"Core Error: {str(e)}"}
@@ -188,24 +188,36 @@ class BiometricCore:
         }
 
     def _apply_ai_smart_guard(self, ai_score: float, f_score: float, threshold: float, res: dict) -> tuple:
+        """
+        Optimized: Proportional AI Guard.
+        AI tidak lagi mengganti threshold secara paksa, tapi memberikan offset (pergeseran)
+        berdasarkan tingkat keyakinan model ML.
+        """
         if ai_score > 0.60:
             res["ai_status"] = "Normal (High Trust)"
             if ai_score > 0.90:
-                threshold = float(min(threshold, 0.68)) # Relax threshold jika AI sangat yakin
+                offset = -0.04
+                threshold += offset
                 f_score = min(1.0, f_score + 0.03)
             elif ai_score > 0.85:
-                threshold = float(min(threshold, 0.72))
+                offset = -0.02
+                threshold += offset
                 f_score = min(1.0, f_score + 0.01)
+            else:
+                offset = 0.0
         elif ai_score >= 0.25:
             res["ai_status"] = "Caution (Manual Review Pattern)"
-            boost = (0.60 - ai_score) * 0.35
-            threshold = float(max(threshold, min(0.78, threshold + boost)))
+            offset = (0.60 - ai_score) * 0.20
+            threshold += offset
         else:
             penalty = 0.60 if ai_score < 0.15 else 0.75
             f_score *= penalty
-            threshold = float(max(threshold, 0.82))
-            res["ai_status"] = f"Anomalous (Standard Raised to 0.82)"
+            offset = 0.08
+            threshold += offset
+            res["ai_status"] = f"Anomalous (Security Raised)"
             
+        if "audit" not in res: res["audit"] = {}
+        res["audit"]["ai_offset"] = round(offset, 4)
         return f_score, threshold
 
     def _apply_consistency_penalty(self, comp: dict, f_score: float, res: dict) -> float:
@@ -231,48 +243,71 @@ class BiometricCore:
             res["reason_debug"] = f"Consistency Penalty ({critical_min:.2f})"
         return f_score
 
-    def _finalize_decision(self, inp: dict, res: dict, f_score: float, gates: dict, max_out: int, in_len: int, m_dist: float, all_scores: list) -> dict:
+    def _finalize_decision(self, inp: dict, res: dict, f_score: float, gates: dict, max_out: int, in_len: int, m_dist: float, all_scores: list, history: list) -> dict:
         n = res.get("n_samples", 0)
+        
+        # --- FOUR-LAYER EXPLAINABILITY LOGGING ---
+        audit = {
+            "Layer_A_Raw": {
+                "dwell_mean": round(float(np.mean(inp['dwell'])), 4) if inp.get('dwell') else 0,
+                "flight_mean": round(float(np.mean(inp['flight'])), 4) if inp.get('flight') else 0,
+                "jitter": round(float(inp.get('jitter', 0)), 6),
+                "typing_speed": round(float(res.get('speed', 0)), 1),
+                "cv_rolling": round(float(res.get('cv_hybrid', 0)), 4)
+            },
+            "Layer_B_Stats": {
+                "mahalanobis_dist": round(float(m_dist), 4) if m_dist else None,
+                "base_threshold": gates["threshold"],
+                "stability_bonus": gates.get("stability_bonus", 0.0),
+                "anchor_weight": gates.get("anchor_weight", 1.0)
+            },
+            "Layer_C_AI": {
+                "ai_confidence": round(float(res.get("ai_score", 0)), 4) if res.get("ai_score") else None,
+                "ai_offset": res.get("audit", {}).get("ai_offset", 0.0),
+                "ai_status": res.get("ai_status", "Standby")
+            },
+            "Layer_D_Decision": {
+                "final_score": round(f_score, 4),
+                "final_threshold": gates["threshold"],
+                "outlier_rate": round(float(max_out / (in_len * 4) if in_len > 0 else 0), 3),
+                "is_replay": False,
+                "is_speed_anomaly": res.get("is_speed_anomaly", False)
+            }
+        }
 
         if n >= 10 and all_scores:
             f_score = (0.85 * f_score) + (0.15 * float(np.mean(all_scores)))
 
+        # Consistency Penalty (Bukan Statis, tapi Behavioral)
         if n >= 3:
             corr_score = res.get("components", {}).get("corr", 1.0)
             if corr_score < 0.65:
-                drop = min(0.25, 0.65 - corr_score)
+                drop = min(0.20, 0.65 - corr_score)
                 f_score *= (1.0 - drop)
-                res.setdefault("reason_debug", f"Corr Guard ({corr_score:.1%})")
+                audit["Layer_D_Decision"]["penalty"] = f"Corr Guard (-{drop:.2f})"
 
-        is_speed_anomaly = res.get("is_speed_anomaly", False)
-        pattern_corr = res.get("components", {}).get("corr", 0.0)
-        
-        # --- REPLAY ATTACK DETECTION (JITTER) ---
+        # Replay Guard
         in_jitter = float(inp.get('jitter', 0.1))
-        is_replay = False
-        if in_jitter < 0.0001: # Terlalu stabil (Robotic)
-            is_replay = True
-            f_score *= 0.5
-            res["reason_debug"] = f"Replay Detected (Jitter: {in_jitter:.6f})"
+        historical_jitters = [float(h.get('jitter', 0.1)) for h in history[-10:]]
+        baseline_jitter = float(np.median(historical_jitters)) if historical_jitters else 0.05
+        
+        if in_jitter < 0.0001 or (n >= 5 and in_jitter < baseline_jitter * 0.1):
+            audit["Layer_D_Decision"]["is_replay"] = True
+            f_score *= 0.4
 
-        if is_speed_anomaly:
-            if pattern_corr > 0.90:
-                f_score *= 0.95
-                res["reason_debug"] = f"Speed Anomali Forgiven (Corr: {pattern_corr:.2f})"
-                is_speed_anomaly = False
-            else:
-                f_score *= 0.80
-
-        out_p = float(max_out / (in_len * 4) if in_len > 0 else 0)
+        # Decision Making
+        out_p = audit["Layer_D_Decision"]["outlier_rate"]
         out_p_limit = 0.40 if n < 10 else 0.25
+        is_replay = audit["Layer_D_Decision"]["is_replay"]
+        is_speed_anomaly = audit["Layer_D_Decision"]["is_speed_anomaly"]
 
         is_match = bool(f_score >= gates["threshold"] and out_p <= out_p_limit and not is_speed_anomaly and not is_replay)
         
-        if is_match: reason = f"Score: {f_score:.2f} | ACCEPT"
-        elif is_replay: reason = f"SECURITY ALERT: Replay Attack Detected"
-        elif is_speed_anomaly: reason = f"Gate: Speed Anomali ({res.get('speed_dev', 0):.1%})"
-        elif out_p > out_p_limit: reason = f"Outlier Rate Tinggi ({out_p*100:.1f}% > {out_p_limit*100:.0f}%)"
-        else: reason = f"Skor Fusion Rendah ({f_score:.2f})"
+        if is_match: reason = f"ACCEPT | Match Score {f_score:.2f} (Target {gates['threshold']:.2f})"
+        elif is_replay: reason = f"REJECT | SECURITY: Replay Attack Detected"
+        elif is_speed_anomaly: reason = f"REJECT | Gate: Speed Anomaly"
+        elif out_p > out_p_limit: reason = f"REJECT | Outlier Rate ({out_p*100:.1f}%)"
+        else: reason = f"REJECT | Fusion Score Rendah ({f_score:.2f})"
 
         _m_ok = (m_dist is None and n < 20) or (m_dist is not None and m_dist < 7.0)
         res.update({
@@ -280,6 +315,7 @@ class BiometricCore:
             "score": round(f_score, 4),
             "threshold": gates["threshold"],
             "reason": reason,
+            "audit": audit,
             "should_update_history": bool(is_match and (n < 5 or _m_ok) and out_p < 0.20)
         })
         return res
@@ -292,7 +328,7 @@ class BiometricCore:
     def _get_response_template(self, n=0):
         return {"status": False, "score": 0.0, "threshold": 0.70, "reason": "Unknown", "method": "Titanium Fusion",
                 "n_samples": n, "speed_dev": 0.0, "mahal_dist": None, "ai_score": None, "ai_status": "Standby",
-                "should_update_history": False, "adaptive_gates": {}, "components": {}}
+                "should_update_history": False, "adaptive_gates": {}, "components": {}, "audit": {}}
 
 # Blok eksekusi CLI (untuk pengujian lewat terminal)
 if __name__ == "__main__":
