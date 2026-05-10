@@ -207,12 +207,12 @@ class BiometricCore:
                 offset = 0.0
         elif ai_score >= 0.25:
             res["ai_status"] = "Caution (Manual Review Pattern)"
-            offset = (0.60 - ai_score) * 0.20
+            offset = (0.60 - ai_score) * 0.15
             threshold += offset
         else:
-            penalty = 0.60 if ai_score < 0.15 else 0.75
+            penalty = 0.82 if ai_score < 0.15 else 0.90
             f_score *= penalty
-            offset = 0.08
+            offset = 0.04
             threshold += offset
             res["ai_status"] = f"Anomalous (Security Raised)"
             

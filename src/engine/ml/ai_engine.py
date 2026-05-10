@@ -23,7 +23,7 @@ class AIEngine:
             if n_samples < 15:
                 return False, f"Data minimal 15 (saat ini {n_samples})"
 
-            adaptive_nu = float(np.clip(0.18 - (n_samples / 500.0), 0.12, 0.18))
+            adaptive_nu = float(np.clip(0.14 - (n_samples / 600.0), 0.08, 0.14))
             
             # Gunakan RobustScaler (kebal terhadap ketikan outlier / distraksi)
             scaler = RobustScaler()
