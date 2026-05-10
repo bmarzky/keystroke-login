@@ -53,7 +53,7 @@
         </div>
         <div class="stat-item">
             <small>LAST ACCESS</small>
-            <b>{{ last_login }}</b>
+            <b>{{ last_login.split(' ')[1] if ' ' in last_login else last_login }}</b>
         </div>
     </div>
 
