@@ -10,21 +10,27 @@ const AuthForm = (() => {
 
     const hideAfterDelay = (element) => {
         if (!element) return;
-        element.style.opacity = '1';
         setTimeout(() => {
-            element.style.opacity = '0';
+            element.style.animation = 'slideOut 0.3s ease forwards';
             setTimeout(() => {
-                element.textContent = '';
-                element.style.opacity = '1';
-            }, 250);
+                element.remove();
+            }, 300);
         }, MESSAGE_TTL);
     };
 
+    const createToast = (message, type = 'error') => {
+        const container = getElement('#toast-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${type === 'error' ? 'error-box' : 'success-box'}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        hideAfterDelay(toast);
+    };
+
     const showError = (message) => {
-        const errorElement = getElement('#js-error-msg');
-        if (!errorElement) return;
-        errorElement.textContent = message;
-        hideAfterDelay(errorElement);
+        createToast(message, 'error');
     };
 
     const getKeystrokePayload = () => {
@@ -100,7 +106,11 @@ const AuthForm = (() => {
 
         // Hanya clear pesan saat user kembali fokus ke kolom password
         passwordInput.addEventListener('focus', () => {
-            noticeTarget.textContent = '';
+            const container = getElement('#toast-container');
+            if (container) {
+                // Opsional: hapus toast lama saat fokus
+                // container.innerHTML = ''; 
+            }
         });
     };
 
@@ -123,19 +133,8 @@ const AuthForm = (() => {
 
     const initAutoHide = () => {
         const statusMsg = getElement('#status-msg');
-        const jsErrorMsg = getElement('#js-error-msg');
-
         if (statusMsg && statusMsg.textContent.trim() !== '') {
             hideAfterDelay(statusMsg);
-        }
-
-        if (jsErrorMsg) {
-            const observer = new MutationObserver(() => {
-                if (jsErrorMsg.textContent.trim() !== '') {
-                    hideAfterDelay(jsErrorMsg);
-                }
-            });
-            observer.observe(jsErrorMsg, { childList: true });
         }
     };
 

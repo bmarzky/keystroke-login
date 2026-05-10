@@ -9,18 +9,18 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='tutorial/guide.css') }}">
 </head>
 <body>
+    <div class="message-container" id="toast-container">
+        {% if error %}
+            <div class="toast error-box" id="status-msg">{{ error }}</div>
+        {% endif %}
+        {% if success %}
+            <div class="toast success-box" id="status-msg">{{ success }}</div>
+        {% endif %}
+        <div id="js-error-msg"></div>
+    </div>
+
     <div class="auth-wrapper">
         <h2 class="auth-title">Login</h2>
-
-        <div class="message-container">
-            {% if error %}
-                <div id="status-msg" class="php-message error-box">{{ error }}</div>
-            {% endif %}
-            {% if success %}
-                <div id="status-msg" class="php-message success-box">{{ success }}</div>
-            {% endif %}
-            <div id="js-error-msg"></div>
-        </div>
         
         <form id="loginForm" class="auth-form" action="{{ url_for('login') }}" method="POST" autocomplete="off" novalidate>
             <input type="text" id="username" name="username" placeholder="Username" required autofocus autocomplete="off" minlength="3" maxlength="50">
