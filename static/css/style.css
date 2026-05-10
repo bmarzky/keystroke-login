@@ -12,9 +12,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: #fdfdfd;
-    background-image: radial-gradient(#d1d1d1 1px, transparent 1px);
-    background-size: 24px 24px;
+    background: #ffffff;
     color: #000000;
     font-family: 'JetBrains Mono', monospace;
 }
@@ -213,9 +211,7 @@ html.dashboard-page,
 body.dashboard-page {
     min-height: 100vh;
     margin: 0;
-    background: #fdfdfd;
-    background-image: radial-gradient(#d1d1d1 1px, transparent 1px);
-    background-size: 24px 24px;
+    background: #ffffff;
     color: #000;
     font-family: 'JetBrains Mono', monospace;
 }
