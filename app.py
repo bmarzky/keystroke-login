@@ -185,7 +185,7 @@ trainer_thread = threading.Thread(target=background_trainer_worker, daemon=True)
 trainer_thread.start()
 
 def _model_exists(uid):
-    pattern = os.path.join("src", "engine", "ml", "models", f"{uid}_ocsvm_v*.joblib")
+    pattern = os.path.join("models", f"{uid}_ocsvm_v*.joblib")
     return len(glob.glob(pattern)) > 0
 
 def _trigger_training(uid, history):

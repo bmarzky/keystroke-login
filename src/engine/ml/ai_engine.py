@@ -5,7 +5,13 @@ from sklearn.preprocessing import RobustScaler
 
 class AIEngine:
     def __init__(self, model_dir=None):
-        self.model_dir = model_dir or os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
+        # Gunakan path absolut dari root project untuk models agar lebih stabil di hosting
+        if model_dir is None:
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+            self.model_dir = os.path.join(base_dir, 'models')
+        else:
+            self.model_dir = model_dir
+            
         os.makedirs(self.model_dir, exist_ok=True)
 
     def _get_model_pattern(self, user_id):
