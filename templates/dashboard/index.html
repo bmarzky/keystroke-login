@@ -16,11 +16,11 @@
 
 {# Color Logic #}
 {% set security_color = '#008000' if security_label == 'HIGH' else ('#FF8C00' if security_label == 'MEDIUM' else '#FF0000') %}
-{% set ai_color = '#00c853' if ai_status == 'READY' else '#000' %}
+{% set ai_color = '#008000' if ai_status == 'READY' else '#000' %}
 
 <div class="dashboard-wrapper">
     <header class="dashboard-header">
-        <h2 class="dashboard-title">Security Intelligence: {{ username }}</h2>
+        <h2 class="dashboard-title">Good to see you again, {{ username }}!</h2>
         <form id="logoutForm" action="{{ url_for('logout') }}" method="POST">
             <button type="submit" class="btn-logout">Logout</button>
         </form>
