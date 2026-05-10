@@ -71,47 +71,73 @@ class StatisticalGates:
         return in_speed, s_dev
 
     def calculate_gates(self, n: int, history: list, mahal_dists: list) -> dict:
+        """
+        Optimized: Adaptive Hybrid Behavioral Gates (Production-Grade).
+        Menerapkan pembobotan dinamis antara Anchor (Long-term Memory) 
+        dan Rolling (Short-term Adaptation).
+        """
+        # 1. Hitung CV Dasar
         h0_d = np.array(history[0].get('dwell', [0.1]), dtype=float)
-        cv = float(np.clip(np.std(h0_d)/max(np.mean(h0_d),0.001), 0.1, 0.6))
-        g = {"s": 0.2 + cv*0.5, "m": 1.5 + cv*6.0, "t": 0.65 - cv*0.1}
+        anchor_cv = float(np.clip(np.std(h0_d)/max(np.mean(h0_d), 0.001), 0.1, 0.6))
+        
+        recent_history = history[-10:] if n > 10 else history
+        all_dwells = [d for h in recent_history for d in h.get('dwell', [])]
+        rolling_cv = float(np.clip(np.std(all_dwells)/max(np.mean(all_dwells), 0.001), 0.08, 0.55)) if len(all_dwells) > 5 else anchor_cv
 
-        if n > 1:
+        # 2. ADAPTIVE HYBRID WEIGHTING (Mekanisme Recovery & Trust)
+        # Menghitung bobot anchor secara dinamis
+        if n < 10:
+            anchor_w = 0.80  # User baru: Percaya penuh pada data awal
+        elif n < 50:
+            anchor_w = 0.70  # User transisi
+        else:
+            anchor_w = 0.60  # User senior: Berikan ruang adaptasi lebih besar
+            
+        # Emergency Recovery: Jika Rolling CV tiba-tiba berantakan (Anomali), tarik bobot ke Anchor
+        if rolling_cv > anchor_cv * 1.5:
+            anchor_w = min(0.90, anchor_w + 0.20)
+            
+        cv = (anchor_cv * anchor_w) + (rolling_cv * (1.0 - anchor_w))
+
+        # 3. Base Gates Calculation
+        g = {
+            "s": 0.2 + cv * 0.4,
+            "m": 1.5 + cv * 5.0,
+            "t": 0.68 - cv * 0.08
+        }
+
+        # 4. Dynamic Refinement & Stability Bonus
+        stability_bonus = 0.0
+        if n >= 5:
             speeds = [float(h.get('speed', 0)) for h in history]
-            g["s"] = float(max(0.35, (3.0 * np.std(speeds) / max(np.mean(speeds), 1.0))))
+            g["s"] = float(np.clip(3.0 * np.std(speeds) / max(np.mean(speeds), 1.0), 0.35, 0.75))
+            
             if mahal_dists and len(mahal_dists) >= 3:
                 m_avg, m_std = float(np.mean(mahal_dists)), float(np.std(mahal_dists))
                 progress = np.clip((n - 5) / 45.0, 0.0, 1.0)
-                multiplier = 2.8 - (progress * 1.0)
-                buffer = 4.0 - (progress * 2.5)
-                g["m"] = m_avg + multiplier * m_std + buffer
-                base_t = 0.65 if n >= 30 else 0.62
-                g["t"] = float(min(base_t, base_t - 0.05 + (n-5)*0.01) + (max(0.0, 1.0 - m_avg/3.0)*0.08))
+                
+                multiplier = 3.0 - (progress * 1.2) 
+                g["m"] = m_avg + (multiplier * m_std) + (2.0 * (1.0 - progress))
+                
+                stability_bonus = max(0.0, (3.0 - m_avg) * 0.025)
+                base_t = 0.70 + (progress * 0.08)
+                g["t"] = base_t + stability_bonus - (cv * 0.05)
 
-        alpha = float(1.0 if n >= 5 else min(1.0, (n-1)/4.0))
-        s_final = g["s"] 
-        m_final = (1-alpha)*(1.5 + cv*6.0) + alpha*g["m"]
-        t_final = (1-alpha)*(0.68 - cv*0.1) + alpha*g["t"]
+        # 5. HARD CAPPING (Safety Belt)
+        T_FLOOR, T_CEILING = 0.70, 0.88
+        t_res = float(np.clip(g["t"], T_FLOOR, T_CEILING))
+        s_res = float(np.clip(g["s"], 0.35, 0.75))
+        m_res = float(np.clip(g["m"], 3.0, self.MAX_MAHAL_DIST))
 
-        limits = [(0.85, 12.0, 0.72), (0.75, 10.0, 0.75), (0.50, 4.5, 0.78), (0.40, 3.2, 0.82)]
-        s_h, m_l, t_h = limits[min(3, 0 if n<5 else 1 if n<20 else 2 if n<100 else 3)]
-        
-        s_min = 0.75 if n < 5 else 0.60 if n < 20 else 0.35
-        s_res = float(np.clip(s_final, s_min, s_h))
-        m_res = float(np.clip(m_final, m_l, self.MAX_MAHAL_DIST))
-        
-        # Threshold should be much stricter when samples are few to avoid False Acceptance
-        if n < 5:
-            t_min = 0.74
-        elif n < 10:
-            t_min = 0.72
-        else:
-            t_min = 0.75 if n > 100 else 0.72 if n > 50 else 0.70
-            
-        t_res = float(np.clip(t_final, t_min, t_h))
+        return {
+            "speed_gate": round(s_res, 4), 
+            "mahal_gate": round(m_res, 4), 
+            "threshold": round(t_res, 4), 
+            "cv_hybrid": round(cv, 4),
+            "anchor_weight": round(anchor_w, 2),
+            "stability_bonus": round(stability_bonus, 4),
+            "phase": f"Hybrid Adaptive (n={n})"
+        }
 
-        if len(h0_d) < 7:
-            t_res = float(np.clip(t_res + (7-len(h0_d))*0.02, 0.72, 0.90))
-            s_res, m_res = s_res*1.20, m_res*0.85
 
-        return {"speed_gate": round(s_res,4), "mahal_gate": round(m_res,4), 
-                "threshold": round(t_res,4), "phase": f"Phase {n}" if n<5 else f"Mahalanobis Mode (n={n})"}
+
