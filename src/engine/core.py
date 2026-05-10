@@ -116,8 +116,8 @@ class BiometricCore:
             w = np.clip(w, 0.08, 0.40)
             w = w / sum(w)
         else:
-            if n_h < 5:  w = [0.40, 0.30, 0.15, 0.15, 0.00, 0.00]
-            elif n_h < 15: w = [0.35, 0.30, 0.15, 0.15, 0.03, 0.02]
+            if n_h < 5:  w = [0.30, 0.25, 0.25, 0.20, 0.00, 0.00]
+            elif n_h < 15: w = [0.28, 0.22, 0.25, 0.20, 0.03, 0.02]
             else: w = [0.30, 0.15, 0.15, 0.15, 0.15, 0.10]
         
         baselines = history[:3] + history[-7:] if n_h > 10 else history
@@ -223,14 +223,18 @@ class BiometricCore:
     def _apply_consistency_penalty(self, comp: dict, f_score: float, res: dict) -> float:
         if not comp: return f_score
         n = res.get("n_samples", 0)
-        if n < 2: return f_score
+        # Onboarding: Jangan terlalu galak dengan variasi di awal
+        if n < 4: return f_score
 
         check_components = comp
         if not check_components: return f_score
         
         critical_min = min(check_components.values())
         if critical_min < 0.50:
-            if critical_min < 0.30:
+            if n < 15:
+                # User masih dalam fase penyesuaian, penalti sangat ringan
+                penalty = 0.96 if critical_min < 0.30 else 0.98
+            elif critical_min < 0.30:
                 penalty = 0.85 if n >= 40 else 0.90
             elif critical_min < 0.35:
                 penalty = 0.90 if n >= 40 else 0.94

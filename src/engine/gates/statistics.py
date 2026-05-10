@@ -120,11 +120,11 @@ class StatisticalGates:
                 g["m"] = m_avg + (multiplier * m_std) + (2.0 * (1.0 - progress))
                 
                 stability_bonus = max(0.0, (3.0 - m_avg) * 0.025)
-                base_t = 0.68 + (progress * 0.10)
+                base_t = 0.60 + (progress * 0.18)
                 g["t"] = base_t + stability_bonus - (cv * 0.05)
 
         # 5. HARD CAPPING (Safety Belt)
-        T_FLOOR, T_CEILING = 0.68, 0.85
+        T_FLOOR, T_CEILING = 0.60, 0.84
         t_res = float(np.clip(g["t"], T_FLOOR, T_CEILING))
         s_res = float(np.clip(g["s"], 0.35, 0.75))
         m_res = float(np.clip(g["m"], 3.0, self.MAX_MAHAL_DIST))
