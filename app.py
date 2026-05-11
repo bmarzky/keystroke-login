@@ -1,3 +1,4 @@
+from src.engine.ml.ai_engine import AIEngine
 import os, json, time, subprocess
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 import bcrypt
@@ -16,6 +17,17 @@ app.config.from_object(Config)
 
 # Biometric Engine Instance
 biom_core = BiometricCore()
+
+# Hosting Check: Pastikan folder models ada dan writable
+MODELS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
+if not os.path.exists(MODELS_DIR):
+    try:
+        os.makedirs(MODELS_DIR, exist_ok=True)
+        with open(os.path.join(MODELS_DIR, 'test_write.txt'), 'w') as f:
+            f.write('test')
+        os.remove(os.path.join(MODELS_DIR, 'test_write.txt'))
+    except Exception as e:
+        print(f"[HOSTING WARNING] Folder models tidak writable: {e}")
 
 @app.route('/')
 def index():
@@ -71,7 +83,10 @@ def login():
                     
                     if should_train and n_samples >= 15:
                         history_dicts = [json.loads(h) for h in history]
-                        _trigger_training(user['id'], history_dicts + [input_keystroke])
+                        # Jalankan training secara sinkron agar pasti terbuat di hosting
+                        success, msg = train_user_model_in_memory(user['id'], history_dicts + [input_keystroke])
+                        if not success:
+                            log_access('training_error.log', f"ERROR | User: {username}", f"Training fail: {msg}")
 
                 log_access('login_success.log', f"SUCCESS | User: {username}", format_log(user['id'], result, history, input_keystroke))
                 return redirect(url_for('dashboard'))
@@ -157,43 +172,9 @@ import queue
 
 from src.engine.ml.ai_trainer import train_user_model_in_memory
 
-# In-Memory Queue untuk Background Training
-training_queue = queue.Queue()
-
-def background_trainer_worker():
-    """Worker thread memproses antrean training satu per satu. 
-    Menghindari OOM (Out of Memory) dan Race Condition."""
-    while True:
-        try:
-            task = training_queue.get()
-            if task is None: break
-            
-            uid, history = task
-            print(f"[AI WORKER] Memulai training background User {uid} (N={len(history)})...")
-            
-            # Panggil proses training langsung di memory, tanpa Disk I/O
-            success, msg = train_user_model_in_memory(uid, history)
-            print(f"[AI WORKER] User {uid} selesai: {success} | {msg}")
-            
-        except Exception as e:
-            print(f"[AI WORKER ERROR] {e}")
-        finally:
-            training_queue.task_done()
-
-# Start Daemon Thread
-trainer_thread = threading.Thread(target=background_trainer_worker, daemon=True)
-trainer_thread.start()
-
 def _model_exists(uid):
-    pattern = os.path.join("models", f"{uid}_ocsvm_v*.joblib")
-    return len(glob.glob(pattern)) > 0
-
-def _trigger_training(uid, history):
-    """Memasukkan request training ke antrean memory tanpa bloking."""
-    try:
-        training_queue.put_nowait((uid, history))
-    except queue.Full:
-        print(f"[TRAINING SKIP] Antrean kepenuhan untuk user {uid}.")
+    ai = AIEngine()
+    return ai._get_latest_model_path(uid) is not None
 
 if __name__ == '__main__':
     app.run(debug=True, port=8000)
