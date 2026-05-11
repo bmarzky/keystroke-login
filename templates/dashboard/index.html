@@ -8,19 +8,15 @@
 </head>
 <body class="dashboard-page">`
     <div class="dashboard-wrapper">
-        <header class="rfc-header">
-            <div class="rfc-header-left">
-BIOMETRIC AUTHENTICATION SECURE ENGINE
-Method: {{ latest_metrics.method|default('Mahalanobis + OCSVM') }}
-Samples: {{ latest_metrics.history_count|default(total_data) }}
-Status: {{ 'HEALTHY' if health_stability|float > 80 else 'MONITORING' if health_stability != 'N/A' else 'STANDBY' }}
-            </div>
-            <div class="rfc-header-right">
-User: {{ username }}
-Node: GATEWAY-{{ session_id[:8]|upper }}
-Security: AUTHENTICATED
-{{ current_date }}
-            </div>
+        <header class="rfc-header" style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-start;">
+            <pre style="margin: 0; font-family: inherit; font-size: inherit; line-height: 1.0; text-align: left;">BIOMETRIC AUTHENTICATION ENGINE
+<span style="display: inline-block; width: 70px;">Method</span>: {{ latest_metrics.method|default('Mahalanobis + OCSVM') }}
+<span style="display: inline-block; width: 70px;">Samples</span>: {{ latest_metrics.history_count|default(total_data) }}
+<span style="display: inline-block; width: 70px;">Status</span>: {{ 'HEALTHY' if health_stability|float > 80 else 'MONITORING' if health_stability != 'N/A' else 'STANDBY' }}</pre>
+            <pre style="margin: 0; font-family: inherit; font-size: inherit; line-height: 1.0; text-align: left;">
+<span style="display: inline-block; width: 70px;">User</span>: {{ username }}
+<span style="display: inline-block; width: 70px;">Node</span>: GATEWAY-{{ session_id[:8]|upper }}
+<span style="display: inline-block; width: 70px;">Security</span>: AUTHENTICATED-{{ current_date }}</pre>
         </header>
 
         <h1 class="rfc-title">Biometric Authentication Dashboard</h1>
@@ -37,7 +33,7 @@ Security: AUTHENTICATED
         <section class="rfc-section">
             <h2 class="rfc-section-title">Biometric Risk Analysis</h2>
             <div class="rfc-content">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; font-family: 'JetBrains Mono', monospace; font-size: 12px; margin-bottom: 12px; line-height: 1.5;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; font-family: 'JetBrains Mono', monospace; font-size: 12px; margin-bottom: 4px; line-height: 1.4;">
                     <div>
                         <div><span style="display: inline-block; width: 80px;">Rhythm</span>: {{ latest_metrics.rhythm|default('N/A') }}</div>
                         <div><span style="display: inline-block; width: 80px;">Corr</span>: {{ latest_metrics.corr|default('N/A') }}</div>
@@ -50,14 +46,18 @@ Security: AUTHENTICATED
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; border-top: 1px dashed #ccc; padding-top: 2px;">
-                    <div>Identity Assurance: {{ 'HIGH' if health_stability|float > 85 else 'MEDIUM' if health_stability != 'N/A' else 'LOW' }}</div>
-                    <div>Anomaly Detection: ACTIVE</div>
-                    <div>Replay Protection: ENABLED</div>
-                    <div>Session Integrity: VERIFIED</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; font-family: 'JetBrains Mono', monospace; font-size: 12px; padding-top: 4px; line-height: 1.3;">
+                    <div>
+                        <div><span style="display: inline-block; width: 130px;">Identity Assurance</span>: {{ 'HIGH' if health_stability|float > 85 else 'MEDIUM' if health_stability != 'N/A' else 'LOW' }}</div>
+                        <div><span style="display: inline-block; width: 130px;">Anomaly Detection</span>: ACTIVE</div>
+                    </div>
+                    <div>
+                        <div><span style="display: inline-block; width: 130px;">Replay Protection</span>: ENABLED</div>
+                        <div><span style="display: inline-block; width: 130px;">Session Integrity</span>: VERIFIED</div>
+                    </div>
                 </div>
                 <p style="margin-top: 10px;">
-                    Biometric Authentication engine telah menganalisis vektor di atas terhadap template historis Anda. 
+                    Mesin ini telah menganalisis vektor di atas terhadap template historis Anda. 
                     Variansi biometrik saat ini berada dalam parameter nominal. 
                     Tidak ditemukan anomali kriptografis.
                 </p>
@@ -68,7 +68,7 @@ Security: AUTHENTICATED
             <h2 class="rfc-section-title">Biometric Health Profile</h2>
             <div class="rfc-content">
                 <div class="rfc-health-bar-container">
-                    <span class="rfc-health-label">Consistency:</span>
+                    <span class="rfc-health-label">Consistency</span>:
                     <div class="rfc-health-bar">
                         <div class="rfc-health-fill" style="width: {{ health_stability if health_stability != 'N/A' else 0 }}%"></div>
                     </div>
@@ -76,7 +76,7 @@ Security: AUTHENTICATED
                 </div>
                 
                 <div class="rfc-health-bar-container">
-                    <span class="rfc-health-label">AI Confidence:</span>
+                    <span class="rfc-health-label">AI Confidence</span>:
                     <div class="rfc-health-bar">
                         <div class="rfc-health-fill" style="width: {{ (health_ai|float * 100)|int if health_ai != 'N/A' else 0 }}%"></div>
                     </div>
@@ -96,7 +96,7 @@ Security: AUTHENTICATED
             <h2 class="rfc-section-title">Recent Security Activity</h2>
             <div class="rfc-content">
                 <table class="rfc-activity-table">
-                    {% for act in recent_activity[:3] %}
+                    {% for act in recent_activity[:5] %}
                     <tr>
                         <td class="rfc-activity-time">[{{ act.time }}]</td>
                         <td class="rfc-activity-status">{{ act.status }}</td>

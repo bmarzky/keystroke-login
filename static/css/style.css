@@ -282,7 +282,8 @@ body.dashboard-page {
 }
 
 .rfc-health-label {
-    min-width: 140px;
+    display: inline-block;
+    width: 140px;
 }
 
 .rfc-health-bar {
