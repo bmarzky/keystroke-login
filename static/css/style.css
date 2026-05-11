@@ -173,9 +173,9 @@ body {
 
 .page-note {
     margin-top: 32px;
-    font-size: 1rem;
+    font-size: 0.85rem;
     color: #000000;
-    font-weight: 600;
+    font-weight: 400;
 }
 
 .page-note a {
