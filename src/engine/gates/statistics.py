@@ -113,18 +113,22 @@ class StatisticalGates:
             g["s"] = float(np.clip(3.0 * np.std(speeds) / max(np.mean(speeds), 1.0), 0.35, 0.75))
             
             if mahal_dists and len(mahal_dists) >= 3:
-                m_avg, m_std = float(np.mean(mahal_dists)), float(np.std(mahal_dists))
+                # Mekanisme Adaptif Murni: Menghitung stabilitas perilaku
+                m_avg = float(np.mean(mahal_dists))
                 progress = np.clip((n - 5) / 45.0, 0.0, 1.0)
                 
-                multiplier = 3.0 - (progress * 1.2) 
-                g["m"] = m_avg + (multiplier * m_std) + (2.0 * (1.0 - progress))
+                # Bonus Stabilitas: Jika user sangat konsisten (m_avg kecil), 
+                # kita naikkan threshold untuk keamanan ekstra.
+                stability_bonus = max(0.0, (4.0 - m_avg) * 0.03)
                 
-                stability_bonus = max(0.0, (3.0 - m_avg) * 0.025)
-                base_t = 0.60 + (progress * 0.18)
-                g["t"] = base_t + stability_bonus - (cv * 0.05)
+                # Penyesuaian bertahap (progress) seiring bertambahnya data
+                progress_inc = progress * 0.12
+                
+                # Threshold Akhir = Dasar (0.70) + Kematangan Data + Bonus Konsistensi - Penalti Variansi
+                g["t"] = 0.70 + progress_inc + stability_bonus - (cv * 0.08)
 
         # 5. HARD CAPPING (Safety Belt)
-        T_FLOOR, T_CEILING = 0.60, 0.84
+        T_FLOOR, T_CEILING = 0.70, 0.88
         t_res = float(np.clip(g["t"], T_FLOOR, T_CEILING))
         s_res = float(np.clip(g["s"], 0.35, 0.75))
         m_res = float(np.clip(g["m"], 3.0, self.MAX_MAHAL_DIST))

@@ -305,13 +305,20 @@ class BiometricCore:
         is_replay = audit["Layer_D_Decision"]["is_replay"]
         is_speed_anomaly = audit["Layer_D_Decision"]["is_speed_anomaly"]
 
+        # --- HARDENED COLD-START ---
+        # Menghapus "Observation Mode". Seluruh login (bahkan data awal) harus lolos threshold.
         is_match = bool(f_score >= gates["threshold"] and out_p <= out_p_limit and not is_speed_anomaly and not is_replay)
         
-        if is_match: reason = f"ACCEPT | Match Score {f_score:.2f} (Target {gates['threshold']:.2f})"
-        elif is_replay: reason = f"REJECT | SECURITY: Replay Attack Detected"
-        elif is_speed_anomaly: reason = f"REJECT | Gate: Speed Anomaly"
-        elif out_p > out_p_limit: reason = f"REJECT | Outlier Rate ({out_p*100:.1f}%)"
-        else: reason = f"REJECT | Fusion Score Rendah ({f_score:.2f})"
+        if is_match: 
+            reason = f"ACCEPT | Match Score {f_score:.2f} (Target {gates['threshold']:.2f})"
+        elif is_replay: 
+            reason = f"REJECT | SECURITY: Replay Attack Detected"
+        elif is_speed_anomaly: 
+            reason = f"REJECT | Gate: Speed Anomaly"
+        elif out_p > out_p_limit: 
+            reason = f"REJECT | Outlier Rate ({out_p*100:.1f}%)"
+        else: 
+            reason = f"REJECT | Fusion Score Rendah ({f_score:.2f})"
 
         _m_ok = (m_dist is None and n < 20) or (m_dist is not None and m_dist < 7.0)
         res.update({
