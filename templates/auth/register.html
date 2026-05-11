@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Halaman pendaftaran akun dengan Keystroke Dynamics">
-    <title>Register</title>
+    <title>Registration Gateway</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
     <link rel="stylesheet" href="{{ url_for('static', filename='tutorial/guide.css') }}">
 </head>
-<body>
+<body class="auth-page">
     <div class="message-container" id="toast-container">
         {% if error %}
             <div class="toast error-box" id="status-msg">{{ error }}</div>
@@ -21,19 +21,17 @@
     </div>
 
     <div class="auth-wrapper">
-        <h2 class="auth-title">Register</h2>
+        <h2 class="auth-title">Registration Gateway</h2>
 
         <form id="registerForm" class="auth-form" action="{{ url_for('register') }}" method="POST" autocomplete="off" novalidate>
-            <input type="text" id="username" name="username" placeholder="Username Anda" required autofocus autocomplete="off">
+            <input type="text" id="username" name="username" placeholder="Username" required autofocus autocomplete="off">
             <div class="password-field">
-                <input type="password" id="password" name="password" placeholder="Password" required autocomplete="new-password">
-                <span class="toggle-password" id="toggle-password">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                </span>
+                <input type="text" id="password" name="password" placeholder="Password" required autocomplete="off">
             </div>
             <input type="hidden" name="keystroke" id="keystrokeData">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-            <button type="submit">Register</button>
+            <input type="submit" style="display: none;">
         </form>
 
         <p class="page-note">Existing user? <a href="{{ url_for('login') }}">Sign in</a></p>
