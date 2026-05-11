@@ -91,7 +91,7 @@ def login():
                     
                     # Async Training Trigger
                     n_samples = len(history) + 1
-                    should_train = (n_samples >= 20 and (n_samples % 20 == 0 or result.get('score', 0) > 0.90)) or not _model_exists(user['id'])
+                    should_train = (n_samples >= 20 and (n_samples % 20 == 0 or result.get('score', 0) > 0.99)) or not _model_exists(user['id'])
                     
                     if should_train and n_samples >= 15:
                         history_dicts = [json.loads(h) for h in history]
