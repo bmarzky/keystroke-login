@@ -3,8 +3,6 @@ from src.config.database import get_db_connection
 def get_history_by_user_id(user_id):
     """Mengambil semua riwayat fitur keystroke milik user."""
     conn = get_db_connection()
-    if not conn:
-        return []
     try:
         cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT features FROM keystroke_data WHERE user_id = %s ORDER BY id ASC", (user_id,))
@@ -16,8 +14,6 @@ def get_history_by_user_id(user_id):
 def add_keystroke_data(user_id, keystroke_json):
     """Menambahkan data biometrik baru untuk user."""
     conn = get_db_connection()
-    if not conn:
-        return False
     try:
         cursor = conn.cursor()
         cursor.execute("INSERT INTO keystroke_data (user_id, features) VALUES (%s, %s)", (user_id, keystroke_json))
@@ -32,8 +28,6 @@ def add_keystroke_data(user_id, keystroke_json):
 def get_dashboard_data(user_id):
     """Mengambil total data dan 2 sampel terbaru untuk dashboard."""
     conn = get_db_connection()
-    if not conn:
-        return 0, []
     try:
         cursor = conn.cursor(dictionary=True)
         

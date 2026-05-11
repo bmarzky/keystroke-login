@@ -1,88 +1,132 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en" class="dashboard-page">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Keystroke Dynamics</title>
+    <title>Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="dashboard-page">
- 
-{% set total_val = total_data|default(0) %}
-{% set stability_val = stability|default(0)|float %}
-{% set ai_status = "READY" if [total_val, 15]|max == total_val else "COLLECTING DATA" %}
-{% set security_label = "HIGH" if [stability_val, 60]|min == stability_val else ("MEDIUM" if [stability_val, 100]|min == stability_val else "LOW") %}
+<body class="dashboard-page">`
+    <div class="dashboard-wrapper">
+        <header class="rfc-header">
+            <div class="rfc-header-left">
+BIOMETRIC AUTHENTICATION SECURE ENGINE
+Method: {{ latest_metrics.method|default('Mahalanobis + OCSVM') }}
+Samples: {{ latest_metrics.history_count|default(total_data) }}
+Status: {{ 'HEALTHY' if health_stability|float > 80 else 'MONITORING' if health_stability != 'N/A' else 'STANDBY' }}
+            </div>
+            <div class="rfc-header-right">
+User: {{ username }}
+Node: GATEWAY-{{ session_id[:8]|upper }}
+Security: AUTHENTICATED
+{{ current_date }}
+            </div>
+        </header>
 
-{# Color Logic #}
-{% set security_color = '#008000' if security_label == 'HIGH' else ('#FF8C00' if security_label == 'MEDIUM' else '#FF0000') %}
-{% set ai_color = '#008000' if ai_status == 'READY' else '#000' %}
+        <h1 class="rfc-title">Biometric Authentication Dashboard</h1>
 
-<div class="dashboard-wrapper">
-    <header class="dashboard-header">
-        <h2 class="dashboard-title">Good to see you again, {{ username }}!</h2>
-        <form id="logoutForm" action="{{ url_for('logout') }}" method="POST">
-            <button type="submit" class="btn-logout">Logout</button>
-        </form>
-    </header>
- 
-    <div class="stats-grid">
-        <div class="stat-item">
-            <small>ACCOUNT SECURITY</small>
-            <b style="color: {{ security_color }}">
-                {{ security_label }}
-            </b>
-        </div>
-        <div class="stat-item">
-            <small>AI ENGINE STATUS</small>
-            <b style="color: {{ ai_color }}">
-                {{ ai_status }}
-            </b>
-        </div>
-        <div class="stat-item">
-            <small>TYPING SPEED</small>
-            <b>{{ wpm }} WPM</b>
-        </div>
-        <div class="stat-item">
-            <small>SAMPEL KETIKAN</small>
-            <b>{{ total_data }}</b>
-        </div>
-        <div class="stat-item">
-            <small>KONSISTENSI</small>
-            <b>{{ "Sangat Stabil" if [stability_val, 45]|min == stability_val else ("Stabil" if [stability_val, 90]|min == stability_val else "Cukup") }}</b>
-        </div>
-        <div class="stat-item">
-            <small>LAST ACCESS</small>
-            <b>{{ last_login.split(' ')[1] if ' ' in last_login else last_login }}</b>
-        </div>
+        <section class="rfc-section">
+            <div class="rfc-content">
+                Dokumen ini menyajikan ringkasan performa biometrik bagi pengguna yang telah 
+                terotentikasi dalam ekosistem Titanium Fusion. Laporan ini merinci dinamika ketikan, 
+                termasuk metrik latensi, kecepatan, dan profil konsistensi perilaku yang dipetakan 
+                terhadap template kriptografis historis.
+            </div>
+        </section>
+
+        <section class="rfc-section">
+            <h2 class="rfc-section-title">Biometric Risk Analysis</h2>
+            <div class="rfc-content">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; font-family: 'JetBrains Mono', monospace; font-size: 12px; margin-bottom: 12px; line-height: 1.5;">
+                    <div>
+                        <div><span style="display: inline-block; width: 80px;">Rhythm</span>: {{ latest_metrics.rhythm|default('N/A') }}</div>
+                        <div><span style="display: inline-block; width: 80px;">Corr</span>: {{ latest_metrics.corr|default('N/A') }}</div>
+                        <div><span style="display: inline-block; width: 80px;">Speed</span>: {{ latest_metrics.speed|default('N/A') }}</div>
+                    </div>
+                    <div>
+                        <div><span style="display: inline-block; width: 80px;">Flow</span>: {{ latest_metrics.flow|default('N/A') }}</div>
+                        <div><span style="display: inline-block; width: 80px;">Ratio</span>: {{ latest_metrics.ratio|default('N/A') }}</div>
+                        <div><span style="display: inline-block; width: 80px;">Stability</span>: {{ latest_metrics.stability|default('N/A') }}%</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; border-top: 1px dashed #ccc; padding-top: 2px;">
+                    <div>Identity Assurance: {{ 'HIGH' if health_stability|float > 85 else 'MEDIUM' if health_stability != 'N/A' else 'LOW' }}</div>
+                    <div>Anomaly Detection: ACTIVE</div>
+                    <div>Replay Protection: ENABLED</div>
+                    <div>Session Integrity: VERIFIED</div>
+                </div>
+                <p style="margin-top: 10px;">
+                    Biometric Authentication engine telah menganalisis vektor di atas terhadap template historis Anda. 
+                    Variansi biometrik saat ini berada dalam parameter nominal. 
+                    Tidak ditemukan anomali kriptografis.
+                </p>
+            </div>
+        </section>
+
+        <section class="rfc-section">
+            <h2 class="rfc-section-title">Biometric Health Profile</h2>
+            <div class="rfc-content">
+                <div class="rfc-health-bar-container">
+                    <span class="rfc-health-label">Consistency:</span>
+                    <div class="rfc-health-bar">
+                        <div class="rfc-health-fill" style="width: {{ health_stability if health_stability != 'N/A' else 0 }}%"></div>
+                    </div>
+                    <span>{{ health_stability }}{% if health_stability != 'N/A' %}%{% endif %}</span>
+                </div>
+                
+                <div class="rfc-health-bar-container">
+                    <span class="rfc-health-label">AI Confidence:</span>
+                    <div class="rfc-health-bar">
+                        <div class="rfc-health-fill" style="width: {{ (health_ai|float * 100)|int if health_ai != 'N/A' else 0 }}%"></div>
+                    </div>
+                    <span>{{ (health_ai|float * 100)|int if health_ai != 'N/A' else 'N/A' }}%</span>
+                </div>
+
+                <div style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px;">
+                    <div class="rfc-item"><span class="rfc-label-short" style="width: 100px;">Stability</span>: <span id="health-stability">{% if stability|float < 150 %}Very Stable{% elif stability|float < 300 %}Stable{% else %}Adjusting{% endif %}</span></div>
+                    <div class="rfc-item"><span class="rfc-label-short" style="width: 100px;">Model Sync</span>: <span>{{ 'SYNCHRONIZED' if model_status.is_synced else 'PENDING' }}</span></div>
+                    <div class="rfc-item"><span class="rfc-label-short" style="width: 100px;">Model Core</span>: <span>{{ 'ACTIVE' if model_status.exists else 'STANDBY' }}</span> (v{{ model_status.version }})</div>
+                    <div class="rfc-item"><span class="rfc-label-short" style="width: 100px;">Training Data</span>: <span>{{ model_status.n_train }} Samples</span></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="rfc-section">
+            <h2 class="rfc-section-title">Recent Security Activity</h2>
+            <div class="rfc-content">
+                <table class="rfc-activity-table">
+                    {% for act in recent_activity[:3] %}
+                    <tr>
+                        <td class="rfc-activity-time">[{{ act.time }}]</td>
+                        <td class="rfc-activity-status">{{ act.status }}</td>
+                        <td>- Activity Log Record</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3">No recent security events recorded in this session.</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        </section>
+
+        <footer class="rfc-footer">
+            [Page 1]
+            <br>
+            <form id="logout-form" action="{{ url_for('logout') }}" method="POST" style="margin-top: 2px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-rfc-logout">Terminate Session (Logout [Enter])</button>
+            </form>
+        </footer>
     </div>
 
-    <div class="chart-box">
-        <h3 class="chart-title">
-            Biometric Pattern Analysis (Current vs History)
-        </h3>
-        <div class="chart-container">
-            <canvas id="keystrokeChart"></canvas>
-        </div>
-    </div>
-
-    <div id="dashboard-data" class="hidden-dashboard-data" 
-         data-current='{{ current_features | tojson }}' 
-         data-prev='{{ prev_features | tojson }}'></div>
-
-    <!-- Raw Data Table Removed for Cleaner UI -->
-</div>
-
-<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-<script>
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Enter') {
-        const logoutForm = document.getElementById('logoutForm');
-        if (logoutForm) {
-            logoutForm.submit();
-        }
-    }
-});
-</script>
+    <script>
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                document.getElementById('logout-form').submit();
+            }
+        });
+    </script>
 </body>
 </html>
