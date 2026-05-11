@@ -155,19 +155,19 @@ body {
 
 .error-box {
     color: #000;
-    background: #fff;
+    background: #ff5e5e;
 }
 
 .success-box {
     color: #000;
-    background: #fff;
+    background: #4ef08d;
 }
 
 #js-error-msg:not(:empty) {
     padding: 12px 20px;
     border: 1px solid #000;
     border-radius: 8px;
-    background: #fff;
+    background: #ff5e5e;
     color: #000;
 }
 
