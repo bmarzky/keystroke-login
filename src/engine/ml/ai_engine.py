@@ -7,12 +7,17 @@ class AIEngine:
     def __init__(self, model_dir=None):
         # Gunakan path absolut dari root project untuk models agar lebih stabil di hosting
         if model_dir is None:
-            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+            # Mencari root directory dengan cara naik ke atas sampai ketemu folder 'models' atau root
+            current = os.path.dirname(os.path.abspath(__file__))
+            # Naik 3 level dari src/engine/ml/
+            base_dir = os.path.abspath(os.path.join(current, "..", "..", ".."))
             self.model_dir = os.path.join(base_dir, 'models')
         else:
             self.model_dir = model_dir
             
-        os.makedirs(self.model_dir, exist_ok=True)
+        if not os.path.exists(self.model_dir):
+            try: os.makedirs(self.model_dir, exist_ok=True)
+            except: pass
 
     def _get_model_pattern(self, user_id):
         return os.path.join(self.model_dir, f"{user_id}_ocsvm_v*.joblib")
@@ -83,6 +88,8 @@ class AIEngine:
             
             return decision, confidence, data.get('n_train', 0), raw_score
         except Exception as e:
+            with open("ai_error.log", "a") as f:
+                f.write(f"Predict Error for {user_id}: {str(e)}\n")
             return None, 0.0, 0, 0.0
 
     def rollback(self, user_id):
