@@ -6,7 +6,7 @@ import numpy as np
 
 # Load internal modules
 from src.engine.core import BiometricCore
-from src.config.database import Config, get_db_connection, DatabaseConnectionError
+from src.config.database import Config, get_db_connection
 from src.utils.logger import log_access, format_log
 from src.services.stats_service import calculate_dashboard_stats
 from src.services.biometric_service import verify_biometric
@@ -16,9 +16,6 @@ app = Flask(__name__)
 app.config.from_object(Config)
 app.secret_key = Config.SECRET_KEY or 'titanium-fusion-super-secret-key-123'
 
-@app.errorhandler(DatabaseConnectionError)
-def handle_db_error(e):
-    return render_template('errors/503.html', message=str(e)), 503
 
 # Biometric Engine Instance
 biom_core = BiometricCore()
@@ -238,6 +235,24 @@ def dashboard():
     except Exception as e:
         print(f"Log Parse Error: {e}")
 
+    # 2.5 Count Biometric Anomalies (REJECT) for this user
+    total_failures = 0
+    try:
+        fail_log_path = os.path.join('logs', 'login_failed.log')
+        if os.path.exists(fail_log_path):
+            with open(fail_log_path, 'r') as f:
+                content = f.read()
+                blocks = content.split("-" * 60)
+                u_lower = session['username'].lower()
+                for block in blocks:
+                    if not block.strip(): continue
+                    b_lower = block.lower()
+                    # Hitung sebagai anomali jika User ID cocok DAN bukan karena "Password Salah"
+                    if f"user id       : {uid}" in b_lower and "password salah" not in b_lower:
+                        total_failures += 1
+    except Exception as e:
+        print(f"Fail Count Error: {e}")
+
     # 3. Model Metadata for Transparency
     ai = AIEngine()
     model_path = ai._get_latest_model_path(uid)
@@ -274,6 +289,7 @@ def dashboard():
                          latest_metrics=latest_metrics,
                          last_login=session.get('last_login', 'N/A'),
                          recent_activity=recent_activity,
+                         total_failures=total_failures,
                          session_id=session['session_id'],
                          model_status=model_status,
                          current_date=time.strftime('%B %Y'))
