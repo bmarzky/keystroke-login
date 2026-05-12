@@ -17,8 +17,8 @@ class StatisticalGates:
         if len(all_d) < 4: return self.extractor.CLEAN_THRESHOLD
         
         Q1, Q3 = np.percentile(all_d, 25), np.percentile(all_d, 75)
-        limit = Q3 + 1.5 * (Q3 - Q1)
-        return float(max(0.25, limit))
+        limit = Q3 + 2.0 * (Q3 - Q1) # Increased multiplier from 1.5 to 2.0
+        return float(max(0.30, limit))
 
     def get_flight_clean_limit(self, history: list) -> float:
         """Menggunakan Tukey's IQR untuk flight time yang biasanya lebih panjang."""
@@ -86,8 +86,10 @@ class StatisticalGates:
 
         # 2. ADAPTIVE HYBRID WEIGHTING (Mekanisme Recovery & Trust)
         # Menghitung bobot anchor secara dinamis
-        if n < 10:
-            anchor_w = 0.80  # User baru: Percaya penuh pada data awal
+        if n < 5:
+            anchor_w = 0.95  # User baru: Sangat ketat pada data registrasi (Anchor)
+        elif n < 10:
+            anchor_w = 0.85
         elif n < 50:
             anchor_w = 0.70  # User transisi
         else:
@@ -99,11 +101,11 @@ class StatisticalGates:
             
         cv = (anchor_cv * anchor_w) + (rolling_cv * (1.0 - anchor_w))
 
-        # 3. Base Gates Calculation
+        # 3. Base Gates Calculation - Relaxed Start
         g = {
             "s": 0.2 + cv * 0.4,
             "m": 1.5 + cv * 5.0,
-            "t": 0.68 - cv * 0.08
+            "t": 0.65 - cv * 0.05  # Sedikit lebih tinggi dari sebelumnya
         }
 
         # 4. Dynamic Refinement & Stability Bonus
@@ -117,21 +119,34 @@ class StatisticalGates:
                 m_avg = float(np.mean(mahal_dists))
                 progress = np.clip((n - 5) / 45.0, 0.0, 1.0)
                 
-                # Bonus Stabilitas: Jika user sangat konsisten (m_avg kecil), 
-                # kita naikkan threshold untuk keamanan ekstra.
-                stability_bonus = max(0.0, (4.0 - m_avg) * 0.03)
+                # Bonus Stabilitas: Dikurangi agar tidak terlalu memberatkan user (0.01 instead of 0.03)
+                stability_bonus = max(0.0, (4.0 - m_avg) * 0.01)
                 
-                # Penyesuaian bertahap (progress) seiring bertambahnya data
-                progress_inc = progress * 0.12
+                # Penyesuaian bertahap (progress) dikurangi (0.05 instead of 0.12)
+                progress_inc = progress * 0.05
                 
-                # Threshold Akhir = Dasar (0.70) + Kematangan Data + Bonus Konsistensi - Penalti Variansi
-                g["t"] = 0.70 + progress_inc + stability_bonus - (cv * 0.08)
+                # Threshold Akhir = Dasar (0.65) + Kematangan Data + Bonus Konsistensi - Penalti Variansi
+                g["t"] = 0.65 + progress_inc + stability_bonus - (cv * 0.08)
 
         # 5. HARD CAPPING (Safety Belt)
-        T_FLOOR, T_CEILING = 0.70, 0.88
+        # Cold Start: Transisi dibuat lebih halus agar tidak ada celah keamanan saat n=5.
+        if n == 1: T_FLOOR = 0.80
+        elif n < 5: T_FLOOR = 0.82
+        elif n < 10: T_FLOOR = 0.78 # Menahan ketat lebih lama
+        elif n < 20: T_FLOOR = 0.72 # Menurun bertahap
+        else: T_FLOOR = 0.65        # Threshold minimal standar final        
+        T_CEILING = 0.78
+        
+        # Turbo Scaling: Jika CPM tinggi, berikan ruang nafas lebih pada gerbang
+        avg_speed = np.median([h.get('speed', 350) for h in history]) if history else 350
+        turbo_factor = 1.2 if avg_speed > 400 else 1.0
+        
+        # Batas minimum (Floor) naik ke 5.0 jika Turbo, agar legal bagi Siddiq tapi tetap ketat
+        m_floor = 5.0 if turbo_factor > 1.0 else 4.5
+
         t_res = float(np.clip(g["t"], T_FLOOR, T_CEILING))
-        s_res = float(np.clip(g["s"], 0.35, 0.75))
-        m_res = float(np.clip(g["m"], 3.0, self.MAX_MAHAL_DIST))
+        s_res = float(np.clip(g["s"], 0.25 if n < 5 else 0.40, 0.75)) # Lebih ketat di awal (25%)
+        m_res = float(np.clip(g["m"] * turbo_factor, m_floor, self.MAX_MAHAL_DIST))
 
         return {
             "speed_gate": round(s_res, 4), 
