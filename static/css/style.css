@@ -157,20 +157,19 @@
 
 .error-box {
     color: #000;
-    background: #ff5e5e;
+    background: transparent;
 }
 
 .success-box {
     color: #000;
-    background: #4ef08d;
+    background: transparent;
 }
 
 #js-error-msg:not(:empty) {
-    padding: 12px 20px;
-    border: 1px solid #000;
-    border-radius: 8px;
-    background: #ff5e5e;
+    display: block;
     color: #000;
+    font-size: 11px;
+    text-transform: capitalize;
 }
 
 .page-note {
