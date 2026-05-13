@@ -13,8 +13,8 @@ warnings.filterwarnings('ignore')
 
 class BiometricCore:
     """
-    Titanium Fusion Biometric Engine (Core Orchestrator)
-    Menggabungkan fitur struktural, gerbang statistik, dan model ML (OCSVM).
+    Sequential Mahalanobis-SVM Biometric Engine (Core Orchestrator)
+    Menggabungkan fitur struktural, gerbang statistik (Mahalanobis), dan model ML (One-Class SVM).
     """
     
     def __init__(self):
@@ -106,6 +106,8 @@ class BiometricCore:
         else:
             w = [0.30, 0.15, 0.15, 0.15, 0.15, 0.10]
         
+        # Batasan Penelitian: Maksimal 50 sampel untuk merepresentasikan Cold-Start
+        history = history[-50:]
         baselines = history[:3] + history[-7:] if n_h > 10 else history
         all_scores, comp_logs, max_out = [], [], 0
         
@@ -313,7 +315,7 @@ class BiometricCore:
         return phase
 
     def _get_response_template(self, n=0):
-        return {"status": False, "score": 0.0, "threshold": 0.70, "reason": "Unknown", "method": "Titanium Fusion",
+        return {"status": False, "score": 0.0, "threshold": 0.70, "reason": "Unknown", "method": "Sequential Mahalanobis-SVM",
                 "n_samples": n, "speed_dev": 0.0, "mahal_dist": None, "ai_score": None, "ai_status": "Standby",
                 "should_update_history": False, "adaptive_gates": {}, "components": {}, "audit": {}}
 
