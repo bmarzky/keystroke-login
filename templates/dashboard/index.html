@@ -10,7 +10,7 @@
     <div class="dashboard-wrapper">
         <header class="rfc-header" style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-start;">
             <pre style="margin: 0; font-family: inherit; font-size: inherit; line-height: 1.0; text-align: left;">BIOMETRIC AUTHENTICATION ENGINE
-<span style="display: inline-block; width: 70px;">Method</span>: {{ latest_metrics.method|default('Mahalanobis + OCSVM') }}
+<span style="display: inline-block; width: 70px;">Method</span>: {{ latest_metrics.method|default('Sequential Mahalanobis-SVM') }}
 <span style="display: inline-block; width: 70px;">Samples</span>: {{ latest_metrics.history_count|default(total_data) }}
 <span style="display: inline-block; width: 70px;">Status</span>: {{ 'HEALTHY' if health_stability|float > 80 else 'MONITORING' if health_stability != 'N/A' else 'STANDBY' }}</pre>
             <pre style="margin: 0; font-family: inherit; font-size: inherit; line-height: 1.0; text-align: left;">
@@ -24,7 +24,7 @@
         <section class="rfc-section">
             <div class="rfc-content">
                 Dokumen ini menyajikan ringkasan performa biometrik bagi pengguna yang telah 
-                terotentikasi dalam ekosistem Titanium Fusion. Laporan ini merinci dinamika ketikan, 
+                terotentikasi dalam sistem Sequential Mahalanobis-SVM. Laporan ini merinci dinamika ketikan, 
                 termasuk metrik latensi, kecepatan, dan profil konsistensi perilaku yang dipetakan 
                 terhadap template kriptografis historis.
             </div>
@@ -116,7 +116,7 @@
             <br>
             <form id="logout-form" action="{{ url_for('logout') }}" method="POST" style="margin-top: 2px;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn-rfc-logout">Terminate Session (Logout [Enter])</button>
+                <button type="submit" class="btn-rfc-logout">Terminate Session ([Enter])</button>
             </form>
         </footer>
     </div>
