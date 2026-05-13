@@ -11,20 +11,6 @@ def get_user_by_username(username):
     finally:
         conn.close()
 
-def create_user(username, hashed_password):
-    """Mendaftarkan user baru ke database."""
-    conn = get_db_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, hashed_password))
-        uid = cursor.lastrowid
-        conn.commit()
-        return uid
-    except Exception as e:
-        conn.rollback()
-        raise e
-    finally:
-        conn.close()
 def register_user_with_biometrics(username, hashed_password, keystroke_json):
     """Mendaftarkan user dan data biometrik awal dalam satu transaksi (Atomik)."""
     conn = get_db_connection()
