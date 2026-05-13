@@ -58,7 +58,7 @@ keystroke-login/
 │   │   ├── ml/                # AI Environment (Anomaly Detection)
 │   │   │   ├── ai_engine.py   # Model OCSVM & Kalibrasi Sigmoid Adaptif
 │   │   │   └── ai_trainer.py  # Subprocess Skrip Pelatihan Otomatis
-│   │   └── core.py            # Titanium Fusion Engine (Facade Orkestrator Utama)
+│   │   └── core.py            # Sequential Mahalanobis-SVM Engine (Facade Orkestrator Utama)
 │   │
 │   ├── models/                # Data Layer (Akses Database)
 │   │   ├── user_model.py      # CRUD untuk tabel pengguna
@@ -126,7 +126,7 @@ Sistem membangun tanda tangan biometrik yang presisi melalui ekstraksi **24 fitu
 <div align="center">
 
 **Developed for Advanced Cybersecurity Research**  
-*“In the world of Titanium Fusion, your password is no longer just what you know, but the unique rhythm of who you are.”*
+*“In the world of Sequential Mahalanobis-SVM, your password is no longer just what you know, but the unique rhythm of who you are.”*
 
 [Report Bug](https://github.com/bmarzky/keystroke-login/issues) · [Request Feature](https://github.com/bmarzky/keystroke-login/issues)
 
