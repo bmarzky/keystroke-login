@@ -92,14 +92,6 @@ class AIEngine:
                 f.write(f"Predict Error for {user_id}: {str(e)}\n")
             return None, 0.0, 0, 0.0
 
-    def rollback(self, user_id):
-        """Fitur untuk mengembalikan model ke versi sebelumnya jika tiba-tiba sistem memburuk"""
-        models = sorted(glob.glob(self._get_model_pattern(user_id)))
-        if len(models) < 2:
-            return False, "Tidak ada histori untuk rollback."
-        os.remove(models[-1])
-        return True, f"Rollback sukses. Menggunakan {os.path.basename(models[-2])}"
-
     def _cleanup_old_models(self, user_id, keep=3):
         models = sorted(glob.glob(self._get_model_pattern(user_id)))
         for old_model in models[:-keep]:
