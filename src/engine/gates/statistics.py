@@ -85,15 +85,15 @@ class StatisticalGates:
         rolling_cv = float(np.clip(np.std(all_dwells)/max(np.mean(all_dwells), 0.001), 0.08, 0.55)) if len(all_dwells) > 5 else anchor_cv
 
         # 2. ADAPTIVE HYBRID WEIGHTING (Mekanisme Recovery & Trust)
-        # Menghitung bobot anchor secara dinamis
+        # Menghitung bobot anchor secara dinamis (Optimasi Cold-Start < 50)
         if n < 5:
-            anchor_w = 0.95  # User baru: Sangat ketat pada data registrasi (Anchor)
-        elif n < 10:
-            anchor_w = 0.85
+            anchor_w = 0.95  # Fase Inisiasi (Sangat Terikat Data Registrasi)
+        elif n < 20:
+            anchor_w = 0.80  # Fase Observasi (Mulai Mengikuti Variansi)
         elif n < 50:
-            anchor_w = 0.70  # User transisi
+            anchor_w = 0.65  # Fase Konsolidasi (Menjelang Matang)
         else:
-            anchor_w = 0.60  # User senior: Berikan ruang adaptasi lebih besar
+            anchor_w = 0.60  # Batas Akhir Penelitian (Mature Window)
             
         # Emergency Recovery: Jika Rolling CV tiba-tiba berantakan (Anomali), tarik bobot ke Anchor
         if rolling_cv > anchor_cv * 1.5:
@@ -129,19 +129,20 @@ class StatisticalGates:
                 g["t"] = 0.65 + progress_inc + stability_bonus - (cv * 0.08)
 
         # 5. HARD CAPPING (Safety Belt)
-        # Cold Start: Transisi dibuat lebih halus agar tidak ada celah keamanan saat n=5.
+        # Cold Start Calibration: Transisi dibuat lebih halus untuk riset < 50 sampel.
         if n == 1: T_FLOOR = 0.80
         elif n < 5: T_FLOOR = 0.82
-        elif n < 10: T_FLOOR = 0.78 # Menahan ketat lebih lama
-        elif n < 20: T_FLOOR = 0.72 # Menurun bertahap
-        else: T_FLOOR = 0.65        # Threshold minimal standar final        
+        elif n < 10: T_FLOOR = 0.78 
+        elif n < 30: T_FLOOR = 0.74 
+        elif n < 50: T_FLOOR = 0.70 # Batas bawah diperketat agar riset lebih menantang
+        else: T_FLOOR = 0.68        # Threshold minimal standar final        
         T_CEILING = 0.78
         
         # Turbo Scaling: Jika CPM tinggi, berikan ruang nafas lebih pada gerbang
         avg_speed = np.median([h.get('speed', 350) for h in history]) if history else 350
         turbo_factor = 1.2 if avg_speed > 400 else 1.0
         
-        # Batas minimum (Floor) naik ke 5.0 jika Turbo, agar legal bagi Siddiq tapi tetap ketat
+        # Batas minimum (Floor) naik ke 5.0 jika pengetikan cepat
         m_floor = 5.0 if turbo_factor > 1.0 else 4.5
 
         t_res = float(np.clip(g["t"], T_FLOOR, T_CEILING))
@@ -155,8 +156,5 @@ class StatisticalGates:
             "cv_hybrid": round(cv, 4),
             "anchor_weight": round(anchor_w, 2),
             "stability_bonus": round(stability_bonus, 4),
-            "phase": f"Hybrid Adaptive (n={n})"
+            "phase": f"Cold-Start Analysis Mode (n={n}/50)"
         }
-
-
-
