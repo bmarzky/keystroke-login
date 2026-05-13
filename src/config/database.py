@@ -1,5 +1,4 @@
 import os
-import hashlib
 import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
