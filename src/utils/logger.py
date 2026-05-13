@@ -52,8 +52,8 @@ def format_log(uid, result, history, raw_input):
     log += f"  Speed Gate    : {int(ag.get('speed_gate', 0.4) * 100)}%\n"
     log += f"  Threshold     : {result.get('threshold', 0.68):.4f}\n"
     
-    # Titanium Fusion
-    log += f"  --- Titanium Fusion Gate ---\n"
+    # Biometric Method
+    log += f"  --- Sequential Mahalanobis-SVM ---\n"
     weights = result.get('weights', [])
     if weights and len(weights) == 6:
         log += f"  Weights (P)   : R:{weights[0]:.2f} | C:{weights[1]:.2f} | S:{weights[2]:.2f} | F:{weights[3]:.2f} | RT:{weights[4]:.2f} | ST:{weights[5]:.2f}\n"
