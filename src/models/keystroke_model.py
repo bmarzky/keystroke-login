@@ -43,16 +43,3 @@ def get_dashboard_data(user_id):
     finally:
         conn.close()
 
-def remove_last_keystroke_data(user_id):
-    """Menghapus data biometrik terakhir untuk user (Recovery dari False Acceptance)."""
-    conn = get_db_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM keystroke_data WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
-        conn.commit()
-        return cursor.rowcount > 0
-    except:
-        conn.rollback()
-        return False
-    finally:
-        conn.close()
