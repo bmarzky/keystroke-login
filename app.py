@@ -14,7 +14,7 @@ from src.models import user_model, keystroke_model
 
 app = Flask(__name__)
 app.config.from_object(Config)
-app.secret_key = Config.SECRET_KEY or 'titanium-fusion-super-secret-key-123'
+app.secret_key = Config.SECRET_KEY or 'sequential-mahalanobis-svm-secure-key-123'
 
 
 # Biometric Engine Instance
@@ -86,9 +86,9 @@ def login():
                 if result.get('should_update_history'):
                     keystroke_model.add_keystroke_data(user['id'], json.dumps(input_keystroke))
                     
-                    # Async Training Trigger
+                    # Async Training Trigger: Lebih sering (per 10 sampel) untuk riset Cold-Start
                     n_samples = len(history) + 1
-                    should_train = (n_samples >= 20 and (n_samples % 20 == 0 or result.get('score', 0) > 0.99)) or not _model_exists(user['id'])
+                    should_train = (n_samples >= 15 and (n_samples % 10 == 0 or result.get('score', 0) > 0.99)) or not _model_exists(user['id'])
                     
                     if should_train and n_samples >= 15:
                         history_dicts = [json.loads(h) for h in history]
@@ -175,7 +175,7 @@ def dashboard():
                     blocks = content.split("-" * 60)
                     for block in blocks:
                         if not block.strip(): continue
-                        if f"User: {username}" in block:
+                        if f"User ID       : {uid}" in block:
                             lines = block.strip().split('\n')
                             header_line = lines[0]
                             parts = header_line.split(' | ')
