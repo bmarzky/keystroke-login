@@ -1,6 +1,21 @@
 import json
+import os
+import time
 import numpy as np
 from src.utils.logger import log_access
+
+# ---------------------------------------------------------------------------
+# Replay-detection threshold (Euclidean distance in combined dwell+flight space).
+#
+# REPLAY_EPSILON = 0.001 (default)
+#   Rationale: Physical human variability across separate keystrokes is typically
+#   > 5 ms per key.  A 10-key password with 5 ms spread gives a minimum expected
+#   L2 distance of sqrt(10) * 0.005 ≈ 0.016, well above this threshold.
+#   Values below 0.001 risk treating hardware floating-point rounding as a replay.
+#   Values above 0.01 may miss sophisticated replay with injected micro-noise.
+#   Override via environment variable REPLAY_EPSILON before starting the server.
+# ---------------------------------------------------------------------------
+REPLAY_EPSILON = float(os.getenv('REPLAY_EPSILON', '0.001'))
 
 def check_replay_attack(input_keystroke, history_strings):
     """
@@ -27,14 +42,22 @@ def check_replay_attack(input_keystroke, history_strings):
             hist_vec = extract_vec(h_str)
             if len(hist_vec) != len(current_vec):
                 continue
-            
-            # Hitung Jarak Euclidean Normal (L2)
-            # Jika jarak sangat kecil (< 1e-4), kemungkinan besar ini adalah replay
+
+            # Hitung Jarak Euclidean Normal (L2).
+            # Jika jarak sangat kecil (di bawah REPLAY_EPSILON), kemungkinan ini replay.
             dist = np.linalg.norm(current_vec - hist_vec)
-            
-            # Threshold 0.001 (1ms akumulasi perbedaan di seluruh tombol)
-            # Penyerang biasanya menyuntikkan noise < 1ms untuk tetap lolos ML tapi beda string
-            if dist < 0.001:
+
+            # Gunakan np.isclose dengan absolute tolerance (atol=REPLAY_EPSILON) agar
+            # perbandingan robust terhadap floating-point rounding error.
+            # Cek eksplisit `dist < REPLAY_EPSILON` ditambahkan sebagai fast-path.
+            if dist < REPLAY_EPSILON or np.isclose(dist, 0.0, atol=REPLAY_EPSILON):
+                # Log detail kecil untuk forensik
+                try:
+                    log_access('login_failed.log',
+                               f"{time.strftime('%Y-%m-%d %H:%M:%S')} | REPLAY DETECTED |",
+                               f"UserVecLen={len(current_vec)} Dist={dist:.6f}")
+                except Exception:
+                    pass
                 return True
     except Exception as e:
         print(f"Replay Check Error: {e}")
