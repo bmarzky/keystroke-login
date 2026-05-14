@@ -86,14 +86,29 @@ def login():
                 if result.get('should_update_history'):
                     keystroke_model.add_keystroke_data(user['id'], json.dumps(input_keystroke))
                     
-                    # Async Training Trigger: Lebih sering (per 10 sampel) untuk riset Cold-Start
+                    # Async Training Trigger untuk riset Cold-Start:
+                    #   - Periodic: setiap 10 sampel baru (mulai dari 15)
+                    #   - High-score: langsung train jika skor sangat tinggi (> 0.99)
+                    #   - Bootstrap: train sekali jika model belum ada sama sekali (min. 15 sampel)
+                    # Catatan: minimum 15 sampel diperlukan agar SVM bisa diinisialisasi.
                     n_samples = len(history) + 1
-                    should_train = (n_samples >= 15 and (n_samples % 10 == 0 or result.get('score', 0) > 0.99)) or not _model_exists(user['id'])
-                    
-                    if should_train and n_samples >= 15:
-                        history_dicts = [json.loads(h) for h in history]
-                        threading.Thread(target=train_user_model_in_memory, 
-                                       args=(user['id'], history_dicts + [input_keystroke])).start()
+                    has_enough_data = n_samples >= 15
+                    is_periodic     = has_enough_data and (n_samples % 10 == 0)
+                    is_high_score   = has_enough_data and result.get('score', 0) > 0.99
+                    is_bootstrap    = has_enough_data and not _model_exists(user['id'])
+                    should_train    = is_periodic or is_high_score or is_bootstrap
+
+                    if should_train:
+                        try:
+                            history_dicts = [json.loads(h) for h in history]
+                            # Spawn daemon thread — async_train_user_model menangani exception & logging
+                            t = threading.Thread(target=async_train_user_model,
+                                                 args=(user['id'], history_dicts + [input_keystroke]),
+                                                 daemon=True)
+                            t.start()
+                        except Exception as e:
+                            # Log kegagalan spawn thread agar admin bisa investigasi
+                            log_access('ai_training.log', f"{time.strftime('%Y-%m-%d %H:%M:%S')} | TRAIN_THREAD_FAIL | User: {username}", str(e))
 
                 current_time = time.strftime('%Y-%m-%d %H:%M:%S')
                 log_access('login_success.log', f"{current_time} | SUCCESS | User: {username}", format_log(user['id'], result, history, input_keystroke))
@@ -304,6 +319,30 @@ from src.engine.ml.ai_trainer import train_user_model_in_memory
 def _model_exists(uid):
     ai = AIEngine()
     return ai._get_latest_model_path(uid) is not None
+
+
+def async_train_user_model(user_id, history):
+    """Wrapper to run model training in a background thread with logging and basic health recording.
+
+    This wrapper ensures any exceptions are logged and the training result is recorded
+    to `logs/ai_training.log`. It uses the existing `train_user_model_in_memory` function
+    which returns (success: bool, message: str).
+    """
+    try:
+        success, msg = train_user_model_in_memory(user_id, history)
+        header = f"{time.strftime('%Y-%m-%d %H:%M:%S')} | TRAIN | User: {user_id} | Success: {success}"
+        log_access('ai_training.log', header, msg)
+
+        # If training failed, record a small health file for operator inspection
+        if not success:
+            try:
+                os.makedirs(MODELS_DIR, exist_ok=True)
+                with open(os.path.join(MODELS_DIR, f"{user_id}_training_fail.log"), 'a', encoding='utf-8') as fh:
+                    fh.write(header + "\n" + msg + "\n")
+            except Exception as e:
+                log_access('ai_training.log', f"{time.strftime('%Y-%m-%d %H:%M:%S')} | TRAIN_LOG_FAIL | User: {user_id}", str(e))
+    except Exception as e:
+        log_access('ai_training.log', f"{time.strftime('%Y-%m-%d %H:%M:%S')} | TRAIN_EXCEPTION | User: {user_id}", str(e))
 
 if __name__ == '__main__':
     app.run(debug=True, port=8000)
