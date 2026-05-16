@@ -1,5 +1,8 @@
+import logging
 import numpy as np
 from src.engine.extractors.features import FeatureExtractor
+
+_logger = logging.getLogger(__name__)
 
 class StatisticalGates:
     """Modul untuk perhitungan gerbang statistik seperti batas outlier dan Mahalanobis."""
@@ -36,16 +39,27 @@ class StatisticalGates:
         try:
             X = np.array([self.extractor.extract(h, history) for h in history])
             mu = np.mean(X, axis=0)
-            
+
             # Tikhonov Regularization (Shrinkage covariance) - 0.01 mencegah ledakan nilai pada eigen-vector kosong
             cov = np.cov(X, rowvar=False) + np.eye(self.n_features) * 0.01
-            
+
             # Pseudo-Inverse menanggulangi Singular Matrix
             pinv_cov = np.linalg.pinv(cov)
-            
+
             diff = np.array(self.extractor.extract(inp, history)) - mu
             return float(np.sqrt(max(0, diff.T @ pinv_cov @ diff)))
-        except: return None
+        except np.linalg.LinAlgError:
+            # Matrix singular meski sudah di-regularisasi — kondisi numerik yang diketahui dan dapat ditoleransi.
+            # Kembalikan None agar caller jatuh kembali ke mode tanpa Mahalanobis gate.
+            return None
+        except (ValueError, TypeError) as exc:
+            # Data fitur rusak atau memiliki dimensi yang tidak konsisten.
+            _logger.warning("calculate_current_mahalanobis: data error — %s", exc)
+            return None
+        except Exception as exc:
+            # Exception tak terduga (bukan numerik). Di-log sebagai ERROR agar terdeteksi.
+            _logger.error("calculate_current_mahalanobis: unexpected error — %s", exc, exc_info=True)
+            return None
 
     def get_mahal_history(self, history: list) -> list:
         """Menghitung riwayat jarak Mahalanobis menggunakan pendekatan shrinkage."""
@@ -56,7 +70,18 @@ class StatisticalGates:
             cov = np.cov(X, rowvar=False) + np.eye(self.n_features) * 0.01
             pinv_cov = np.linalg.pinv(cov)
             return [float(np.sqrt(max(0, (r-mu).T @ pinv_cov @ (r-mu)))) for r in X]
-        except: return []
+        except np.linalg.LinAlgError:
+            # Matrix singular — kondisi yang diketahui; kembalikan list kosong agar
+            # calculate_gates tetap berjalan tanpa riwayat Mahalanobis.
+            return []
+        except (ValueError, TypeError) as exc:
+            # Data fitur tidak konsisten antar sampel riwayat.
+            _logger.warning("get_mahal_history: data error — %s", exc)
+            return []
+        except Exception as exc:
+            # Exception tak terduga di-log sebagai ERROR untuk memudahkan investigasi.
+            _logger.error("get_mahal_history: unexpected error — %s", exc, exc_info=True)
+            return []
 
     def calculate_speed_metrics(self, inp: dict, history: list) -> tuple:
         in_v, in_fv = np.array(inp['dwell']), np.array(inp['flight'])
