@@ -287,7 +287,14 @@ def dashboard():
             model_status["version"] = m_data.get('version', 1)
             # Anggap sinkron jika selisih data < 5 (karena training biasanya per 20 data atau skor tinggi)
             model_status["is_synced"] = (total_data - model_status["n_train"]) < 5
-        except: pass
+        except Exception as model_load_err:
+            # Log eksplisit agar admin tahu jika file model korup atau tidak bisa diakses.
+            # Jangan biarkan error ini ditelan diam-diam — dashboard tetap tampil tapi model_status
+            # akan menunjukkan exists=False sebagai sinyal bahwa model perlu diregenerasi.
+            import logging
+            logging.getLogger(__name__).warning(
+                "Dashboard: gagal memuat model '%s' — %s", model_path, model_load_err
+            )
 
     if 'session_id' not in session:
         session['session_id'] = secrets.token_hex(8)
