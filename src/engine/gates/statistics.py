@@ -84,15 +84,24 @@ class StatisticalGates:
             return []
 
     def calculate_speed_metrics(self, inp: dict, history: list) -> tuple:
-        in_v, in_fv = np.array(inp['dwell']), np.array(inp['flight'])
+        # Gunakan .get() dengan fallback [] agar tidak KeyError jika key tidak ada di payload
+        in_v  = np.array(inp.get('dwell',  []), dtype=float)
+        in_fv = np.array(inp.get('flight', []), dtype=float)
+
         c_limit = self.get_clean_limit(history)
-        v_clean = in_v[in_v < c_limit]
-        fv_clean = in_fv[in_fv < c_limit]
-        
-        in_speed = float(60.0/(np.mean(v_clean)+np.mean(fv_clean))) if len(v_clean)>=3 else float(inp.get('speed', 0))
+        # Gunakan flight-specific limit — dwell limit TIDAK tepat untuk flight time
+        # karena distribusi flight time bisa jauh lebih besar dari dwell time.
+        f_limit = self.get_flight_clean_limit(history)
+
+        v_clean  = in_v[in_v   < c_limit] if len(in_v)  > 0 else in_v
+        fv_clean = in_fv[in_fv < f_limit] if len(in_fv) > 0 else in_fv
+
+        in_speed = float(60.0 / (np.mean(v_clean) + np.mean(fv_clean))) \
+            if len(v_clean) >= 3 and len(fv_clean) >= 1 \
+            else float(inp.get('speed', 0))
         avg_s = float(np.median([h.get('speed', 0) for h in history]))
         s_dev = abs(in_speed - avg_s) / max(avg_s, 1.0)
-        
+
         return in_speed, s_dev
 
     def calculate_gates(self, n: int, history: list, mahal_dists: list) -> dict:
