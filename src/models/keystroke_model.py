@@ -1,4 +1,7 @@
 from src.config.database import get_db_connection
+import logging
+
+_logger = logging.getLogger(__name__)
 
 def get_history_by_user_id(user_id):
     """Mengambil semua riwayat fitur keystroke milik user."""
@@ -21,6 +24,7 @@ def add_keystroke_data(user_id, keystroke_json):
         return True
     except Exception as e:
         conn.rollback()
+        _logger.error("add_keystroke_data gagal untuk user_id=%s: %s", user_id, e)
         return False
     finally:
         conn.close()

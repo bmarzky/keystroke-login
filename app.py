@@ -84,31 +84,40 @@ def login():
                 session['last_login'] = time.strftime('%Y-%m-%d %H:%M:%S')
 
                 if result.get('should_update_history'):
-                    keystroke_model.add_keystroke_data(user['id'], json.dumps(input_keystroke))
-                    
-                    # Async Training Trigger untuk riset Cold-Start:
-                    #   - Periodic: setiap 10 sampel baru (mulai dari 15)
-                    #   - High-score: langsung train jika skor sangat tinggi (> 0.99)
-                    #   - Bootstrap: train sekali jika model belum ada sama sekali (min. 15 sampel)
-                    # Catatan: minimum 15 sampel diperlukan agar SVM bisa diinisialisasi.
-                    n_samples = len(history) + 1
-                    has_enough_data = n_samples >= 15
-                    is_periodic     = has_enough_data and (n_samples % 10 == 0)
-                    is_high_score   = has_enough_data and result.get('score', 0) > 0.99
-                    is_bootstrap    = has_enough_data and not _model_exists(user['id'])
-                    should_train    = is_periodic or is_high_score or is_bootstrap
+                    # Simpan data ke DB dan periksa hasilnya.
+                    # Training HANYA boleh dijalankan jika data berhasil tersimpan —
+                    # mencegah model di-train dengan sampel yang tidak ada di DB (race condition).
+                    saved = keystroke_model.add_keystroke_data(user['id'], json.dumps(input_keystroke))
 
-                    if should_train:
-                        try:
-                            history_dicts = [json.loads(h) for h in history]
-                            # Spawn daemon thread — async_train_user_model menangani exception & logging
-                            t = threading.Thread(target=async_train_user_model,
-                                                 args=(user['id'], history_dicts + [input_keystroke]),
-                                                 daemon=True)
-                            t.start()
-                        except Exception as e:
-                            # Log kegagalan spawn thread agar admin bisa investigasi
-                            log_access('ai_training.log', f"{time.strftime('%Y-%m-%d %H:%M:%S')} | TRAIN_THREAD_FAIL | User: {username}", str(e))
+                    if not saved:
+                        log_access('ai_training.log',
+                                   f"{time.strftime('%Y-%m-%d %H:%M:%S')} | DB_SAVE_FAIL | User: {username}",
+                                   "  add_keystroke_data() mengembalikan False — training dibatalkan.")
+                    else:
+                        # Async Training Trigger untuk riset Cold-Start:
+                        #   - Periodic: setiap 10 sampel baru (mulai dari 15)
+                        #   - High-score: langsung train jika skor sangat tinggi (> 0.99)
+                        #   - Bootstrap: train sekali jika model belum ada sama sekali (min. 15 sampel)
+                        # Catatan: minimum 15 sampel diperlukan agar SVM bisa diinisialisasi.
+                        # n_samples dihitung SETELAH insert sukses agar hitungan akurat.
+                        n_samples = len(history) + 1
+                        has_enough_data = n_samples >= 15
+                        is_periodic     = has_enough_data and (n_samples % 10 == 0)
+                        is_high_score   = has_enough_data and result.get('score', 0) > 0.99
+                        is_bootstrap    = has_enough_data and not _model_exists(user['id'])
+                        should_train    = is_periodic or is_high_score or is_bootstrap
+
+                        if should_train:
+                            try:
+                                history_dicts = [json.loads(h) for h in history]
+                                # Spawn daemon thread — async_train_user_model menangani exception & logging
+                                t = threading.Thread(target=async_train_user_model,
+                                                     args=(user['id'], history_dicts + [input_keystroke]),
+                                                     daemon=True)
+                                t.start()
+                            except Exception as e:
+                                # Log kegagalan spawn thread agar admin bisa investigasi
+                                log_access('ai_training.log', f"{time.strftime('%Y-%m-%d %H:%M:%S')} | TRAIN_THREAD_FAIL | User: {username}", str(e))
 
                 current_time = time.strftime('%Y-%m-%d %H:%M:%S')
                 log_access('login_success.log', f"{current_time} | SUCCESS | User: {username}", format_log(user['id'], result, history, input_keystroke))
