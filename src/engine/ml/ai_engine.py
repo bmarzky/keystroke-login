@@ -1,4 +1,5 @@
 import os, joblib, glob, time
+from src.utils.logger import log_access
 import numpy as np
 from sklearn.svm import OneClassSVM
 from sklearn.preprocessing import RobustScaler
@@ -88,8 +89,11 @@ class AIEngine:
             
             return decision, confidence, data.get('n_train', 0), raw_score
         except Exception as e:
-            with open("ai_error.log", "a") as f:
-                f.write(f"Predict Error for {user_id}: {str(e)}\n")
+            log_access(
+                'ai_error.log',
+                f"{time.strftime('%Y-%m-%d %H:%M:%S')} | PREDICT_ERROR | User: {user_id}",
+                str(e)
+            )
             return None, 0.0, 0, 0.0
 
     def _cleanup_old_models(self, user_id, keep=3):
