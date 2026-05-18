@@ -96,9 +96,29 @@ class StatisticalGates:
         v_clean  = in_v[in_v   < c_limit] if len(in_v)  > 0 else in_v
         fv_clean = in_fv[in_fv < f_limit] if len(in_fv) > 0 else in_fv
 
-        in_speed = float(60.0 / (np.mean(v_clean) + np.mean(fv_clean))) \
-            if len(v_clean) >= 3 and len(fv_clean) >= 1 \
-            else float(inp.get('speed', 0))
+        # Guard: jika outlier filter mengosongkan array, np.mean([]) = nan.
+        # nan dalam pembagi menyebabkan in_speed = nan → s_dev = nan →
+        # is_speed_anomaly selalu False (nan > gate == False), sehingga
+        # anomali kecepatan ekstrem lolos tanpa terdeteksi.
+        # Fall-back: gunakan speed dari payload jika data bersih tidak cukup.
+        has_clean_dwell  = len(v_clean)  >= 3
+        has_clean_flight = len(fv_clean) >= 1
+        if has_clean_dwell and has_clean_flight:
+            mean_sum = float(np.mean(v_clean) + np.mean(fv_clean))
+            # Extra guard: denominator nol seharusnya tidak mungkin karena
+            # nilai dwell/flight selalu positif, tapi dijaga untuk keamanan.
+            in_speed = float(60.0 / mean_sum) if mean_sum > 1e-9 else float(inp.get('speed', 0))
+        else:
+            # Array bersih terlalu kecil — gunakan speed yang dilaporkan frontend.
+            # Ini adalah degradasi yang disengaja: lebih baik pakai speed kasar
+            # daripada menghasilkan nan yang merusak deteksi anomali.
+            _logger.debug(
+                "calculate_speed_metrics: clean arrays too small "
+                "(dwell=%d, flight=%d) — falling back to payload speed",
+                len(v_clean), len(fv_clean)
+            )
+            in_speed = float(inp.get('speed', 0))
+
         avg_s = float(np.median([h.get('speed', 0) for h in history]))
         s_dev = abs(in_speed - avg_s) / max(avg_s, 1.0)
 

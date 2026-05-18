@@ -6,23 +6,30 @@ class FeatureExtractor:
     CLEAN_THRESHOLD = 0.25
 
     def ensure_vectors(self, data: dict) -> dict:
-        """Memastikan data memiliki vektor D2D, U2U, dan Trigraph."""
+        """Memastikan data memiliki vektor D2D, U2U, dan Trigraph.
+
+        Guard menggunakan ``is None`` (bukan ``not``) agar list kosong yang
+        valid (mis. password 1 karakter) tidak dihitung ulang di setiap
+        pemanggilan.  ``not []`` bernilai True sehingga guard lama akan
+        menimpa vektor yang sudah ada dengan nilai yang salah.
+        """
         d, f = data.get('dwell', []), data.get('flight', [])
-        
-        # Calculate D2D and U2U if missing
-        if not data.get('d2d'): 
+
+        # Calculate D2D and U2U only when the key is truly absent (None)
+        if data.get('d2d') is None:
             data['d2d'] = [float(d[i] + f[i]) for i in range(min(len(d), len(f)))]
-        if not data.get('u2u'): 
-            data['u2u'] = [float(f[i] + d[i+1]) for i in range(min(len(d)-1, len(f)))]
-            
+        if data.get('u2u') is None:
+            # U2U = f[i] + d[i+1]; safe bound: min(len(d)-1, len(f)) iterations
+            data['u2u'] = [float(f[i] + d[i + 1]) for i in range(min(len(d) - 1, len(f)))]
+
         # Calculate Trigraph (n to n+2) if missing - based on D2D sum
-        if not data.get('trigraph'):
+        if data.get('trigraph') is None:
             d2d = data.get('d2d', [])
             if len(d2d) >= 2:
-                data['trigraph'] = [float(d2d[i] + d2d[i+1]) for i in range(len(d2d)-1)]
+                data['trigraph'] = [float(d2d[i] + d2d[i + 1]) for i in range(len(d2d) - 1)]
             else:
                 data['trigraph'] = []
-                
+
         return data
 
     def extract(self, data: dict, history=None) -> list:
@@ -84,11 +91,45 @@ class FeatureExtractor:
         return {"ok": False, "reason": "REJECT | Length Mismatch"}
 
     def dtw_distance(self, s1, s2) -> float:
-        """Algoritma Dynamic Time Warping."""
+        """Jarak Dynamic Time Warping, dinormalisasi dengan panjang urutan terpanjang.
+
+        Implementasi menggunakan anti-diagonal (wavefront) sweep berbasis NumPy.
+        Sel-sel yang berada pada satu anti-diagonal (i + j = konstan) tidak saling
+        bergantung, sehingga dapat dihitung sekaligus dengan operasi vektor NumPy.
+
+        Kompleksitas tetap O(n*m) namun jumlah iterasi Python turun dari n*m
+        menjadi (n+m-1), karena tiap iterasi memproses seluruh diagonal secara
+        paralel. Untuk password 10 karakter: 100 → 19 iterasi.
+
+        Tidak memerlukan dependensi tambahan (scipy / dtaidistance).
+        """
         n, m = len(s1), len(s2)
-        if n == 0 or m == 0: return 1.0
-        dtw = np.full((n + 1, m + 1), np.inf); dtw[0, 0] = 0
-        for i in range(1, n + 1):
-            for j in range(1, m + 1):
-                dtw[i, j] = abs(s1[i-1] - s2[j-1]) + min(dtw[i-1, j], dtw[i, j-1], dtw[i-1, j-1])
+        if n == 0 or m == 0:
+            return 1.0
+
+        s1_arr = np.asarray(s1, dtype=float)
+        s2_arr = np.asarray(s2, dtype=float)
+
+        # Matriks cost dihitung sekaligus — fully vectorized, shape (n, m)
+        cost = np.abs(s1_arr[:, None] - s2_arr[None, :])
+
+        # Tabel DP dengan border sentinel tak hingga; dtw[0, 0] = 0
+        dtw = np.full((n + 1, m + 1), np.inf)
+        dtw[0, 0] = 0.0
+
+        # Anti-diagonal d mencakup sel (i, j) dengan i + j == d + 2  (1-indexed)
+        for d in range(n + m - 1):
+            i_lo = max(1, d - m + 2)
+            i_hi = min(n, d + 1)
+            rows = np.arange(i_lo, i_hi + 1, dtype=np.intp)  # shape (k,)
+            cols = (d + 2) - rows                              # j = d+2-i, shape (k,)
+
+            # Minimum dari tiga tetangga yang sudah terisi
+            prev = np.minimum(
+                np.minimum(dtw[rows - 1, cols],    # atas     (i-1, j)
+                           dtw[rows, cols - 1]),    # kiri     (i, j-1)
+                dtw[rows - 1, cols - 1]             # diagonal (i-1, j-1)
+            )
+            dtw[rows, cols] = cost[rows - 1, cols - 1] + prev
+
         return float(dtw[n, m] / max(n, m))
