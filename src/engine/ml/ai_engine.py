@@ -17,8 +17,11 @@ class AIEngine:
             self.model_dir = model_dir
             
         if not os.path.exists(self.model_dir):
-            try: os.makedirs(self.model_dir, exist_ok=True)
-            except: pass
+            try:
+                os.makedirs(self.model_dir, exist_ok=True)
+            except OSError as e:
+                # Jangan telan diam-diam — log agar admin tahu jika folder model tidak bisa dibuat
+                print(f"[AIEngine] WARNING: Gagal membuat direktori model '{self.model_dir}': {e}")
 
     def _get_model_pattern(self, user_id):
         return os.path.join(self.model_dir, f"{user_id}_ocsvm_v*.joblib")
