@@ -109,7 +109,8 @@ def login():
 
                         if should_train:
                             try:
-                                history_dicts = [json.loads(h) for h in history]
+                                # Guard: handle both raw JSON strings and pre-parsed dicts
+                                history_dicts = [json.loads(h) if isinstance(h, str) else h for h in history]
                                 # Spawn daemon thread — async_train_user_model menangani exception & logging
                                 t = threading.Thread(target=async_train_user_model,
                                                      args=(user['id'], history_dicts + [input_keystroke]),
@@ -147,7 +148,7 @@ def register():
             decoded = json.loads(keystroke_json)
             if len(decoded.get('dwell', [])) < 7:
                  return render_template('auth/register.html', error="Password terlalu pendek (Min. 7 char)")
-        except:
+        except (json.JSONDecodeError, ValueError):
             return render_template('auth/register.html', error="Data biometrik tidak valid")
 
         user = user_model.get_user_by_username(username)
