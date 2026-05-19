@@ -31,6 +31,12 @@ def train_user_model_in_memory(user_id, history):
         
         clean_X = X[np.array(dists) < 10.0]
 
+        # Guard: jika filter terlalu agresif dan menyisakan < 15 sampel,
+        # fallback ke dataset penuh agar training tidak gagal karena threshold
+        # outlier yang terlalu ketat pada data heterogen di awal cold-start.
+        if len(clean_X) < 15:
+            clean_X = X
+
         # 3. Training
         success, msg = ai.train(user_id, clean_X)
         return success, msg
