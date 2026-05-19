@@ -148,6 +148,8 @@ class BiometricCore:
         history = history[-50:]
         baselines = history[:3] + history[-7:] if n_h > 10 else history
         all_scores, comp_logs, max_out = [], [], 0
+        # Ekstrak fitur input sekali saja di luar loop (hasilnya identik untuk setiap iterasi baseline)
+        f_in = np.array(self.extractor.extract(inp, history))
         
         for b in baselines:
             b = self.extractor.ensure_vectors(b)
@@ -205,7 +207,8 @@ class BiometricCore:
             else:
                 fl_s = 0.60
             
-            f_in, f_bs = np.array(self.extractor.extract(inp, history)), np.array(self.extractor.extract(b, history))
+            # f_in sudah dihitung sekali di luar loop; hanya f_bs yang berbeda tiap iterasi
+            f_bs = np.array(self.extractor.extract(b, history))
             rat_idx, sta_idx = [2, 5, 8, 11], [1, 4, 7, 10]
             
             rat_s = float(max(0, 1.0 - np.mean(np.abs(f_in[rat_idx]-f_bs[rat_idx])/(f_bs[rat_idx]+0.1))))
