@@ -30,7 +30,13 @@ class AIEngine:
         models = glob.glob(self._get_model_pattern(user_id))
         if not models:
             return None
-        return sorted(models)[-1]
+        # Pilih berdasarkan waktu modifikasi file (lebih andal daripada sorting nama)
+        try:
+            latest = max(models, key=lambda p: os.path.getmtime(p))
+            return latest
+        except Exception:
+            # Fallback ke sorting lexicographic jika getmtime gagal
+            return sorted(models)[-1]
 
     def train(self, user_id, X_train):
         try:
@@ -102,4 +108,8 @@ class AIEngine:
     def _cleanup_old_models(self, user_id, keep=3):
         models = sorted(glob.glob(self._get_model_pattern(user_id)))
         for old_model in models[:-keep]:
-            os.remove(old_model)
+            try:
+                os.remove(old_model)
+            except OSError:
+                # Jika file sudah dihapus atau tidak bisa dihapus, lewati saja
+                continue
