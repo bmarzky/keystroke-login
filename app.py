@@ -187,6 +187,9 @@ def dashboard():
     # 2. Get Recent Security Activity (Parsing Logs)
     # Note: In production, this should ideally be in a DB table for efficiency.
     recent_activity = []
+    latest_metrics = {}
+    latest_ai = 'N/A'
+    latest_stability = 'N/A'
     try:
         username = session['username']
         log_files = [
@@ -253,14 +256,12 @@ def dashboard():
         recent_activity.sort(key=lambda x: x['time'] if x['time'] != 'Legacy Event' else '0000-00-00', reverse=True)
         recent_activity = recent_activity[:5]
 
-        # Get latest metrics for health profile
-        latest_metrics = {}
+        # Get latest metrics for health profile (if any)
         if recent_activity:
             latest_metrics = recent_activity[0]
-
-        # Aliases for template compatibility
-        latest_ai = latest_metrics.get('ai_score', 'N/A')
-        latest_stability = latest_metrics.get('stability', 'N/A')
+            # Aliases for template compatibility
+            latest_ai = latest_metrics.get('ai_score', 'N/A')
+            latest_stability = latest_metrics.get('stability', 'N/A')
 
     except Exception as e:
         print(f"Log Parse Error: {e}")
