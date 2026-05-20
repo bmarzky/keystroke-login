@@ -31,17 +31,20 @@ def format_log(uid, result, history, raw_input):
     log += f"  Current Gate  : {ag.get('mahal_gate', 'N/A')}\n"
     
     # OCSVM
-    log += f"  --- OCSVM Gate ---\n"
-    ai_score = result.get('ai_score', 'None')
-    if ai_score != "None" and ai_score is not None:
-        a_score = float(ai_score)
-        log += f"  AI Score      : {a_score:.4f}\n"
-    else:
-        log += f"  AI Score      : None\n"
-    log += f"  AI Status     : {result.get('ai_status', 'N/A')}\n"
-    raw_dist = result.get('ai_raw_dist')
-    if raw_dist is not None:
-        log += f"  AI Raw Dist   : {raw_dist:.4f}\n"
+    log += "  --- OCSVM Gate ---\n"
+    try:
+        ai_score = result.get('ai_score', None)
+        if ai_score is not None:
+            a_score = float(ai_score)
+            log += f"  AI Score      : {a_score:.4f}\n"
+        else:
+            log += "  AI Score      : None\n"
+        log += f"  AI Status     : {result.get('ai_status', 'N/A')}\n"
+        raw_dist = result.get('ai_raw_dist')
+        if raw_dist is not None:
+            log += f"  AI Raw Dist   : {float(raw_dist):.4f}\n"
+    except Exception:
+        log += "  AI Score      : None\n  AI Status     : N/A\n"
     
     n_train = result.get('n_train', 0)
     if n_train > 0:
@@ -56,14 +59,19 @@ def format_log(uid, result, history, raw_input):
     log += f"  --- Sequential Mahalanobis-SVM ---\n"
     weights = result.get('weights', [])
     if weights and len(weights) == 6:
-        log += f"  Weights (P)   : R:{weights[0]:.2f} | C:{weights[1]:.2f} | S:{weights[2]:.2f} | F:{weights[3]:.2f} | RT:{weights[4]:.2f} | ST:{weights[5]:.2f}\n"
-    
-    log += f"  Rhythm        : {comp.get('rhythm', 0)*100:.1f}%  [Euclidean]\n"
-    log += f"  Corr.         : {comp.get('corr', 0)*100:.1f}%  [Pearson]\n"
-    log += f"  Speed         : {comp.get('speed', 0)*100:.1f}%  [CPM]\n"
-    log += f"  Flow          : {comp.get('flow', 0)*100:.1f}%  [Accel]\n"
-    log += f"  Ratio         : {comp.get('ratio', 0)*100:.1f}%\n"
-    log += f"  Stability     : {comp.get('stability', 0)*100:.1f}%\n"
+        try:
+            log += f"  Weights (P)   : R:{float(weights[0]):.2f} | C:{float(weights[1]):.2f} | S:{float(weights[2]):.2f} | F:{float(weights[3]):.2f} | RT:{float(weights[4]):.2f} | ST:{float(weights[5]):.2f}\n"
+        except Exception:
+            pass
+    try:
+        log += f"  Rhythm        : {float(comp.get('rhythm', 0))*100:.1f}%  [Euclidean]\n"
+        log += f"  Corr.         : {float(comp.get('corr', 0))*100:.1f}%  [Pearson]\n"
+        log += f"  Speed         : {float(comp.get('speed', 0))*100:.1f}%  [CPM]\n"
+        log += f"  Flow          : {float(comp.get('flow', 0))*100:.1f}%  [Accel]\n"
+        log += f"  Ratio         : {float(comp.get('ratio', 0))*100:.1f}%\n"
+        log += f"  Stability     : {float(comp.get('stability', 0))*100:.1f}%\n"
+    except Exception:
+        log += "  Rhythm        : N/A\n  Corr.         : N/A\n  Speed         : N/A\n  Flow          : N/A\n  Ratio         : N/A\n  Stability     : N/A\n"
     
     # Raw Data
     log += f"  --- Raw Keystroke Data ---\n"
