@@ -132,7 +132,8 @@ def login():
         log_access('login_failed.log', f"{current_time} | FAILURE | User: {username}", f"  Reason: Password Salah atau User Tidak Ditemukan")
         return render_template('auth/login.html', error="Username atau password salah")
 
-    return render_template('auth/login.html')
+    # Jika ada pesan error/success lewat query params (mis. CSRF redirect), teruskan ke template
+    return render_template('auth/login.html', error=request.args.get('error'), success=request.args.get('success'))
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -218,15 +219,19 @@ def dashboard():
                                 'history_count': 'N/A'
                             }
                             for l in lines:
-                                if "AI Score      :" in l: metrics['ai_score'] = l.split(":")[1].strip()
-                                if "Stability     :" in l: metrics['stability'] = l.split(":")[1].strip().replace('%', '')
-                                if "Rhythm        :" in l: metrics['rhythm'] = l.split(":")[1].split('[')[0].strip()
-                                if "Corr.         :" in l: metrics['corr'] = l.split(":")[1].split('[')[0].strip()
-                                if "Speed         :" in l: metrics['speed'] = l.split(":")[1].split('[')[0].strip()
-                                if "Flow          :" in l: metrics['flow'] = l.split(":")[1].split('[')[0].strip()
-                                if "Ratio         :" in l: metrics['ratio'] = l.split(":")[1].strip()
-                                if "Method        :" in l: metrics['method'] = l.split(":")[1].strip()
-                                if "History Count :" in l: metrics['history_count'] = l.split(":")[1].strip()
+                                try:
+                                    if "AI Score      :" in l: metrics['ai_score'] = l.split(":", 1)[1].strip()
+                                    if "Stability     :" in l: metrics['stability'] = l.split(":", 1)[1].strip().replace('%', '')
+                                    if "Rhythm        :" in l: metrics['rhythm'] = l.split(":", 1)[1].split('[')[0].strip()
+                                    if "Corr.         :" in l: metrics['corr'] = l.split(":", 1)[1].split('[')[0].strip()
+                                    if "Speed         :" in l: metrics['speed'] = l.split(":", 1)[1].split('[')[0].strip()
+                                    if "Flow          :" in l: metrics['flow'] = l.split(":", 1)[1].split('[')[0].strip()
+                                    if "Ratio         :" in l: metrics['ratio'] = l.split(":", 1)[1].strip()
+                                    if "Method        :" in l: metrics['method'] = l.split(":", 1)[1].strip()
+                                    if "History Count :" in l: metrics['history_count'] = l.split(":", 1)[1].strip()
+                                except Exception:
+                                    # Safely ignore malformed metric lines
+                                    continue
                             
                             if len(parts) >= 3:
                                 time_str = parts[0]
