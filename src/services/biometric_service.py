@@ -75,7 +75,8 @@ def verify_biometric(biom_core, user_id, username, input_keystroke, history_stri
         return {"status": False, "reason": "Keamanan: Terdeteksi serangan Replay."}
 
     # 2. Biometric Analysis
-    history_dicts = [json.loads(h) for h in history_strings]
+    # Toleransi: history_strings bisa berisi JSON-strings atau sudah berupa dict
+    history_dicts = [json.loads(h) if isinstance(h, str) else h for h in history_strings]
     result = biom_core.analyze(input_keystroke, history_dicts, user_id)
     
     return result
