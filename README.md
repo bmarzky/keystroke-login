@@ -3,7 +3,7 @@
 [![Version](https://img.shields.io/badge/version-2.5.0--stable-blue.svg)](https://github.com/bmarzky/keystroke-login)
 [![Python](https://img.shields.io/badge/Python-3.12-brightgreen.svg)](https://www.python.org/)
 
-**Biometric Authentication System Login** adalah sistem autentikasi berbasis *Keystroke Dynamics* yang memverifikasi identitas pengguna melalui pola ritme ketikan yang unik. Sistem ini dirancang sebagai lapisan keamanan kedua (**MFA**) dengan antarmuka **Cybersecurity Monochrome** yang profesional, menggabungkan analisis statistik multivariat dan *Machine Learning* untuk mendeteksi upaya impersonasi secara *real-time*.
+**Biometric Authentication System Login** adalah sistem autentikasi berbasis *Keystroke Dynamics* yang memverifikasi identitas pengguna melalui pola ritme ketikan yang unik. Sistem ini dirancang sebagai lapisan keamanan kedua (**MFA**), menggabungkan analisis statistik multivariat dan *Machine Learning* untuk mendeteksi upaya impersonasi secara *real-time*.
 
 ---
 
