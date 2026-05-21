@@ -6,7 +6,7 @@
     <title>Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body class="dashboard-page">`
+<body class="dashboard-page">
     <div class="dashboard-wrapper">
         <header class="rfc-header" style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-start;">
             <pre style="margin: 0; font-family: inherit; font-size: inherit; line-height: 1.0; text-align: left;">BIOMETRIC AUTHENTICATION ENGINE
@@ -85,9 +85,9 @@
 
                 <div style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px;">
                     <div class="rfc-item"><span class="rfc-label-short" style="width: 100px;">Stability</span>: <span id="health-stability">{% if stability|float < 150 %}Very Stable{% elif stability|float < 300 %}Stable{% else %}Adjusting{% endif %}</span></div>
-                    <div class="rfc-item"><span class="rfc-label-short" style="width: 100px;">Model Sync</span>: <span>{{ 'SYNCHRONIZED' if model_status.is_synced else 'PENDING' }}</span></div>
-                    <div class="rfc-item"><span class="rfc-label-short" style="width: 100px;">Model Core</span>: <span>{{ 'ACTIVE' if model_status.exists else 'STANDBY' }}</span> (v{{ model_status.version }})</div>
-                    <div class="rfc-item"><span class="rfc-label-short" style="width: 100px;">Training Data</span>: <span>{{ model_status.n_train }} Samples</span></div>
+                    <div class="rfc-item"><span class="rfc-label-short" style="width: 100px;">Model Sync</span>: <span>{{ 'SYNCHRONIZED' if model_status['is_synced'] else 'PENDING' }}</span></div>
+                    <div class="rfc-item"><span class="rfc-label-short" style="width: 100px;">Model Core</span>: <span>{{ 'ACTIVE' if model_status['exists'] else 'STANDBY' }}</span> (v{{ model_status['version'] }})</div>
+                    <div class="rfc-item"><span class="rfc-label-short" style="width: 100px;">Training Data</span>: <span>{{ model_status['n_train'] }} Samples</span></div>
                 </div>
             </div>
         </section>
