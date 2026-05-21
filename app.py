@@ -332,7 +332,7 @@ def dashboard():
                          model_status=model_status,
                          current_date=time.strftime('%B %Y'))
 
-@app.route('/logout', methods=['POST', 'GET'])
+@app.route('/logout', methods=['POST'])
 def logout():
     session.clear()
     return redirect(url_for('login'))
